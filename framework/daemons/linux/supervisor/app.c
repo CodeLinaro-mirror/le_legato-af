@@ -284,7 +284,7 @@ static const FileLinkObj_t DefaultSystemLinks[] =
 //--------------------------------------------------------------------------------------------------
 static const FileLinkObj_t DefaultSystemLinks[] =
 {
-    {.src = "/lib/ld-linux.so.3", .dest = "/lib/"},
+    {.src = "/lib/ld-linux-armhf.so.3", .dest = "/lib/"},
     {.src = "/lib/libc.so.6", .dest = "/lib/"},
     {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
     {.src = "/lib/librt.so.1", .dest = "/lib/"},

@@ -55,7 +55,7 @@ static le_audio_StreamRef_t             FeInRef;
 static le_audio_StreamRef_t             FeOutRef;
 static le_audio_ConnectorRef_t          AudioInputConnectorRef;
 static le_audio_ConnectorRef_t          AudioOutputConnectorRef;
-static le_audio_MediaHandlerRef_t       MediaHandlerRef = NULL;
+//static le_audio_MediaHandlerRef_t       MediaHandlerRef = NULL;
 static le_audio_StreamRef_t             FileAudioRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ static le_audio_StreamRef_t             FileAudioRef = NULL;
 //--------------------------------------------------------------------------------------------------
 static const char                       AudioFilePathDefault[] = "/legato/systems/current/appsWriteable/voiceCallApp/piano.wav";
 static char                             AudioFilePath[] = "/legato/systems/current/appsWriteable/voiceCallApp/piano.wav"; //Default audio file, can be changed via command line
-static int                              AudioFileFd = -1;
+//static int                              AudioFileFd = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -73,6 +73,8 @@ static int                              AudioFileFd = -1;
 *
 */
 //--------------------------------------------------------------------------------------------------
+
+# if 0
 static void MyMediaEventHandler
 (
     le_audio_StreamRef_t          streamRef,
@@ -109,6 +111,7 @@ static void MyMediaEventHandler
         break;
     }
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -219,6 +222,8 @@ static le_result_t OpenAudioMic
     le_voicecall_CallRef_t reference
 )
 {
+// no audio
+#if 0
     le_result_t res;
 
     MdmRxAudioRef = le_voicecall_GetRxAudioStream(reference);
@@ -249,7 +254,7 @@ static le_result_t OpenAudioMic
         res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
-
+#endif
     return LE_OK;
 }
 //! [setup audio path]
@@ -266,6 +271,7 @@ static le_result_t OpenAudioFile
     le_voicecall_CallRef_t reference
     )
 {
+#if 0
     le_result_t res;
 
     MdmTxAudioRef = le_voicecall_GetTxAudioStream(reference);
@@ -299,6 +305,8 @@ static le_result_t OpenAudioFile
         res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
         LE_ERROR_IF((res!=LE_OK), "Failed to play the file!");
     }
+#endif
+
     return LE_OK;
 }
 
@@ -316,7 +324,7 @@ static void MyCallEventHandler
     void* contextPtr
     )
 {
-    le_voicecall_TerminationReason_t term = LE_VOICECALL_TERM_UNDEFINED;
+    le_voicecall_CallEndCause_t term = LE_VOICECALL_TERM_UNDEFINED;
 
     LE_INFO("New Call event: %d for Call %p, from %s", callEvent, reference, identifier);
 
@@ -343,7 +351,7 @@ static void MyCallEventHandler
         callInProgress  = false;
         DisconnectAllAudio(reference);
         LE_INFO("LE_VOICECALL_EVENT_TERMINATED");
-        le_voicecall_GetTerminationReason(reference, &term);
+        le_voicecall_GetEndCause(reference, &term);
         switch(term)
         {
             case LE_VOICECALL_TERM_NETWORK_FAIL:
@@ -438,13 +446,13 @@ static le_result_t voicecall_start
 )
 {
     le_result_t  res = LE_FAULT;
-    le_voicecall_TerminationReason_t reason = LE_VOICECALL_TERM_UNDEFINED;
+    le_voicecall_CallEndCause_t reason = LE_VOICECALL_TERM_UNDEFINED;
 
     //! [Starting a voicecall]
-    myCallRef = le_voicecall_Start(DestinationNumber);
+    myCallRef = le_voicecall_Start(DestinationNumber,1);
     if (!myCallRef)
     {
-        res = le_voicecall_GetTerminationReason(myCallRef, &reason);
+        res = le_voicecall_GetEndCause(myCallRef, &reason);
         LE_ASSERT(res == LE_OK);
         LE_INFO("Termination reason is: %d", reason);
         return LE_FAULT;

@@ -36,10 +36,11 @@
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm
+TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
+export TELAF_ROOT := $(TELAF_ROOT_SET)
 
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
@@ -103,7 +104,11 @@ endif # end no target
 export TARGET
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 ifneq ($(TARGET),nothing)
-  $(info Building Legato for target '$(TARGET)')
+  $(info Building Legato for target '$(TARGET)', telAf path '$(TELAF_ROOT)')
+  ifneq ($(findstring $(TARGET), sa415m sa515m),)
+    export DISABLE_SMACK=1
+    $(info DISABLE_SMACK->'$(DISABLE_SMACK)' for target '$(TARGET)')
+  endif
 endif
 
 # KConfig settings location.
@@ -137,7 +142,7 @@ export TOOLS_ARCH ?= $(HOST_ARCH)
 FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
 
 # Load module definitions
-include $(wildcard modules/*/moduleDefs)
+include $(wildcard $(TELAF_ROOT)/modules/*/moduleDefs)
 
 # Read-only setting
 STAGE_SYSTOIMG = stage_systoimg
@@ -149,6 +154,26 @@ export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
 export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
 export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
 export MKEXE_FLAGS=$(MKTOOLS_FLAGS)
+
+# Fix me later, add hardware float point support
+#MKEXE_FLAGS += -mfpu=neon -mfloat-abi=hard
+ifeq ($(TARGET),sa415m)
+  MKEXE_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKEXE_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  MKAPP_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKAPP_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  MKSYS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKSYS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+endif
+
+ifeq ($(TARGET),sa515m)
+  MKEXE_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKEXE_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  MKAPP_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKAPP_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  MKSYS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKSYS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+endif
 
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
@@ -587,8 +612,8 @@ stage_systoimg:
 	$(Q)checkpa $(TARGET) || true
 	@# Link legato R/W images to default legato images
 	$(Q)(cd build/$(TARGET); \
-	    for f in legato.*; do \
-	        ln -sf $$f `echo $$f | sed 's/legato/legato_rw/'`; \
+	    for f in telaf.*; do \
+	        ln -sf $$f `echo $$f | sed 's/telaf/telaf_rw/'`; \
 	    done)
 
 # Build a read-only system image

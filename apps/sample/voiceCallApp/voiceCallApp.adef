@@ -35,7 +35,7 @@ sandboxed: false
 
 bindings:
 {
-    voiceCallApp.voiceCallComponent.le_voicecall -> voiceCallService.le_voicecall
+    voiceCallApp.voiceCallComponent.le_voicecall -> tafVoiceCallSvc.taf_voicecall
     voiceCallApp.voiceCallComponent.le_audio -> audioService.le_audio
     voice.ctrlComponent.ctrlVC -> voiceCallApp.voiceCallComponent.ctrlVC
 }

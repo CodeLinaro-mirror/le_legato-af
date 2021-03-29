@@ -82,6 +82,7 @@ case "$1" in
                    fi
                    cp /etc/ld.so.cache /tmp/ld.so.cache
                    ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
+                   mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
                 fi
             fi
         fi

@@ -8,7 +8,7 @@
 
 #include "${LEGATO_ROOT}/platformBuildVars.sinc"
 #if "${LEGATO_TARGET_SINC}" = ""
-  #include "${LEGATO_ROOT}/targets/${LEGATO_TARGET}.sinc"
+  #include "${TELAF_ROOT}/targets/${LEGATO_TARGET}.sinc"
 #else
   #include "${LEGATO_TARGET_SINC}"
 #endif

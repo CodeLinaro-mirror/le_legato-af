@@ -12,6 +12,9 @@
 #include "fileDescriptor.h"
 #include "fileSystem.h"
 #include "killProc.h"
+#include "file.h"
+#include <sys/vfs.h>
+#include <sys/statvfs.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -27,7 +30,8 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "
  * Root path for all cgroups.
  */
 //--------------------------------------------------------------------------------------------------
-#define ROOT_PATH                   "/sys/fs/cgroup"
+#define ROOT_PATH                   "/sys/fs/cgroup/telaf"
+#define ROOT_PATH_CGROUP            "/sys/fs/cgroup"
 #define ROOT_NAME                   "cgroupsRoot"
 
 
@@ -162,6 +166,30 @@ void cgrp_Init
     void
 )
 {
+    struct statfs st;
+
+    // TelAf uses ROOT_PATH to keep its cgroup items, so make sure ROOT_PATH is exist first.
+    if (file_Exists(ROOT_PATH) == false)
+    {
+        LE_INFO("The path %s doesn't exist, create it", ROOT_PATH);
+        if (statfs(ROOT_PATH_CGROUP, &st) < 0)
+        {
+            LE_ERROR("Cannot get attr from %s", ROOT_PATH_CGROUP);
+            return;
+        }
+        if (st.f_flags & ST_RDONLY)
+        {
+            (void) mount(NULL, ROOT_PATH_CGROUP, NULL, MS_REMOUNT, NULL);
+        }
+
+        LE_ASSERT(le_dir_Make(ROOT_PATH, S_IRWXU) != LE_FAULT);
+
+        if (st.f_flags & ST_RDONLY)
+        {
+            (void) mount(NULL, ROOT_PATH_CGROUP, NULL, MS_REMOUNT|MS_RDONLY, NULL);
+        }
+    }
+
     // Setup the cgroup root directory if it does not already exist.
     if (!fs_IsMounted(ROOT_NAME, ROOT_PATH))
     {

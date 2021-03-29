@@ -15,7 +15,7 @@ requires:
 {
     api:
     {
-        le_voicecall.api
+        le_voicecall = taf_voicecall.api
         le_audio.api
         le_mdmDefs.api [types-only]
     }

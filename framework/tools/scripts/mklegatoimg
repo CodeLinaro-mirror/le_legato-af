@@ -272,9 +272,9 @@ CreateImgFs() {
         local rhbin="$OUTPUT_DIR/rhash${LEGATO_IMG_SUFFIX}.bin"
     fi
 
-    local legato_img="$OUTPUT_DIR/legato${LEGATO_IMG_SUFFIX}.$img_suffix"
+    local legato_img="$OUTPUT_DIR/telaf${LEGATO_IMG_SUFFIX}.$img_suffix"
 
-    local temp_dir="$OUTPUT_DIR/legatoimg/$img_type"
+    local temp_dir="$OUTPUT_DIR/telafimg/$img_type"
     mkdir -p $temp_dir
 
     cd $temp_dir
@@ -531,12 +531,58 @@ CreateImg_mdm9x40() {
     GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
+CreateImg_sa415m() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    local page_size=4096
+    local pid='sa415m'
+    local oob_size=224
+    local peb_size=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM='sa415m'
+    SUPPORT_COMPRESSION=false
+
+    # Not supported yet, fix me later
+    WITH_DM_VERITY=false
+
+    local img_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        img_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
+}
+
+CreateImg_sa515m() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    local page_size=4096
+    local pid='sa515m'
+    local oob_size=224
+    local peb_size=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM='sa515m'
+    SUPPORT_COMPRESSION=false
+
+    # Not supported yet, fix me later
+    WITH_DM_VERITY=false
+
+    local img_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        img_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
+}
+
 DefaultImg() {
     local img_suffix=${1:-yaffs2}
 
     cd $OUTPUT_DIR
 
-    ln -sf legato${LEGATO_IMG_SUFFIX}.${img_suffix} legato${LEGATO_IMG_SUFFIX}.default
+    ln -sf telaf${LEGATO_IMG_SUFFIX}.${img_suffix} telaf${LEGATO_IMG_SUFFIX}.default
 
     if [ -e "legato${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe" ]; then
         ln -sf legato${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe legato${LEGATO_IMG_SUFFIX}.cwe
@@ -566,6 +612,14 @@ case $TARGET in
         CreateImg_mdm9x40 ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
+    sa415m)
+        CreateImg_sa415m ubi squashfs
+        DefaultImg "squashfs.ubi"
+		;;
+    sa515m)
+        CreateImg_sa515m ubi squashfs
+        DefaultImg "squashfs.ubi"
+		;;
     raspi)
         CreateImgFs squashfs
         DefaultImg "squashfs"

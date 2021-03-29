@@ -2311,6 +2311,9 @@ le_result_t le_appInfo_GetName
 )
 {
     char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
+    char *subSysNameValid[] = {"cpu,cpuacct", "freezer", "memory"};
+    int subSysNum;
+    le_result_t leRet;
 
     LE_ASSERT(snprintf(cgroupFilePath, sizeof(cgroupFilePath), "/proc/%d/cgroup", pid)
               < sizeof(cgroupFilePath));
@@ -2325,10 +2328,66 @@ le_result_t le_appInfo_GetName
 
     // Other than the cgroup path which contains an app name, allocate another 20 bytes for
     // hierarchy ID, controller list, and misc. separators.
-    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 20] = {0};
+    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 60] = {0};
+    char *subSysName = NULL;
+    int loop;
+    char* token = NULL;
+    subSysNum = sizeof(subSysNameValid) / sizeof(subSysNameValid[0]);
+    bool isValidToken = false;
+    char *savePtr = NULL;
 
-    // Read the first line.
-    LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
+    while (1) {
+        // Read the first line.
+        memset(lineBuf, 0, sizeof(char) * (LIMIT_MAX_APP_NAME_LEN + 60));
+        if (fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) == NULL)
+        {
+            break;
+        }
+
+        // Remove the trailing newline char.
+        size_t len = strlen(lineBuf);
+
+        if (lineBuf[len - 1] == '\n')
+        {
+            lineBuf[len - 1] = '\0';
+        }
+
+        // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
+        // e.g. 4:freezer:/SomeApp
+        // We are trying to get the 3rd token and remove the leading slash.
+        char delim[2] = ":";
+
+        // the first strtok_r should be "4" for the string "4:freezer:/SomeApp"
+        strtok_r(lineBuf, delim, &savePtr);
+
+        // the second strtok_r should be "freezer" for the string "4:freezer:/SomeApp"
+        subSysName = strtok_r(NULL, delim, &savePtr);
+        if (subSysName == NULL)
+        {
+            continue;
+        }
+
+        for (loop = 0; loop < subSysNum; loop++)
+        {
+            if (strncmp(subSysName, subSysNameValid[loop], strlen(subSysNameValid[loop])) == 0)
+            {
+                // the third strtok_r should be "/SomeApp" for the string "4:freezer:/SomeApp"
+                token = strtok_r(NULL, delim, &savePtr);
+                // token <= 1 means this cgroup subsystem doesn't belong to any app
+                if ((token == NULL) || (strlen(token) <= 1))
+                {
+                    LE_INFO("Unexpected buf: %s on loop: %d, SysNameValid: %s", lineBuf, loop, subSysNameValid[loop]);
+                    break;
+                }
+                isValidToken = true;
+                break;
+            }
+        }
+        if (isValidToken == true)
+        {
+            break;
+        }
+    }
 
     // Close the stream
     if (fclose(cgroupFilePtr) != 0)
@@ -2343,41 +2402,23 @@ le_result_t le_appInfo_GetName
         }
     }
 
-    // Remove the trailing newline char.
-    size_t len = strlen(lineBuf);
-
-    if (lineBuf[len - 1] == '\n')
+    if (isValidToken == false)
     {
-        lineBuf[len - 1] = '\0';
-    }
-
-    // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
-    // e.g. 4:freezer:/SomeApp
-    // We are trying to get the 3rd token and remove the leading slash.
-    char* token;
-    char delim[2] = ":";
-
-    strtok(lineBuf, delim);
-    strtok(NULL, delim);
-    token = strtok(NULL, delim);
-
-    if (NULL == token)
-    {
-        LE_CRIT("Unexpected format for '%s'", lineBuf);
+        LE_CRIT("Cannot get valid token from '%s' on appName: %s, pid: %d", lineBuf, appName, pid);
         return LE_FAULT;
     }
 
-    // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
-    // hence not part of any app.
-    if (strlen(token) <= 1)
+    // Note that the leading slash of the token has to be removed.
+    leRet = le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
+    if (leRet != LE_OK)
     {
-        return LE_NOT_FOUND;
+        LE_CRIT("Copy error[%d]!, pid: %d, appName: %s, token: %s, appNameNumElements: %d",
+            leRet, pid, appName, token, appNameNumElements);
+        return leRet;
     }
 
-    // Note that the leading slash of the token has to be removed.
-    return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
+    return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**

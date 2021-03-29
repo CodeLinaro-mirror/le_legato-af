@@ -17,6 +17,16 @@ fi
 # Set position-independent code
 CFLAGS="$CFLAGS -Wall -Werror -fPIC -I${LEGATO_ROOT}/framework/daemons/linux"
 
+# Add for hardware float point support
+if [ "$TARGET" == "sa415m" ]; then
+  CFLAGS="$CFLAGS -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard"
+fi
+
+# Add for hardware float point support
+if [ "$TARGET" == "sa515m" ]; then
+  CFLAGS="$CFLAGS -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard"
+fi
+
 # enable coverage.flags
 if [ "${LE_CONFIG_TEST_COVERAGE}" == "y" ]
 then

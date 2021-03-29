@@ -11,11 +11,11 @@ executables:
 #if ${LE_CONFIG_LINUX} = y
     cm = (cm)
     fwupdate = (fwupdate)
-    secstore = (secstore)
-    pmtool = (pmtool)
-    gnss = (gnss)
-    uartMode = (uartMode)
-    kmod = (moduleLoad)
+    //secstore = (secstore)
+    //pmtool = (pmtool)
+    //gnss = (gnss)
+    //uartMode = (uartMode)
+    //kmod = (moduleLoad)
 #endif
 
 #if ${LE_CONFIG_RPC} = y
@@ -39,19 +39,19 @@ bindings:
     cm.cm.le_cellnet -> cellNetService.le_cellnet
     cm.cm.le_ulpm -> powerMgr.le_ulpm
 
-    gnss.gnss.le_gnss -> positioningService.le_gnss
-    gnss.gnss.le_pos -> positioningService.le_pos
-    gnss.gnss.le_posCtrl -> positioningService.le_posCtrl
+    //gnss.gnss.le_gnss -> positioningService.le_gnss
+    //gnss.gnss.le_pos -> positioningService.le_pos
+    //gnss.gnss.le_posCtrl -> positioningService.le_posCtrl
 
     fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
 
-    secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
+    //secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
 
-    pmtool.pmtool.le_pm -> powerMgr.le_pm
-    pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
-    pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
+    //pmtool.pmtool.le_pm -> powerMgr.le_pm
+    //pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
+    //pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
 
-    kmod.moduleLoad.le_kernelModule -> <root>.le_kernelModule
+    //kmod.moduleLoad.le_kernelModule -> <root>.le_kernelModule
 #endif
 
 #if ${LE_CONFIG_RPC} = y

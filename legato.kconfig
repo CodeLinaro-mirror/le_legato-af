@@ -137,6 +137,22 @@ config TARGET_WP76XX
   ---help---
   Run on a Sierra Wireless WP76xx.
 
+# added for SA415M, fix me later
+config TARGET_SA415M
+  bool "QCT SA415M (SA415M)"
+  select SIMU
+  select SA415M
+  ---help---
+  Run on QCT SA415M.
+
+# For SA515M
+config TARGET_SA515M
+  bool "QCT SA515M (SA515M)"
+  select SIMU
+  select SA515M
+  ---help---
+  Run on QCT SA515M.
+
 config TARGET_WP77XX
   bool "SWI WP77xx (wp77xx)"
   select QMI
@@ -263,7 +279,7 @@ config CCACHE
 
 config READ_ONLY
   bool "Read-only image"
-  default y if TARGET_AR758X || TARGET_AR759X
+  default y if TARGET_AR758X || TARGET_AR759X || TARGET_SA415M || TARGET_SA515M
   default n
   ---help---
   Generate a read-only image for the target, in addition to the default

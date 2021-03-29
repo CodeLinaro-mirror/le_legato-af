@@ -328,7 +328,8 @@ static bool VerifyConnection
         }
         else if (LE_OK != result)
         {
-            LE_WARN("Failed to connect to watchdog service; watchdog not kicked");
+            // Allow to disable watchdog service, so reduce the print level
+            LE_DEBUG("Failed to connect to watchdog service; watchdog not kicked");
         }
         else
         {
