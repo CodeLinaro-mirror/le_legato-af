@@ -1119,6 +1119,45 @@ static le_result_t CreateUser
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Change string to lowercase
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StringToLowercase(const char *input, char *output, int maxSize)
+{
+    int inputSize;
+    int i;
+
+    if ((input == NULL) || (output== NULL))
+    {
+        LE_ERROR("input(%p) or output(%p) is invalid", input, output);
+        return LE_BAD_PARAMETER;
+    }
+
+    inputSize = strlen(input);
+    if (inputSize >= maxSize)
+    {
+        LE_ERROR("inputSize(%d5) is invalid, maxSize is %d", inputSize, maxSize);
+        return LE_BAD_PARAMETER;
+    }
+
+    for (i = 0; i < inputSize; i++)
+    {
+        if ((input[i] >= 'A') && (input[i] <= 'Z'))
+        {
+            output[i] = (char)tolower(input[i]);
+        }
+        else
+        {
+            output[i] = input[i];
+        }
+    }
+    output[i] = '\0';
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates a user account with the specified name.  A group with the same name as the username will
  * also be created and the group will be set as the user's primary group.  If the user and group are
  * successfully created the user ID and group ID are stored at the location pointed to by uidPtr and
@@ -1152,6 +1191,7 @@ le_result_t user_Create
     }
 
     char appsUserName[LIMIT_MAX_APP_NAME_BYTES] = "";
+    char appsUserNameLowercase[LIMIT_MAX_APP_NAME_BYTES] = "";
 
     if (!IsEtcWritable)
     {
@@ -1235,6 +1275,15 @@ le_result_t user_Create
         LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
         return LE_FAULT;
     }
+
+    // As yocto build system only supports to create user and group with lowercase name, in order to keep
+    // the same behavior, need to convert user name to lowercase when creating from legato.
+    if (StringToLowercase(usernamePtr, appsUserNameLowercase, LIMIT_MAX_APP_NAME_BYTES) != LE_OK)
+    {
+        LE_ERROR("Cannot convert appsUserName(%s) to lowercase", appsUserName);
+        return LE_FAULT;
+    }
+    usernamePtr = appsUserNameLowercase;
 
     FILE* groupFilePtr;
     // Lock the group file for reading and writing.

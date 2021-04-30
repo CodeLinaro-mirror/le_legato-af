@@ -187,6 +187,12 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_SMACK_PERM_BYTES                            7
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The default DAC user name for sandbox application.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APP_DEFAULT_USER "appdefault"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -446,6 +452,45 @@ KillType_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Change string to lowercase
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StringToLowercase(char *input, char *output, int maxSize)
+{
+    int inputSize;
+    int i;
+
+    if ((input == NULL) || (output== NULL))
+    {
+        LE_ERROR("input(%p) or output(%p) is invalid", input, output);
+        return LE_BAD_PARAMETER;
+    }
+
+    inputSize = strlen(input);
+    if (inputSize >= maxSize)
+    {
+        LE_ERROR("inputSize(%d5) is invalid, maxSize is %d", inputSize, maxSize);
+        return LE_BAD_PARAMETER;
+    }
+
+    for (i = 0; i < inputSize; i++)
+    {
+        if ((input[i] >= 'A') && (input[i] <= 'Z'))
+        {
+            output[i] = (char)tolower(input[i]);
+        }
+        else
+        {
+            output[i] = input[i];
+        }
+    }
+    output[i] = '\0';
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create the supplementary groups for an application.
  *
  * @todo Move creation of the groups to the installer.  Make this function just read the groups
@@ -540,6 +585,7 @@ static le_result_t CreateUserAndGroups
     {
         // Compute the unique user name for the application.
         char username[LIMIT_MAX_USER_NAME_BYTES];
+        char usernameLowercase[LIMIT_MAX_USER_NAME_BYTES];
 
         if (user_AppNameToUserName(appRef->name, username, sizeof(username)) != LE_OK)
         {
@@ -547,11 +593,19 @@ static le_result_t CreateUserAndGroups
             return LE_FAULT;
         }
 
-        // Get the user ID and primary group ID for this app.
-        if (user_GetIDs(username, &(appRef->uid), &(appRef->gid)) != LE_OK)
+        if (StringToLowercase(username, usernameLowercase, LIMIT_MAX_USER_NAME_BYTES) != LE_OK)
         {
-            LE_ERROR("Could not get uid and gid for user '%s' for app '%s'.",
-                     username,
+            LE_ERROR("Cound not convert username(%s) to lowercaes", username);
+            return LE_FAULT;
+        }
+
+        // Get the user ID and primary group ID for this app. If fails, get a default uid & gid.
+        if ((user_GetIDs(usernameLowercase, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
+            ((user_GetIDs(APP_DEFAULT_USER, &(appRef->uid), &(appRef->gid)) != LE_OK)))
+        {
+            LE_ERROR("Could not get uid and gid for user '%s' and default '%s' for app '%s'.",
+                     usernameLowercase,
+                     APP_DEFAULT_USER,
                      appRef->name);
             return LE_FAULT;
         }

@@ -107,7 +107,7 @@ $(LIBJANSSON): $(LIB_DIR)
 	$(Q)mkdir -p $(BUILD_DIR)/libjansson
 	$(L) CMAKE $@
 	$(Q)cd $(BUILD_DIR)/libjansson && \
-		cmake $(LEGATO_ROOT)/3rdParty/jansson \
+		cmake $(LEGATO_ROOT)/../3rdParty/jansson \
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
 			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
 			-DBUILD_SHARED_LIBS=ON \

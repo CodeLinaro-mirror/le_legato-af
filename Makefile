@@ -310,9 +310,9 @@ endif # end not "nothing" target
 PYTHON_EXECUTABLE ?= python2.7
 
 # KConfig executables
-MENUCONFIG_TOOL   ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/menuconfig.py
-SETCONFIG_TOOL    ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/setconfig.py
-OLDDEFCONFIG_TOOL ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/olddefconfig.py
+MENUCONFIG_TOOL   ?= python3 $(LEGATO_ROOT)/../3rdParty/Kconfiglib/menuconfig.py
+SETCONFIG_TOOL    ?= python3 $(LEGATO_ROOT)/../3rdParty/Kconfiglib/setconfig.py
+OLDDEFCONFIG_TOOL ?= python3 $(LEGATO_ROOT)/../3rdParty/Kconfiglib/olddefconfig.py
 
 # Set KConfig prefix
 export CONFIG_    := LE_CONFIG_

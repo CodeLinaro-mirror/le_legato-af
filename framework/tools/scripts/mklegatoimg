@@ -615,11 +615,11 @@ case $TARGET in
     sa415m)
         CreateImg_sa415m ubi squashfs
         DefaultImg "squashfs.ubi"
-		;;
+        ;;
     sa515m)
         CreateImg_sa515m ubi squashfs
         DefaultImg "squashfs.ubi"
-		;;
+        ;;
     raspi)
         CreateImgFs squashfs
         DefaultImg "squashfs"

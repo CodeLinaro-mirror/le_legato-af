@@ -13,7 +13,7 @@ import textwrap
 
 legato_root = os.getenv("LEGATO_ROOT")
 if legato_root:
-    sys.path.append(os.path.join(legato_root, "3rdParty", "Kconfiglib"))
+    sys.path.append(os.path.join(legato_root, '../', "3rdParty", "Kconfiglib"))
     sys.path.append(legato_root)
 
 import kconfiglib

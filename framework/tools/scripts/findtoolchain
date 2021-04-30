@@ -28,7 +28,7 @@ TOOLCHAIN_INFO=()
 if [ -z "${LEGATO_ROOT}" ]; then
     SCRIPT_PATH=$(readlink -f "$( cd `dirname "$0"` && pwd )/`basename $0`")
     LEGATO_ROOT=$(readlink -f "$(dirname "${SCRIPT_PATH}")/../../../")
-	TELAF_ROOT=$(readlink -f "$(dirname "${LEGATO_ROOT}")/../")
+    TELAF_ROOT=$(readlink -f "$(dirname "${LEGATO_ROOT}")/../")
 fi
 
 GetSysrootDefs() {
@@ -426,20 +426,14 @@ SelectToolchainDirs() {
         ;;
 
     sa415m)
-        # echo "SA415M build toolchain"
-		# quick hard code in here, fix me later
-		local toolchain_prop=/opt/qct/sa415m/sysroots/x86_64-oesdk-linux/usr/bin/arm-oe-linux-gnueabi/
-		toolchain_prop+=::
-		toolchain_prop+=/opt/qct/sa415m/sysroots/armv7at2hf-neon-oe-linux-gnueabi/
-		toolchain_prop+=::
-		toolchain_prop+=/opt/qct/sa415m/sysroots/armv7at2hf-neon-oe-linux-gnueabi/usr/src/kernel
-        TOOLCHAIN_INFO=${toolchain_prop}
-      ;;
+        AppendTelAfYoctoBuildToolchain "${target}"
+        AppendTelAfToolchain "${target}"
+        ;;
 
     sa515m)
-		AppendTelAfYoctoBuildToolchain "${target}"
-		AppendTelAfToolchain "${target}"
-      ;;
+        AppendTelAfYoctoBuildToolchain "${target}"
+        AppendTelAfToolchain "${target}"
+        ;;
 
     *)
         local toolchain_dir_env="${target^^}_TOOLCHAIN_DIR"
