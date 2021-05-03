@@ -1301,6 +1301,12 @@ COMPONENT_INIT
             {
                 LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
                          CURRENT_SYSTEM_PATH "/appsWriteable");
+            } else {
+                system(
+                   "if type restorecon > /dev/null ; then\n"
+                   "    restorecon " CURRENT_SYSTEM_PATH "/appsWriteable\n"
+                   "fi\n"
+                );
             }
         }
     }

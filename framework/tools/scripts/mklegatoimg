@@ -305,11 +305,20 @@ CreateImgFs() {
                 echo "Warning: Unable to produce squashfs image: mksquashfs needed"
                 return 1
             fi
-
-            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend \
+            if [ -e ${SELINUX_FILE_CONTEXTS} ]
+            then
+                $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend \
+                                                     -context-file ${SELINUX_FILE_CONTEXTS} \
                                                      -all-root \
                                                      -xattrs \
                                                      > squashfs${LEGATO_IMG_SUFFIX}.log
+            else
+                $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend \
+                                                     -all-root \
+                                                     -xattrs \
+                                                     > squashfs${LEGATO_IMG_SUFFIX}.log
+            fi
+
             CheckRet
 
             if [[ "$WITH_DM_VERITY" == "true" ]]; then

@@ -57,6 +57,9 @@ case "$1" in
                 cp /etc/profile /tmp/profile &&
                 chmod 755 /tmp/profile &&
                 mount -o bind /tmp/profile /etc/profile
+                if type restorecon > /dev/null ; then
+                    restorecon /etc/profile
+                fi
             fi
             echo "export PATH=$LEGATO_SYSTEM_PATH:\$PATH" >> /etc/profile
         fi
@@ -83,6 +86,9 @@ case "$1" in
                    cp /etc/ld.so.cache /tmp/ld.so.cache
                    ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
                    mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
+                   if type restorecon > /dev/null ; then
+                       restorecon /etc/ld.so.cache
+                   fi
                 fi
             fi
         fi
