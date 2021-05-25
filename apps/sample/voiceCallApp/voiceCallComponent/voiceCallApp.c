@@ -658,7 +658,6 @@ le_result_t ctrlVC_HangupCall
         onHoldFlag = false;
         incomingFlag = false;
         LE_INFO("Rejecting the incoming call!");
-        le_voicecall_Answer(myCallRef);
         res = le_voicecall_End(myCallRef);
         if (res != LE_OK)
         {
