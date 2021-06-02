@@ -13,6 +13,12 @@
 #include "cm_sms.h"
 #include "cm_common.h"
 
+// To be compatible with tafSMSSvc
+#define LE_SMS_TEXT_MAX_BYTES   LE_SMS_TEXT_BYTES
+#define LE_SMS_BINARY_MAX_BYTES LE_SMS_BINARY_BYTES
+#define LE_SMS_PDU_MAX_BYTES    LE_SMS_PDU_BYTES
+#define LE_SMS_UCS2_MAX_CHARS   LE_SMS_UCS2_CHARS
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the SMS help text to stdout.
@@ -78,6 +84,8 @@ PrintMessageContext_t;
  * Helper function to print an array of binary data (hexdump like).
  */
 //-------------------------------------------------------------------------------------------------
+// To be compatible with tafSMSSvc
+/*
 static void PrintUCS2Data
 (
     const uint16_t * dataPtr,
@@ -107,7 +115,7 @@ static void PrintUCS2Data
 
     printf("\n");
 }
-
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -158,8 +166,9 @@ static void PrintMessage
     PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
     le_result_t res;
     le_sms_Type_t smsType;
-    le_sms_Format_t format;
-    size_t length, contentSz;
+    //le_sms_Format_t format;
+    size_t length;
+    //size_t length, contentSz;
     SmsContent_t content;
     char header[20];
 
@@ -176,10 +185,11 @@ static void PrintMessage
     smsType = le_sms_GetType(msgRef);
     switch (smsType)
     {
-        case LE_SMS_TYPE_RX:
+        case LE_SMS_RX:
             cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_RX");
             break;
-
+        //To be compatible with tafSMSSvc
+        /*
         case LE_SMS_TYPE_BROADCAST_RX:
             cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_BROADCAST_RX");
             break;
@@ -187,7 +197,7 @@ static void PrintMessage
         case LE_SMS_TYPE_STATUS_REPORT:
             cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_STATUS_REPORT");
             break;
-
+        */
         default:
             cm_cmn_FormatPrint(" Type", "Unexpected");
             break;
@@ -199,12 +209,24 @@ static void PrintMessage
         cm_cmn_FormatPrint(" Sender", content.text);
     }
 
+    // To be compatible with tafSMSSvc
+    res = le_sms_GetText(msgRef, content.text, sizeof(content.text));
+    LE_ASSERT(res == LE_OK);
+
+    length = le_sms_GetUserdataLen(msgRef);
+
+    snprintf(header, sizeof(header), " Text (%zd)", length);
+    cm_cmn_FormatPrint(header, content.text);
+
+    // To be compatible with tafSMSSvc
+    /*
     res = le_sms_GetTimeStamp(msgRef, content.text, sizeof(content.text));
     if (res == LE_OK)
     {
         cm_cmn_FormatPrint(" Timestamp", content.text);
     }
-
+    */
+    /*
     format = le_sms_GetFormat(msgRef);
     switch (format)
     {
@@ -282,7 +304,7 @@ static void PrintMessage
             exit(EXIT_FAILURE);
         }
     }
-
+    */
     if (msgContextPtr->shouldDeleteMessages)
     {
         res = le_sms_DeleteFromStorage(msgRef);
@@ -312,7 +334,8 @@ void cm_sms_Monitor
         .msgToPrint = -1,
     };
 
-    le_sms_AddRxMessageHandler(PrintMessage, &context);
+    // To be compatible with tafSMSSvc
+    le_sms_AddRxMsgHandler(PrintMessage, &context);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -395,9 +418,11 @@ void cm_sms_SendBinary
     result = le_sms_SetDestination(msgRef, numberPtr);
     LE_ASSERT(result == LE_OK);
 
+    // To be compatible with tafSMSSvc
+    /*
     result = le_sms_SetBinary(msgRef, contentPtr, contentLen);
     LE_ASSERT(result == LE_OK);
-
+    */
     result = le_sms_Send(msgRef);
     if (result != LE_OK)
     {
@@ -417,7 +442,7 @@ void cm_sms_SendBinary
 //-------------------------------------------------------------------------------------------------
 static int ForEachMessage
 (
-    le_sms_RxMessageHandlerFunc_t handlerPtr,   //!< [IN] Callback function
+    le_sms_RxMsgHandlerFunc_t handlerPtr,       //!< [IN] Callback function
     void * contextPtr                           //!< [IN] Callback context
 )
 {
@@ -426,7 +451,7 @@ static int ForEachMessage
     int nbSms = 0;
 
     /* Get the ptr of SMS list */
-    listRef = le_sms_CreateRxMsgList();
+    listRef = le_sms_CreateNewRxMsgList();    // To be compatible with tafSMSSvc
     if (listRef == NULL)
     {
         return 0;

@@ -7,7 +7,7 @@ requires:
         modemServices/le_mrc.api
         modemServices/le_mdc.api
         modemServices/le_sim.api
-        modemServices/le_sms.api
+        le_sms = taf_sms.api
         modemServices/le_info.api
         modemServices/le_adc.api
         modemServices/le_temp.api
