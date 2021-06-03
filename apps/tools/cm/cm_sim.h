@@ -55,6 +55,7 @@ int cm_sim_GetSimStatus
 //-------------------------------------------------------------------------------------------------
 int cm_sim_EnterPin
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 );
 
@@ -68,6 +69,7 @@ int cm_sim_EnterPin
 //-------------------------------------------------------------------------------------------------
 int cm_sim_ChangePin
 (
+    const char * lockPtr,
     const char * oldPinPtr,     ///< [IN] Old PIN code
     const char * newPinPtr      ///< [IN] New PIN code
 );
@@ -82,6 +84,7 @@ int cm_sim_ChangePin
 //-------------------------------------------------------------------------------------------------
 int cm_sim_LockSim
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 );
 
@@ -95,6 +98,7 @@ int cm_sim_LockSim
 //-------------------------------------------------------------------------------------------------
 int cm_sim_UnlockSim
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 );
 
@@ -108,6 +112,7 @@ int cm_sim_UnlockSim
 //-------------------------------------------------------------------------------------------------
 int cm_sim_UnblockSim
 (
+    const char * lockPtr,
     const char * puk,       ///< [IN] PUK code
     const char * newpin     ///< [IN] New PIN code
 );

@@ -6,7 +6,7 @@ requires:
         le_ulpm.api [manual-start]
         modemServices/le_mrc.api
         modemServices/le_mdc.api
-        modemServices/le_sim.api
+        le_sim = taf_sim.api
         le_sms = taf_sms.api
         modemServices/le_info.api
         modemServices/le_adc.api
@@ -14,7 +14,6 @@ requires:
         modemServices/le_ips.api
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
-        le_cellnet.api
     }
 }
 

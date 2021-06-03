@@ -13,6 +13,7 @@
 #include "cm_sim.h"
 #include "cm_common.h"
 
+#define LE_MDMDEFS_PHONE_NUM_MAX_BYTES LE_SIM_PHONE_NUM_MAX_BYTES
 static le_sim_Id_t SimId;
 
 //-------------------------------------------------------------------------------------------------
@@ -41,15 +42,15 @@ void cm_sim_PrintSimHelp
             "To get the sim phone number:\n"
             "\tcm sim number\n\n"
             "To enter pin code:\n"
-            "\tcm sim enterpin <pin>\n\n"
+            "\tcm sim enterpin <PIN1 | PIN2> <pin>\n\n"
             "To change pin code:\n"
-            "\tcm sim changepin <oldpin> <newpin>\n\n"
+            "\tcm sim changepin <PIN1 | PIN2> <oldpin> <newpin>\n\n"
             "To lock sim:\n"
-            "\tcm sim lock <pin>\n\n"
+            "\tcm sim lock <PIN1 | FDN> <pin>\n\n"
             "To unlock sim:\n"
-            "\tcm sim unlock <pin>\n\n"
+            "\tcm sim unlock <PIN1 | FDN> <pin>\n\n"
             "To unblock sim:\n"
-            "\tcm sim unblock <puk> <newpin>\n\n"
+            "\tcm sim unblock <PUK1 | PUK2> <puk> <newpin>\n\n"
             "To store pin:\n"
             "\tcm sim storepin <pin>\n\n"
             "To select SIM:\n"
@@ -149,6 +150,67 @@ static le_sim_Id_t SimIdFromString
     return LE_SIM_ID_MAX;
 }
 
+static taf_sim_LockType_t GetLockType
+(
+    const char * lockPtr
+)
+{
+    if(strcmp(lockPtr,"PIN1") == 0) {
+        return TAF_SIM_PIN1;
+    } else if(strcmp(lockPtr,"PIN2") == 0) {
+        return TAF_SIM_PIN2;
+    } else if(strcmp(lockPtr,"PUK1") == 0) {
+        return TAF_SIM_PUK1;
+    } else if(strcmp(lockPtr,"PUK2") == 0) {
+        return TAF_SIM_PUK2;
+    } else if(strcmp(lockPtr,"FDN") == 0) {
+        return TAF_SIM_FDN;
+    }
+    LE_ERROR("Unable to convert '%s' to a lockType", lockPtr);
+    exit(EXIT_FAILURE);
+}
+
+static void AuthenticationResponse
+(
+    taf_sim_Id_t     simId,
+    taf_sim_LockResponse_t responseType,
+    le_result_t result,
+    void* contextPtr
+)
+{
+    LE_INFO("Authentication Response for SIM card: %d", simId);
+    if (result != LE_OK) {
+        uint32_t remainingPukTries = 0;
+        switch(responseType) {
+            case TAF_SIM_CHANGE_PIN:
+            case TAF_SIM_UNLOCK_BY_PIN:
+            case TAF_SIM_SET_LOCK:
+                printf("Error: %s\n", LE_RESULT_TXT(result));
+                printf("Remaining PIN tries: %d\n", le_sim_GetRemainingPINTries(SimId));
+                break;
+            case TAF_SIM_UNLOCK_BY_PUK:
+
+                printf("Error: %s\n", LE_RESULT_TXT(result));
+                result = le_sim_GetRemainingPUKTries(SimId, &remainingPukTries);
+
+                if (LE_OK == result)
+                {
+                    printf("Remaining PUK tries: %d\n", remainingPukTries);
+                }
+                else
+                {
+                    printf("Failed to get the remaining PUK tries: error = %d\n", result);
+                }
+                break;
+            default:
+                LE_INFO("Invalid response");
+        }
+    } else {
+        printf("Success.\n");
+        exit( EXIT_SUCCESS);
+    }
+    exit(EXIT_FAILURE);
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -403,12 +465,13 @@ int cm_sim_GetSimInfo
 //-------------------------------------------------------------------------------------------------
 int cm_sim_EnterPin
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 )
 {
     le_result_t     res = LE_OK;
-
-    res = le_sim_EnterPIN(SimId, pin);
+    taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    res = le_sim_EnterPIN(SimId, lockType, pin);
 
     switch (res)
     {
@@ -443,13 +506,15 @@ int cm_sim_EnterPin
 //-------------------------------------------------------------------------------------------------
 int cm_sim_ChangePin
 (
+    const char * lockPtr,
     const char * oldPinPtr,     ///< [IN] Old PIN code
     const char * newPinPtr      ///< [IN] New PIN code
 )
 {
     le_result_t     res = LE_OK;
 
-    res = le_sim_ChangePIN(SimId, oldPinPtr, newPinPtr);
+    taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    res = le_sim_ChangePIN(SimId, lockType, oldPinPtr, newPinPtr);
 
     switch(res)
     {
@@ -483,12 +548,14 @@ int cm_sim_ChangePin
 //-------------------------------------------------------------------------------------------------
 int cm_sim_LockSim
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 )
 {
     le_result_t     res = LE_OK;
 
-    res = le_sim_Lock(SimId, pin);
+    taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    res = le_sim_Lock(SimId, lockType, pin);
 
     switch (res)
     {
@@ -522,12 +589,14 @@ int cm_sim_LockSim
 //-------------------------------------------------------------------------------------------------
 int cm_sim_UnlockSim
 (
+    const char * lockPtr,
     const char * pin    ///< [IN] PIN code
 )
 {
     le_result_t     res = LE_OK;
 
-    res = le_sim_Unlock(SimId, pin);
+    taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    res = le_sim_Unlock(SimId, lockType, pin);
 
     switch (res)
     {
@@ -562,13 +631,15 @@ int cm_sim_UnlockSim
 //-------------------------------------------------------------------------------------------------
 int cm_sim_UnblockSim
 (
+    const char * lockPtr,
     const char * pukPtr,       ///< [IN] PUK code
     const char * newPinPtr     ///< [IN] New PIN code
 )
 {
     le_result_t     res = LE_OK;
 
-    res = le_sim_Unblock(SimId, pukPtr, newPinPtr);
+    taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    res = le_sim_Unblock(SimId, lockType, pukPtr, newPinPtr);
     switch (res)
     {
         case LE_OK:
@@ -624,7 +695,7 @@ int cm_sim_StorePin
     const char * pin    ///< [IN] PIN code
 )
 {
-    le_result_t result = le_cellnet_SetSimPinCode(SimId, pin);
+    le_result_t result = LE_FAULT;//le_cellnet_SetSimPinCode(SimId, pin);
 
     if (LE_OK == result)
     {
@@ -753,11 +824,17 @@ void cm_sim_ProcessSimCommand
 )
 {
     SimId = le_sim_GetSelectedCard();
-    const char* pinPtr = le_arg_GetArg(2);
-    if ((numArgs > 2) && (NULL == pinPtr))
+    const char* lockPtr = le_arg_GetArg(2);
+    const char* pinPtr = le_arg_GetArg(3);
+    int exitStatus = EXIT_SUCCESS;
+    if ((numArgs > 3) && (NULL == pinPtr))
     {
         LE_ERROR("pinPtr is NULL");
         exit(EXIT_FAILURE);
+    }
+    if (numArgs > 3)
+    {
+        le_sim_AddAuthenticationResponseHandler(AuthenticationResponse, NULL);
     }
 
     if (strcmp(command, "help") == 0)
@@ -771,51 +848,51 @@ void cm_sim_ProcessSimCommand
     }
     else if (strcmp(command, "enterpin") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim enterpin <pin>"))
+        if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim enterpin <PIN1|PIN2> <pin>"))
         {
-            exit(cm_sim_EnterPin(pinPtr));
+            exitStatus = cm_sim_EnterPin(lockPtr, pinPtr);
         }
     }
     else if (strcmp(command, "changepin") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim changepin <pin>"))
+        if (cm_cmn_CheckEnoughParams(3, numArgs, "PIN code missing. e.g. cm sim changepin <PIN1|PIN2> <pin>"))
         {
-            const char* newPinPtr = le_arg_GetArg(3);
+            const char* newPinPtr = le_arg_GetArg(4);
             if (NULL == newPinPtr)
             {
                 LE_ERROR("newPinPtr is NULL");
                 exit(EXIT_FAILURE);
             }
-            exit(cm_sim_ChangePin(pinPtr, newPinPtr));
+            exitStatus = cm_sim_ChangePin(lockPtr, pinPtr, newPinPtr);
         }
     }
     else if (strcmp(command, "lock") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim lock <pin>"))
+        if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim lock <PIN1|FDN> <pin>"))
         {
-            exit(cm_sim_LockSim(pinPtr));
+            exitStatus = cm_sim_LockSim(lockPtr, pinPtr);
         }
     }
     else if (strcmp(command, "unlock") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim unlock <pin>"))
+        if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim unlock <PIN1|FDN> <pin>"))
         {
-            exit(cm_sim_UnlockSim(pinPtr));
+            exitStatus = cm_sim_UnlockSim(lockPtr, pinPtr);
         }
     }
     else if (strcmp(command, "unblock") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(2,
+        if (cm_cmn_CheckEnoughParams(3,
                                      numArgs,
-                                     "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
+                                     "PUK/PIN code missing. e.g. cm sim unblock <PUK1|PUK2> <puk> <newpin>"))
         {
-            const char* newPinPtr = le_arg_GetArg(3);
+            const char* newPinPtr = le_arg_GetArg(4);
             if (NULL == newPinPtr)
             {
                 LE_ERROR("newPinPtr is NULL");
                 exit(EXIT_FAILURE);
             }
-            exit(cm_sim_UnblockSim(pinPtr, newPinPtr));
+            exitStatus = cm_sim_UnblockSim(lockPtr, pinPtr, newPinPtr);
         }
     }
     else if (strcmp(command, "storepin") == 0)
@@ -849,14 +926,14 @@ void cm_sim_ProcessSimCommand
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "SIM type missing. e.g. cm sim select <type>"))
         {
-            exit(cm_sim_Select(pinPtr));
+            exit(cm_sim_Select(lockPtr));
         }
     }
     else if (strcmp(command, "mode") == 0)
     {
         if (numArgs == 3)
         {
-            exit(cm_sim_SetMode(pinPtr));
+            exit(cm_sim_SetMode(lockPtr));
         }
         else
         {
@@ -868,7 +945,10 @@ void cm_sim_ProcessSimCommand
         printf("Invalid command for SIM service.\n");
         exit(EXIT_FAILURE);
     }
+    if (exitStatus == EXIT_FAILURE) {
+        exit(exitStatus);
+    }
 
-    exit(EXIT_SUCCESS);
 }
+
 
