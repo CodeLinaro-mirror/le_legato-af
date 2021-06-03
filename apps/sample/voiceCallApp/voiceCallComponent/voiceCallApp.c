@@ -222,39 +222,25 @@ static le_result_t OpenAudioMic
     le_voicecall_CallRef_t reference
 )
 {
-// no audio
-#if 0
     le_result_t res;
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx(1); // SlotId input param
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "le_audio_OpenModemVoiceRx returns NULL!");
+    LE_DEBUG("OpenAudio MdmRxAudioRef %p", MdmRxAudioRef);
+    LE_INFO("Connect Speaker");
 
-    MdmRxAudioRef = le_voicecall_GetRxAudioStream(reference);
-    LE_ERROR_IF((MdmRxAudioRef==NULL), "le_voicecall_GetRxAudioStream returns NULL!");
-    MdmTxAudioRef = le_voicecall_GetTxAudioStream(reference);
-    LE_ERROR_IF((MdmTxAudioRef==NULL), "le_voicecall_GetTxAudioStream returns NULL!");
-    LE_DEBUG("OpenAudio MdmRxAudioRef %p, MdmTxAudioRef %p", MdmRxAudioRef, MdmTxAudioRef);
-    LE_INFO("Connect to Mic and Speaker");
-
-    // Redirect audio to the in-built Microphone and Speaker.
+    // Redirect audio to Speaker.
     FeOutRef = le_audio_OpenSpeaker();
     LE_ERROR_IF((FeOutRef==NULL), "le_audio_OpenSpeaker returns NULL!");
-    FeInRef = le_audio_OpenMic();
-    LE_ERROR_IF((FeInRef==NULL), "le_audio_OpenMic returns NULL!");
-    AudioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
-    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef && AudioInputConnectorRef && AudioOutputConnectorRef)
+    if (MdmRxAudioRef && FeOutRef  && AudioOutputConnectorRef)
     {
-        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect RX on Input connector!");
-        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect TX on Output connector!");
         res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
-#endif
     return LE_OK;
 }
 //! [setup audio path]
@@ -332,13 +318,14 @@ static void MyCallEventHandler
     {
         LE_INFO("LE_VOICECALL_EVENT_ALERTING");
         LE_INFO("Destination phone is ringing...");
+        OpenAudioMic(reference);
     }
 
     else if (callEvent == LE_VOICECALL_EVENT_CONNECTED)
     {
         incomingFlag = false;
         callInProgress = true;
-        OpenAudioMic(reference);
+        //OpenAudioMic(reference);
         LE_INFO("LE_VOICECALL_EVENT_CONNECTED");
         LE_INFO("You are now connected to %s", DestinationNumber);
 
