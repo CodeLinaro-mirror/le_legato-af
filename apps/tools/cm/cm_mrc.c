@@ -13,6 +13,7 @@
 #include "cm_mrc.h"
 #include "cm_common.h"
 
+#define RADIO_DEFAULT_PHONE_ID 0
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -32,7 +33,7 @@ void cm_mrc_PrintRadioHelp
             "To enable/disable radio:\n"
             "\tcm radio <on/off>\n\n"
             "To set radio access technologies prefererences\n"
-            "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]>\n\n"
+            "\tcm radio rat <[CDMA] [GSM] [NR5G] [LTE] [TDSCDMA] [WCDMA]>\n\n"
             "To get radio access technologies prefererences\n"
             "\tcm radio getRAT \n\n"
             "To resume automatic RAT selection.\n"
@@ -55,7 +56,7 @@ static le_result_t GetCurrentNetworkName
     char homeNetwork[CMODEM_COMMON_NETWORK_STR_LEN];
     le_result_t res;
 
-    res = le_mrc_GetCurrentNetworkName(homeNetwork, sizeof(homeNetwork));
+    res = le_mrc_GetCurrentNetworkName(homeNetwork, sizeof(homeNetwork), RADIO_DEFAULT_PHONE_ID);
 
     if (res != LE_OK)
     {
@@ -83,7 +84,7 @@ static le_result_t GetRadioPower
     le_result_t res;
     le_onoff_t state;
 
-    res = le_mrc_GetRadioPower(&state);
+    res = le_mrc_GetRadioPower(&state, RADIO_DEFAULT_PHONE_ID);
 
     if (res != LE_OK)
     {
@@ -120,7 +121,7 @@ static le_result_t GetRegState
     le_result_t res;
     le_mrc_NetRegState_t state;
 
-    res = le_mrc_GetNetRegState(&state);
+    res = le_mrc_GetNetRegState(&state, RADIO_DEFAULT_PHONE_ID);
 
     if (res != LE_OK)
     {
@@ -129,19 +130,19 @@ static le_result_t GetRegState
 
     switch (state)
     {
-        case LE_MRC_REG_NONE:
+        case LE_MRC_NET_REG_STATE_NOT_REG_AND_NOT_SEARCHING:
             cm_cmn_FormatPrint("Status", "Not registered and not currently searching for new operator (LE_MRC_REG_NONE)");
             break;
-        case LE_MRC_REG_HOME:
+        case LE_MRC_NET_REG_STATE_REG_HOME:
             cm_cmn_FormatPrint("Status", "Registered, home network (LE_MRC_REG_HOME)");
             break;
-        case LE_MRC_REG_SEARCHING:
+        case LE_MRC_NET_REG_STATE_NOT_REG_AND_SEARCHING:
             cm_cmn_FormatPrint("Status", "Not registered but currently searching for a new operator (LE_MRC_REG_SEARCHING)");
             break;
-        case LE_MRC_REG_DENIED:
+        case LE_MRC_NET_REG_STATE_REG_DENIED:
             cm_cmn_FormatPrint("Status", "Registration was denied, usually because of invalid access credentials (LE_MRC_REG_DENIED)");
             break;
-        case LE_MRC_REG_ROAMING:
+        case LE_MRC_NET_REG_STATE_REG_ROAMING:
             cm_cmn_FormatPrint("Status", "Registered to a roaming network (LE_MRC_REG_ROAMING)");
             break;
         default:
@@ -168,7 +169,7 @@ static le_result_t GetSignalQuality
     le_result_t res;
     uint32_t signal;
 
-    res = le_mrc_GetSignalQual(&signal);
+    res = le_mrc_GetSignalQual(&signal, RADIO_DEFAULT_PHONE_ID);
 
     if (res != LE_OK)
     {
@@ -219,17 +220,17 @@ static le_result_t GetCurrentRAT
     le_mrc_Rat_t rat;
     le_mrc_NetRegState_t state;
 
-    res = le_mrc_GetNetRegState(&state);
+    res = le_mrc_GetNetRegState(&state, RADIO_DEFAULT_PHONE_ID);
 
     if ((LE_OK != res) ||
-        ((LE_MRC_REG_HOME != state) && (LE_MRC_REG_ROAMING != state))
+        ((LE_MRC_NET_REG_STATE_REG_HOME != state) && (LE_MRC_NET_REG_STATE_REG_ROAMING != state))
        )
     {
         cm_cmn_FormatPrint("Current RAT", "Module not registered on network, RAT not available");
         return LE_FAULT;
     }
 
-    res = le_mrc_GetRadioAccessTechInUse(&rat);
+    res = le_mrc_GetRadioAccessTechInUse(&rat, RADIO_DEFAULT_PHONE_ID);
     if (res != LE_OK)
     {
        cm_cmn_FormatPrint("Current RAT", "Unknown network (LE_MRC_RAT_UNKNOWN)");
@@ -244,13 +245,15 @@ static le_result_t GetCurrentRAT
         case LE_MRC_RAT_UMTS:
             cm_cmn_FormatPrint("Current RAT", "UMTS network (LE_MRC_RAT_UMTS)");
             break;
-        case LE_MRC_RAT_TDSCDMA:
+        case LE_MRC_RAT_TD_SCDMA:
             cm_cmn_FormatPrint("Current RAT", "TD-SCDMA network (LE_MRC_RAT_TDSCDMA)");
             break;
         case LE_MRC_RAT_LTE:
             cm_cmn_FormatPrint("Current RAT", "LTE network (LE_MRC_RAT_LTE)");
             break;
-        case LE_MRC_RAT_CDMA:
+        case LE_MRC_RAT_1xRTT:
+        case LE_MRC_RAT_EVDO_0:
+        case LE_MRC_RAT_EVDO_A:
             cm_cmn_FormatPrint("Current RAT", "CDMA network (LE_MRC_RAT_CDMA)");
             break;
         default:
@@ -276,9 +279,9 @@ static le_result_t GetServicesState
 )
 {
     le_result_t res;
-    le_mrc_NetRegState_t serviceState;
+    le_mrc_ServiceDomainState_t serviceState;
 
-    res = le_mrc_GetPacketSwitchedState(&serviceState);
+    res = le_mrc_GetPacketSwitchedState(&serviceState, RADIO_DEFAULT_PHONE_ID);
     if (res != LE_OK)
     {
         return res;
@@ -286,15 +289,14 @@ static le_result_t GetServicesState
 
     switch (serviceState)
     {
-        case LE_MRC_REG_NONE:
-            cm_cmn_FormatPrint("PS", "Packet Switched Not registered (LE_MRC_REG_NONE)");
+        case LE_MRC_SERVICE_DOMAIN_STATE_CS_ONLY:
+            cm_cmn_FormatPrint("PS", "Circuit Switched(CS) Only");
             break;
-        case LE_MRC_REG_HOME:
-            cm_cmn_FormatPrint("PS", "Packet Switched Registered, home network (LE_MRC_REG_HOME)");
+        case LE_MRC_SERVICE_DOMAIN_STATE_PS_ONLY:
+            cm_cmn_FormatPrint("PS", "Packet Switched(PS) Only");
             break;
-        case LE_MRC_REG_ROAMING:
-            cm_cmn_FormatPrint("PS", "Packet Switched Registered to a"\
-                " roaming network (LE_MRC_REG_ROAMING)");
+        case LE_MRC_SERVICE_DOMAIN_STATE_CS_AND_PS:
+            cm_cmn_FormatPrint("PS", "Circuit Switched and Packet Switched");
             break;
         default:
             cm_cmn_FormatPrint("PS", "Packet Switched Unknown state (LE_MRC_REG_UNKNOWN)");
@@ -321,7 +323,7 @@ int cm_mrc_SetRadioPower
     le_result_t res;
     le_onoff_t currPower;
 
-    res = le_mrc_GetRadioPower(&currPower);
+    res = le_mrc_GetRadioPower(&currPower, RADIO_DEFAULT_PHONE_ID);
 
     if (res != LE_OK)
     {
@@ -345,7 +347,7 @@ int cm_mrc_SetRadioPower
     }
     else
     {
-        res = le_mrc_SetRadioPower(power);
+        res = le_mrc_SetRadioPower(power, RADIO_DEFAULT_PHONE_ID);
 
         if (res != LE_OK)
         {
@@ -430,10 +432,10 @@ int cm_mrc_GetModemStatus
 //-------------------------------------------------------------------------------------------------
 int cm_mrc_SetRat
 (
-    le_mrc_RatBitMask_t rat ///< [IN] Radio access technology
+    le_mrc_RatPrefMask_t rat ///< [IN] Radio access technology
 )
 {
-    return le_mrc_SetRatPreferences(rat);
+    return le_mrc_SetRatPreferences(rat, RADIO_DEFAULT_PHONE_ID);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -450,40 +452,50 @@ int cm_mrc_GetRat
     void
 )
 {
-    le_mrc_RatBitMask_t rat;
+    le_mrc_RatPrefMask_t rat;
 
-    if (LE_OK != le_mrc_GetRatPreferences(&rat))
+    if (LE_OK != le_mrc_GetRatPreferences(&rat, RADIO_DEFAULT_PHONE_ID))
     {
         return LE_FAULT;
     }
 
     printf("Prefered RATs : ");
-    if (rat & LE_MRC_BITMASK_RAT_GSM)
+    if (rat & LE_MRC_RAT_PREF_MASK_GSM)
     {
         printf("GSM ");
     }
 
-    if (rat & LE_MRC_BITMASK_RAT_UMTS)
+    if (rat & LE_MRC_RAT_PREF_MASK_NR5G)
     {
-        printf("UMTS ");
+        printf("NR5G ");
     }
 
-    if (rat & LE_MRC_BITMASK_RAT_TDSCDMA)
+    if (rat & LE_MRC_RAT_PREF_MASK_TDSCDMA)
     {
         printf("TDSCDMA ");
     }
 
-    if (rat & LE_MRC_BITMASK_RAT_LTE)
+    if (rat & LE_MRC_RAT_PREF_MASK_LTE)
     {
         printf("LTE ");
     }
 
-    if (rat & LE_MRC_BITMASK_RAT_CDMA)
+    if (rat & LE_MRC_RAT_PREF_MASK_CDMA_1X)
     {
-        printf("CDMA ");
+        printf("CDMA 1X ");
     }
 
-    if (LE_MRC_BITMASK_RAT_ALL == rat)
+    if (rat & LE_MRC_RAT_PREF_MASK_CDMA_EVDO)
+    {
+        printf("CDMA EVDO ");
+    }
+
+    if (rat & LE_MRC_RAT_PREF_MASK_WCDMA)
+    {
+        printf("WCDMA ");
+    }
+
+    if (LE_MRC_RAT_PREF_MASK_ALL == rat)
     {
         printf("AUTO ");
     }
@@ -523,7 +535,7 @@ void cm_mrc_ProcessRadioCommand
     else if (0 == strcmp(command, "rat"))
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "RAT value missing. e.g. cm radio"
-                        " rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]> or <AUTO>"))
+                        " rat <[CDMA] [GSM] [NR5G] [LTE] [TDSCDMA] [WCDMA]> or <AUTO>"))
         {
             le_mrc_RatBitMask_t rat = 0;
             const char* ratStrPtr;
@@ -536,7 +548,7 @@ void cm_mrc_ProcessRadioCommand
 
                 if (0 == strcmp(ratStrPtr, "AUTO"))
                 {
-                    if(cm_mrc_SetRat(LE_MRC_BITMASK_RAT_ALL) == LE_OK)
+                    if(cm_mrc_SetRat(LE_MRC_RAT_PREF_MASK_ALL) == LE_OK)
                     {
                         exit(EXIT_SUCCESS);
                     }
@@ -549,23 +561,27 @@ void cm_mrc_ProcessRadioCommand
                 }
                 else if (0 == strcmp(ratStrPtr, "CDMA"))
                 {
-                    rat |= LE_MRC_BITMASK_RAT_CDMA;
+                    rat |= LE_MRC_RAT_PREF_MASK_CDMA_1X | LE_MRC_RAT_PREF_MASK_CDMA_EVDO;
                 }
                 else if (0 == strcmp(ratStrPtr, "GSM"))
                 {
-                    rat |= LE_MRC_BITMASK_RAT_GSM;
+                    rat |= LE_MRC_RAT_PREF_MASK_GSM;
                 }
                 else if (0 == strcmp(ratStrPtr, "LTE"))
                 {
-                    rat |= LE_MRC_BITMASK_RAT_LTE;
+                    rat |= LE_MRC_RAT_PREF_MASK_LTE;
                 }
-                else if (0 == strcmp(ratStrPtr, "UMTS"))
+                else if (0 == strcmp(ratStrPtr, "NR5G"))
                 {
-                    rat |= LE_MRC_BITMASK_RAT_UMTS;
+                    rat |= LE_MRC_RAT_PREF_MASK_NR5G;
                 }
                 else if (0 == strcmp(ratStrPtr, "TDSCDMA"))
                 {
-                    rat |= LE_MRC_BITMASK_RAT_TDSCDMA;
+                    rat |= LE_MRC_RAT_PREF_MASK_TDSCDMA;
+                }
+                else if (0 == strcmp(ratStrPtr, "WCDMA"))
+                {
+                    rat |= LE_MRC_RAT_PREF_MASK_WCDMA;
                 }
                 else
                 {

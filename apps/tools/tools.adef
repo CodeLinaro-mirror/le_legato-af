@@ -26,7 +26,7 @@ executables:
 bindings:
 {
 #if ${LE_CONFIG_LINUX} = y
-    cm.cm.le_mrc -> modemService.le_mrc
+    cm.cm.le_mrc -> tafRadioSvc.taf_radio
     cm.cm.le_mdc -> modemService.le_mdc
     cm.cm.le_sim -> tafSimCardSvc.taf_sim
     cm.cm.le_sms -> tafSMSSvc.taf_sms
