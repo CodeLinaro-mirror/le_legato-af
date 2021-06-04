@@ -18,6 +18,7 @@
 #define LE_SMS_BINARY_MAX_BYTES LE_SMS_BINARY_BYTES
 #define LE_SMS_PDU_MAX_BYTES    LE_SMS_PDU_BYTES
 #define LE_SMS_UCS2_MAX_CHARS   LE_SMS_UCS2_CHARS
+#define LE_MDMDEFS_PHONE_NUM_MAX_BYTES LE_SIM_PHONE_NUM_MAX_BYTES
 
 //-------------------------------------------------------------------------------------------------
 /**
