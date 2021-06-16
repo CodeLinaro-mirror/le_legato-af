@@ -390,6 +390,8 @@ static void MyCallEventHandler
     {
         LE_INFO("LE_VOICECALL_EVENT_INCOMING");
         incomingFlag = true;
+        if (!callInProgress)
+            OpenAudioMic(reference);
         myCallRef = reference;
     }
     else if (callEvent == LE_VOICECALL_EVENT_CALL_END_FAILED)
