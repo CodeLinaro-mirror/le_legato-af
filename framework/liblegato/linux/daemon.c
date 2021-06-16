@@ -157,12 +157,47 @@ void daemon_Daemonize
     // up another filesystem and prevent it from being unmounted.
     LE_FATAL_IF(chdir("/") < 0, "Failed to set working directory to root.  %m.");
 
-    // Redirect stderr to /dev/console. If failed then redirect it to /dev/null. Don't use freopen()
+    // Redirect stderr to /dev/console will cause the first time serial login failure. Systemd
+    // service(serial-getty@ttyMSM0.service) has specified the tty device for /dev/console. Need
+    // to get this device from /proc/consoles and for redirecting.
+    char *savePtr = NULL;
+    char* token = NULL;
+    char lineBuf[64] = {'\0'};
+    int retBytes;
+    char delim[2] = " ";
+    char targetConsole[64];
+    const char *procConsole = "/proc/consoles";
+    const char *defaultConsole = "/dev/console";
+    bool isUsingTTY = false;
+
+    int fd = le_fd_Open(procConsole, O_RDONLY);
+    if (-1 != fd)
+    {
+        retBytes = le_fd_Read(fd, lineBuf, sizeof(lineBuf));
+        if (retBytes > 0)
+        {
+            token = strtok_r(lineBuf, delim, &savePtr);
+            if (token != NULL)
+            {
+                snprintf (targetConsole, sizeof(targetConsole), "/dev/%s", token);
+                isUsingTTY = true;
+            }
+        }
+        le_fd_Close(fd);
+    }
+
+    if (isUsingTTY == false)
+    {
+        le_utf8_Copy(targetConsole, defaultConsole, sizeof(targetConsole), NULL);
+    }
+
+    // Redirect stderr to targetConsole. If failed then redirect it to /dev/null. Don't use freopen()
     // function here, as freopen() closes the supplied stream regardless of whether freopen()
     // succeeds (See: http://man7.org/linux/man-pages/man3/freopen.3p.html).
-    if (RedirectStderr("/dev/console") != LE_OK)
+    LE_INFO("use %s to redirect stderr", targetConsole);
+    if (RedirectStderr(targetConsole) != LE_OK)
     {
-        LE_WARN("Could not redirect stderr to /dev/console (%m), redirecting it to /dev/null.");
+        LE_WARN("Could not redirect stderr to %s (%m), redirecting it to /dev/null.", targetConsole);
 
         LE_FATAL_IF(RedirectStderr("/dev/null") != LE_OK,
                     "Failed to redirect stderr to /dev/null.  %m.");
