@@ -55,7 +55,7 @@ static le_audio_StreamRef_t             FeInRef;
 static le_audio_StreamRef_t             FeOutRef;
 static le_audio_ConnectorRef_t          AudioInputConnectorRef;
 static le_audio_ConnectorRef_t          AudioOutputConnectorRef;
-//static le_audio_MediaHandlerRef_t       MediaHandlerRef = NULL;
+static le_audio_MediaHandlerRef_t       MediaHandlerRef = NULL;
 static le_audio_StreamRef_t             FileAudioRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
@@ -63,9 +63,9 @@ static le_audio_StreamRef_t             FileAudioRef = NULL;
 * Audio file path and descriptor
 */
 //--------------------------------------------------------------------------------------------------
-static const char                       AudioFilePathDefault[] = "/legato/systems/current/appsWriteable/voiceCallApp/piano.wav";
-static char                             AudioFilePath[] = "/legato/systems/current/appsWriteable/voiceCallApp/piano.wav"; //Default audio file, can be changed via command line
-//static int                              AudioFileFd = -1;
+static const char                       AudioFilePathDefault[] = "/legato/systems/current/appsWriteable/voiceCallApp/record.wav";
+static char                             AudioFilePath[] = "/legato/systems/current/appsWriteable/voiceCallApp/record.wav"; //Default audio file, can be changed via command line
+static int                              AudioFileFd = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -74,7 +74,6 @@ static char                             AudioFilePath[] = "/legato/systems/curre
 */
 //--------------------------------------------------------------------------------------------------
 
-# if 0
 static void MyMediaEventHandler
 (
     le_audio_StreamRef_t          streamRef,
@@ -88,7 +87,17 @@ static void MyMediaEventHandler
         LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
         if(FileAudioRef)
         {
-            if (le_audio_PlayFile(FileAudioRef, LE_AUDIO_NO_FD) != LE_OK)
+            if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
+            {
+                LE_ERROR("Open file %s failure: errno.%d (%s)",
+                        AudioFilePath, errno, LE_ERRNO_TXT(errno));
+                return ;
+            }
+            else
+            {
+                LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
+            }
+            if (le_audio_PlayFile(FileAudioRef, AudioFileFd) != LE_OK)
             {
                 LE_ERROR("Failed to play the file");
                 return;
@@ -111,7 +120,6 @@ static void MyMediaEventHandler
         break;
     }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -257,23 +265,24 @@ static le_result_t OpenAudioFile
     le_voicecall_CallRef_t reference
     )
 {
-#if 0
     le_result_t res;
 
-    MdmTxAudioRef = le_voicecall_GetTxAudioStream(reference);
-    LE_ERROR_IF((MdmTxAudioRef==NULL), "le_voicecall_GetTxAudioStream returns NULL!");
-    AudioInputConnectorRef = le_audio_CreateConnector();
-    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+
+    FeOutRef = le_audio_OpenSpeaker();
+    LE_ERROR_IF((FeOutRef==NULL), "le_audio_OpenSpeaker returns NULL!");
+    AudioOutputConnectorRef  = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef ==NULL), "AudioOutputConnectorRef  is NULL!");
     FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
 
-    if (MdmTxAudioRef && FileAudioRef && AudioInputConnectorRef)
+    if (FeOutRef && FileAudioRef && AudioOutputConnectorRef )
     {
-        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect TX on Input connector!");
-        res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector (res %s)!",
+                    LE_RESULT_TXT(res));
+        res = le_audio_Connect(AudioOutputConnectorRef , FileAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect FilePlayback on input connector!");
 
         if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
@@ -291,7 +300,6 @@ static le_result_t OpenAudioFile
         res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
         LE_ERROR_IF((res!=LE_OK), "Failed to play the file!");
     }
-#endif
 
     return LE_OK;
 }

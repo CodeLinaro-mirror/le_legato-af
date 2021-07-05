@@ -26,6 +26,7 @@ bundles:
     {
         [r]     audio/piano.wav     /
         [r]     audio/male.wav     /
+        [r]     audio/record.wav  /
     }
 }
 
