@@ -27,7 +27,7 @@ bindings:
 {
 #if ${LE_CONFIG_LINUX} = y
     cm.cm.le_mrc -> tafRadioSvc.taf_radio
-    cm.cm.le_mdc -> modemService.le_mdc
+    cm.cm.le_mdc -> tafDataCallSvc.taf_dcs
     cm.cm.le_sim -> tafSimCardSvc.taf_sim
     cm.cm.le_sms -> tafSMSSvc.taf_sms
     cm.cm.le_info -> modemService.le_info
