@@ -56,6 +56,25 @@ void cm_data_PrintDataHelp
             );
 }
 
+static char *callEventToString(le_mdc_ConState_t callEvent)
+{
+    switch (callEvent)
+    {
+        case LE_MDC_DISCONNECTED:
+            return "disconnect";
+        case LE_MDC_CONNECTING:
+            return "connecting";
+        case LE_MDC_CONNECTED:
+            return "connected";
+        case LE_MDC_DISCONNECTING:
+            return "disconnecting";
+        default:
+            LE_ERROR("unknown status: %d", callEvent);
+            return "unknow status";
+    }
+    return "unknow status";
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Structure to store both uplink & downlink data bearer technologies
@@ -203,6 +222,7 @@ static le_result_t GetIPv4Configuration
     {
         return LE_FAULT;
     }
+
 
     result = le_mdc_GetIPv4Address(profileRef,
                                    netConfIp->ip, sizeof(netConfIp->ip));
@@ -383,37 +403,26 @@ static const char * DataBearerTechnologyToString
         case LE_MDC_DATA_BEARER_TECHNOLOGY_UNKNOWN:             return "-";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_GSM:                 return "GSM";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_GPRS:                return "GPRS";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_EGPRS:               return "Edge";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_WCDMA:               return "WCDMA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_HSPA:                return "HSPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSPA_PLUS:           return "HSPA+";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSPA_PLUS:        return "DC-HSPA+";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA:               return "HSDPA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_HSUPA:               return "HSUPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSUPA:            return "DC HSUPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSPA:             return "DC HSPA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE:                 return "LTE";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_FDD:             return "LTE FDD";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_TDD:             return "LTE TDD";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_CA_DL:           return "LTE CA DL";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_CA_UL:           return "LTE CA UL";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_TD_SCDMA:            return "TD-SCDMA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_1X:         return "CDMA 1X";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO:       return "CDMA Ev-DO";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVA:  return "CDMA Ev-DO Rev.A";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD:      return "CDMA eHRPD";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_IS95_1X:             return "IS95 1X";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REV0_DPA:        return "HDR REV0 DPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_DPA:        return "HDR REVA DPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_DPA:        return "HDR REVB DPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_MPA:        return "HDR REVA MPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_MPA:        return "HDR REVB MPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_EMPA:       return "HDR REVA EMPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_EMPA:       return "HDR REVB EMPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_MMPA:       return "HDR REVB MMPA";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_EVDO_FMC:        return "HDR EVDO FMC";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_64_QAM:              return "64 QAM";
-        case LE_MDC_DATA_BEARER_TECHNOLOGY_S2B:                 return "S2B";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_5G:                  return "5G";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVB:  return "CDMA Ev-DO Rev.B";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_HRPD:       return "CDMA HPRD";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA_EVDO_FMC:       return "CDMA Ev-DO FMC";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_3GPP2_WLAN:          return "3GPP2 WLAN";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_EDGE:                return "EDGE";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA_PLUS:          return "HSDPA+";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSDPA_PLUS:       return "DC HSDPA+";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_3GPP_WLAN:           return "3GPP WLAN";
     }
 
     return "";
@@ -529,6 +538,8 @@ static void ConnectionStateHandler
     void* contextPtr
 )
 {
+    LE_INFO("get data handler event. profile ref: %p, callEvent: %s\n", profileRef, callEventToString(state));
+
     if (LE_MDC_DISCONNECTED == state)
     {
         StopDataBearerMonitoring();
@@ -665,25 +676,13 @@ static const char* ConvertAuthentication
     return "ERROR"; // Should not happen
 }
 
-//-------------------------------------------------------------------------------------------------
-/**
- * Callback for the session Connection
- */
-//-------------------------------------------------------------------------------------------------
-static void SessionHandler
-(
-    le_mdc_ProfileRef_t profile,
-    le_result_t result,
-    void* contextPtr
-)
+void datahandlerPtr(le_mdc_ProfileRef_t profileRef, le_mdc_ConState_t callEvent)
 {
-    if (!result)
+    LE_INFO("get data handler event. profile ref: %p, callEvent: %s\n", profileRef, callEventToString(callEvent));
+
+    if (callEvent == TAF_DCS_CONNECTED)
     {
-        HandleResult("Connection Success", result, true);
-    }
-    else
-    {
-        HandleResult("Connection Failure", result, true);
+        HandleResult("session connected", LE_OK, true);
     }
 }
 
@@ -698,12 +697,19 @@ void cm_data_StartDataConnection
 )
 {
     le_mdc_ProfileRef_t profile;
-    le_result_t result;
+    le_result_t result = LE_OK;
+    le_mdc_SessionStateHandlerRef_t handlerRef;
 
     profile = GetDataProfile();
 
     if (!timeoutPtr)
     {
+        result = le_mdc_SetDefaultProfileIndex(GetProfileInUse());
+        if (result != LE_OK)
+        {
+            HandleResult("Set Default Failure", result, true);
+        }
+
         if ( (result = le_mdc_StartSession(profile)) )
         {
             HandleResult("Connection Failure", result, true);
@@ -721,14 +727,31 @@ void cm_data_StartDataConnection
     }
     else
     {
-        le_mdc_StartSessionAsync(profile, SessionHandler, NULL);
+        handlerRef = le_mdc_AddSessionStateHandler(profile, (le_mdc_SessionStateHandlerFunc_t)datahandlerPtr, NULL);
+        if (handlerRef == NULL)
+        {
+            HandleResult("Add State Handler Failed", result, false);
+        }
+
+        result = le_mdc_SetDefaultProfileIndex(GetProfileInUse());
+        if (result != LE_OK)
+        {
+            HandleResult("Set Default Failure", result, true);
+        }
+
+        if ( (result = le_mdc_StartSession(profile)) )
+        {
+            HandleResult("Connection Failure", result, true);
+        }
+
         if ( (result = StartTimer(timeoutPtr)) )
         {
             HandleResult("Failed to start data session timer",result, true);
         }
         else
         {
-            exit(0);
+            // session startup is ongoing. cannot exit here.
+            //exit(0);
         }
     }
 }
