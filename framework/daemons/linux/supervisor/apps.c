@@ -143,6 +143,18 @@ static apps_ShutdownHandler_t AllAppsShutdownHandler = NULL;
 
 struct AppContainer;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool and struct for app name list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t appNameListPool;
+typedef struct
+{
+    char            appName[LIMIT_MAX_APP_NAME_BYTES];
+    le_dls_Link_t   link;
+} appName_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1345,6 +1357,9 @@ void apps_Init
     // notifies the Supervisor which app has stopped.
     file_WriteStr("/sys/fs/cgroup/freezer/release_agent",
                   "/legato/systems/current/bin/_appStopClient", 0);
+
+    appNameListPool = le_mem_CreatePool("appNameList", sizeof(appName_t));
+
 }
 
 
@@ -1424,6 +1439,8 @@ void apps_AutoStart
 {
     // Read the list of applications from the config tree.
     le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
+    appName_t            *appNameLink;
+    le_dls_List_t        appNameList = LE_DLS_LIST_INIT;
 
     if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
     {
@@ -1450,15 +1467,28 @@ void apps_AutoStart
             }
             else
             {
-                // Launch the application now.  No need to check the return code because there is
-                // nothing we can do about errors.
-                LaunchApp(appName);
+                // In order to decrease the usage time of cfg tree, get app name and
+                // put it into app name list immediately.
+                appNameLink = (appName_t *)le_mem_ForceAlloc(appNameListPool);
+                appNameLink->link = LE_DLS_LINK_INIT;
+                le_utf8_Copy(appNameLink->appName, appName, LIMIT_MAX_APP_NAME_BYTES, NULL);
+                le_dls_Queue(&appNameList, &(appNameLink->link));
             }
         }
     }
     while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
-
     le_cfg_CancelTxn(appCfg);
+
+    le_dls_Link_t* linkPtr = le_dls_Pop(&appNameList);
+    while (linkPtr)
+    {
+        appNameLink = CONTAINER_OF(linkPtr, appName_t, link);
+        linkPtr = le_dls_Pop(&appNameList);
+        // Launch the application now. No need to check the return code because there is
+        // nothing we can do about errors.
+        LaunchApp(appNameLink->appName);
+        le_mem_Release(appNameLink);
+    }
 }
 
 

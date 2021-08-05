@@ -63,6 +63,7 @@
 #include "kernelModules.h"
 #include <semanage/modules.h>
 #include <regex.h>
+#include <selinux/restorecon.h>
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that specifies whether the app should be in a sandbox.
@@ -2139,7 +2140,6 @@ static le_result_t CreateFileLink
 
     // Get the absolute destination path.
     char destPath[LIMIT_MAX_PATH_BYTES] = "";
-
     if (GetAbsDestPath(destPtr, srcPtr, appRef->workingDir, destPath, sizeof(destPath)) != LE_OK)
     {
         LE_ERROR("Link destination path '%s' is too long.", destPath);
@@ -3522,15 +3522,11 @@ void create_cilPath
 {
     char createCil[LIMIT_M_PATH_BYTES];
 
-    if (appRef->sandboxed)
+    // In the case that install app on running time, the workingdir path is not created yet.
+    // We should use installDirPath to get sepolicy file no matter it is sandboxed app or not.
+    if (appRef->installDirPath && appRef->name != NULL)
     {
-        snprintf(createCil, LIMIT_M_PATH_BYTES, "%s%s%s%s%s%s%s%s%s", "cat ", "/", appRef->name, ".pp", " | /usr/libexec/selinux/hll/pp > ", OVERLAYPATH, "/", appRef->name, ".cil");
-        LE_INFO(" Path for create_CIL  '%s':\n", createCil);
-        system(createCil);
-    }
-    else if (appRef->workingDir && appRef->name != NULL)
-    {
-        snprintf(createCil, LIMIT_M_PATH_BYTES, "%s%s%s%s%s%s%s%s%s%s", "cat ", appRef->workingDir, "/", appRef->name, ".pp", " | /usr/libexec/selinux/hll/pp > ", OVERLAYPATH, "/", appRef->name, ".cil");
+        snprintf(createCil, LIMIT_M_PATH_BYTES, "%s%s%s%s%s%s%s%s%s%s%s", "cat ", appRef->installDirPath, "/", "read-only/", appRef->name, ".pp", " | /usr/libexec/selinux/hll/pp > ", OVERLAYPATH, "/", appRef->name, ".cil");
         LE_INFO(" Path for create_CIL  '%s':\n", createCil);
         system(createCil);
     }
@@ -3624,19 +3620,14 @@ void semodule_Install
     char sepolicyPath[LIMIT_M_PATH_BYTES];
 
     // Get the sepolicy file name.
-    if (appRef->sandboxed)
-    {
-        snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s", "/", appRef->name, ".pp");
-        LE_INFO(" Sepolicy path for app '%s':\n", sepolicyPath);
-    }
-    else
-    {
-        snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s%s", appRef->workingDir, "/", appRef->name, ".pp");
-        LE_INFO(" Sepolicy path for app '%s':\n", sepolicyPath);
-    }
+    // In the case that install app on running time, the workingdir path is not created yet.
+    // We should use installDirPath to get sepolicy file no matter it is sandboxed app or not.
+    snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s%s%s", appRef->installDirPath, "/", "read-only/", appRef->name, ".pp");
+    LE_INFO(" Sepolicy path for app '%s':\n", sepolicyPath);
 
     if (file_Exists(sepolicyPath))
     {
+        LE_INFO("Sepolicy file exist: %s", sepolicyPath);
         retval = cil_Parser(appRef);
 
         if (retval == EXIT_SUCCESS)
@@ -3677,10 +3668,11 @@ void semodule_Install
                 LE_INFO( "  Failed!\n");
                 goto cleanup;
             }
-
             else if (commit)
             {
-                LE_DEBUG("Ok: transaction number %d.\n", result);
+                snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s",appRef->workingDir, "/bin/", appRef->name);
+                LE_INFO("Restore the context '%s':\n", sepolicyPath);
+                selinux_restorecon(sepolicyPath, SELINUX_RESTORECON_RECURSE);
             }
 
             if (semanage_disconnect(sh) < 0)
@@ -3723,14 +3715,15 @@ void semodule_Remove
     priority = 100;
     int commit = 1;
 
-    LE_INFO("Semodule function for install se policy ..... ");
+    LE_INFO("Semodule function for remove se policy ..... ");
 
     // Semanage handle create
     sh = semanage_handle_create();
 
     if (!sh)
     {
-        LE_INFO(" Could not create semanage handle\n......");
+        LE_ERROR(" Could not create semanage handle\n......");
+        return;
     }
 
     // Semanage create store if necessary
@@ -4008,8 +4001,6 @@ void app_Stop
         DeleteModuleNodeList(appRef->reqModuleName);
 
         CleanupAppSmackSettings(appRef);
-
-        semodule_Remove(appRef);
 
         appRef->state = APP_STATE_STOPPED;
     }
@@ -5136,4 +5127,6 @@ void app_StopComplete
     LE_INFO("app '%s' has stopped.", appRef->name);
 
     appRef->state = APP_STATE_STOPPED;
+
+    semodule_Remove(appRef);
 }

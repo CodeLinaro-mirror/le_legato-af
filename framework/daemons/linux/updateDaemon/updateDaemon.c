@@ -299,10 +299,10 @@ static int SecurityUnpack
     fd_CloseAllNonStd();
 
     // Create a user account for the security-unpack tool (or don't if the account already exists).
-    const char* userName = "SecurityUnpack";
+    const char* userName = "securityunpack";
     uid_t uid;
     gid_t gid;
-    LE_FATAL_IF(user_Create(userName, &uid, &gid) == LE_FAULT, "Can't create user: %s", userName);
+    LE_FATAL_IF(user_GetIDs(userName, &uid, &gid) == LE_FAULT, "Can't get user: %s", userName);
 
     // Clear our supplementary groups list.
     LE_FATAL_IF(setgroups(0, NULL) == -1, "Could not set the supplementary groups list.  %m.");
@@ -2056,12 +2056,6 @@ le_result_t le_update_Start
     int clientFd                ///<[IN] Open file descriptor from which the update can be read.
 )
 {
-    if (IsReadOnly)
-    {
-        LE_ERROR("Legato is R/O");
-        return LE_UNSUPPORTED;
-    }
-
     LE_DEBUG("fd: %d", clientFd);
 
     if (!IsValidFileDesc(clientFd))
@@ -2294,12 +2288,6 @@ le_result_t le_appRemove_Remove
     const char* appName
 )
 {
-    if (IsReadOnly)
-    {
-        LE_ERROR("Legato is R/O");
-        return LE_FAULT;
-    }
-
     // Check whether any update is active.
     if (State != STATE_IDLE)
     {

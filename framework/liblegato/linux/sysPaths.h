@@ -19,6 +19,43 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Absolute TelAF app path.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TELAF_APP_PATH "/app"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute TelAF app installation path which is used as overlay upper dir.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TELAF_APP_OVERLAYFS_UPPER_PATH TELAF_APP_PATH"/appsInstall"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute TelAF app installation path which is used as overlay work dir.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TELAF_APP_OVERLAYFS_WK TELAF_APP_PATH"/appsInstall_wk"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute path to be used for mounting "/legato/systems/current" to overlay fs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH TELAF_APP_OVERLAYFS_UPPER_PATH"/current"
+#define TELAF_APP_OVERLAYFS_WK_CURRENT_PATH TELAF_APP_OVERLAYFS_WK"/current"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute path to be used for mounting "/legato/apps" to overlay fs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TELAF_APP_OVERLAYFS_UPPER_APPS_PATH TELAF_APP_OVERLAYFS_UPPER_PATH"/apps"
+#define TELAF_APP_OVERLAYFS_WK_APPS_PATH TELAF_APP_OVERLAYFS_WK"/apps"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The path to the directory containing the current running "system".
  */
 //--------------------------------------------------------------------------------------------------
