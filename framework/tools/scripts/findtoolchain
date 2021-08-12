@@ -212,7 +212,7 @@ AppendTelAfToolchain() {
     local target="$1"
     local gcc_prefix="${2:-"arm-oe-linux-gnueabi"}"
 
-    if [ ! -e "/opt/qct" ]; then
+    if [ ! -e "/opt/qct/${target}" ]; then
         return 1
     fi
 
@@ -253,6 +253,17 @@ AppendTelAfYoctoBuildToolchain() {
         return 1
     fi
 
+    toolchain_dir="$(readlink -e "${work_dir}/recipe-sysroot-native/usr/bin/${gcc_prefix}")"
+    if [ -z "${toolchain_dir}" ]; then
+        return 1
+    fi
+
+    # Per-package sysroot
+    sysroot_dir="$(readlink -e "${work_dir}/recipe-sysroot")"
+    if [ -z "${sysroot_dir}" ]; then
+        return 1
+    fi
+
     kernelroot_dir=""
     for sysroot_def in "${SYSROOT_DEFS[@]}"; do
         if [ -z "${kernelroot_dir}" ]; then
@@ -261,12 +272,6 @@ AppendTelAfYoctoBuildToolchain() {
         fi
     done
 
-    if [ -z "${toolchain_dir}" ]; then
-        # Per-package sysroot
-        toolchain_dir="${work_dir}/recipe-sysroot-native/usr/bin/${gcc_prefix}"
-        sysroot_dir="${work_dir}/recipe-sysroot"
-    fi
-
     toolchain_prop="${toolchain_dir}"
     toolchain_prop+="::"
     toolchain_prop+="${sysroot_dir}"
@@ -274,6 +279,7 @@ AppendTelAfYoctoBuildToolchain() {
     toolchain_prop+="${kernelroot_dir}"
 
     TOOLCHAIN_INFO+=("${toolchain_prop}")
+    return 0
 }
 
 # To detect toolchains installed in /opt/swi
@@ -427,11 +433,19 @@ SelectToolchainDirs() {
 
     sa415m)
         AppendTelAfYoctoBuildToolchain "${target}"
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+
         AppendTelAfToolchain "${target}"
         ;;
 
     sa515m)
         AppendTelAfYoctoBuildToolchain "${target}"
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+
         AppendTelAfToolchain "${target}"
         ;;
 
