@@ -51,6 +51,8 @@ void cm_data_PrintDataHelp
             "\tcm data disconnect\n\n"
             "To monitor the data connection:\n"
             "\tcm data watch\n\n"
+            "To set a default profile, this profile is used for setting gateway and route when using this profile to make a call:\n"
+            "\tcm data default_profile <index>\n\n"
             "To start a data connection, please ensure that your profile has been configured correctly.\n"
             "Also ensure your modem is registered to the network. To verify, use 'cm radio' and check 'Status'.\n\n"
             );
@@ -533,8 +535,9 @@ static void StopDataBearerMonitoring
 //--------------------------------------------------------------------------------------------------
 static void ConnectionStateHandler
 (
-    le_mdc_ProfileRef_t profileRef,
-    le_mdc_ConState_t state,
+    le_mdc_ProfileRef_t       profileRef,
+    le_mdc_ConState_t         state,
+    const le_mdc_StateInfo_t  *infoPtr,
     void* contextPtr
 )
 {
@@ -676,11 +679,11 @@ static const char* ConvertAuthentication
     return "ERROR"; // Should not happen
 }
 
-void datahandlerPtr(le_mdc_ProfileRef_t profileRef, le_mdc_ConState_t callEvent)
+void datahandlerPtr(le_mdc_ProfileRef_t profileRef, le_mdc_ConState_t callEvent, const le_mdc_StateInfo_t *infoPtr, void* contextPtr)
 {
-    LE_INFO("get data handler event. profile ref: %p, callEvent: %s\n", profileRef, callEventToString(callEvent));
+    LE_INFO("get data handler event. profile ref: %p, callEvent: %s, ip type: %d\n", profileRef, callEventToString(callEvent), infoPtr->ipType);
 
-    if (callEvent == TAF_DCS_CONNECTED)
+    if ((callEvent == TAF_DCS_CONNECTED) && (infoPtr->ipType == TAF_DCS_PDP_IPV4V6))
     {
         HandleResult("session connected", LE_OK, true);
     }
@@ -704,12 +707,6 @@ void cm_data_StartDataConnection
 
     if (!timeoutPtr)
     {
-        result = le_mdc_SetDefaultProfileIndex(GetProfileInUse());
-        if (result != LE_OK)
-        {
-            HandleResult("Set Default Failure", result, true);
-        }
-
         if ( (result = le_mdc_StartSession(profile)) )
         {
             HandleResult("Connection Failure", result, true);
@@ -733,13 +730,7 @@ void cm_data_StartDataConnection
             HandleResult("Add State Handler Failed", result, false);
         }
 
-        result = le_mdc_SetDefaultProfileIndex(GetProfileInUse());
-        if (result != LE_OK)
-        {
-            HandleResult("Set Default Failure", result, true);
-        }
-
-        if ( (result = le_mdc_StartSession(profile)) )
+        if ( (result = le_mdc_StartSessionAsync(profile)) )
         {
             HandleResult("Connection Failure", result, true);
         }
@@ -1026,6 +1017,17 @@ static le_result_t PrintAuthentication
     return res;
 }
 
+static le_result_t PrintDefaultProfile()
+{
+    char profileStr[5];
+
+    uint32_t profileId  = le_mdc_GetDefaultProfileIndex();
+    snprintf(profileStr, sizeof(profileStr), "%u", profileId);
+    cm_cmn_FormatPrint("Default_profile", profileStr);
+
+    return LE_OK;
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * This function will attempt to print the state of the profile.
@@ -1124,6 +1126,11 @@ int cm_data_GetProfileInfo
 )
 {
     int exitStatus = EXIT_SUCCESS;
+
+    if (LE_OK != PrintDefaultProfile())
+    {
+        exitStatus = EXIT_FAILURE;
+    }
 
     le_mdc_ProfileRef_t profileRef = GetDataProfile();
 
@@ -1288,6 +1295,22 @@ void cm_data_ProcessDataCommand
         // data connection & print out its bearer info until it's terminated, e.g. via SIGKILL
         // which comes via Ctrl-C on the command line
         cm_data_MonitorDataConnection();
+    }
+    else if (strcmp(command, "default_profile") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1,
+                                     numArgs,
+                                     "Profile index missing. e.g. cm data default_profile <index>"))
+        {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
+
+            le_result_t result = le_mdc_SetDefaultProfileIndex(atoi(dataParam));
+            HandleResult("Setting default profile", result, true);
+        }
     }
     else
     {

@@ -49,7 +49,7 @@ handle_err() {
     fi
 
     if [ $err -ne 0 ]; then
-        echo "failed"
+        echo "failed err: $err"
         cat $log
         exit 1
     else
@@ -143,14 +143,20 @@ cm_data_connect () {
     local index=$(cm_data_get_param "$info" "Index")
     local apn=$(cm_data_get_param "$info" "APN")
     local status=$(cm_data_get_param "$info" "Connected")
+    local default_profile=$(cm_data_get_param "$info" "Default_profile")
 
     if [ "$opt" = "-1" ]; then
         echo -n "Disconnecting ... "
         cm data connect $opt > $LOG 2>&1
         handle_err $?
-        update_route disconnect
-        update_dns disconnect
+        # update_route disconnect
+        # update_dns disconnect
         exit 0
+    fi
+
+    if [ "$default_profile" != "$index" ]; then
+        echo "[WARNING]default profile[$default_profile] does not equal to current profile[$index]"
+        echo "[WARNING]Use \"cm data default_profile <index>\" to set default profile"
     fi
 
     if [ "$status" = "no" ]; then
@@ -210,9 +216,9 @@ cm_data_connect () {
         fi
         dns_list="${dns_list} $dns2"
 
-        update_route connect $family $iface $gw
+        #update_route connect $family $iface $gw
     done
-    update_dns connect ${dns_list}
+    #update_dns connect ${dns_list}
 
     echo -n "Testing connection ... "
     curl --head --silent $TEST_SITE > $LOG 2>&1
