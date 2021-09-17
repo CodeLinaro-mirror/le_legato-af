@@ -409,7 +409,7 @@ static int Restart
 {
     le_result_t result = LE_FAULT;
 
-
+#if 0
     if (strcmp(restartTypePtr, "cold") == 0)
     {
         printf("Doing cold restart...\n");
@@ -435,6 +435,7 @@ static int Restart
         printf("Invalid parameter: %s\n", restartTypePtr);
         return EXIT_FAILURE;
     }
+#endif
 
     switch (result)
     {
@@ -465,6 +466,7 @@ static int Restart
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int SetAcquisitionRate
 (
     const char* acqRateStr          ///< [IN] Acquisition rate in milliseconds
@@ -552,6 +554,7 @@ static int SetMinElevation
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -713,6 +716,7 @@ static int SetConstellationArea
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int SetAgpsMode
 (
     const char* agpsModePtr    ///< [IN] agps to set
@@ -812,6 +816,7 @@ static int SetNmeaSentences
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+#endif
 
 
 //-------------------------------------------------------------------------------------------------
@@ -857,7 +862,6 @@ static int GetTtff
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the agps mode.
@@ -867,6 +871,7 @@ static int GetTtff
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int GetAgpsMode
 (
     void
@@ -897,7 +902,7 @@ static int GetAgpsMode
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1037,6 +1042,7 @@ static int GetAcquisitionRate
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int GetMinElevation
 (
     void
@@ -1187,7 +1193,7 @@ static int GetNmeaSentences
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1322,6 +1328,7 @@ static int GetAltitude
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int GetAltitudeOnWgs84
 (
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
@@ -1388,7 +1395,7 @@ static int GetGpsTime
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1448,6 +1455,7 @@ static int GetTime
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int GetEpochTime
 (
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
@@ -1585,6 +1593,7 @@ static int GetLeapSeconds
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1768,6 +1777,7 @@ static int GetDirection
  *     - EXIT_FAILURE on failure.
  */
 //-------------------------------------------------------------------------------------------------
+#if 0
 static int GetDop
 (
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
@@ -1828,7 +1838,7 @@ static int GetDop
 
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
+#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1891,8 +1901,9 @@ static int GetSatelliteInfo
 
                 if (LE_GNSS_SV_CONSTELLATION_SBAS == satConstPtr[i])
                 {
-                    printf("SBAS category : %d\n",
-                           le_gnss_GetSbasConstellationCategory(satIdPtr[i]));
+                    //uncomment this, when feature is enabled
+                    /*printf("SBAS category : %d\n",
+                           le_gnss_GetSbasConstellationCategory(satIdPtr[i]));*/
                 }
             }
         }
@@ -1965,13 +1976,13 @@ static int GetPosInfo
     status = (EXIT_FAILURE == GetPosState(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == Get2Dlocation(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetAltitude(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetAltitudeOnWgs84(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetGpsTime(positionSampleRef)) ? EXIT_FAILURE : status;
+    //status = (EXIT_FAILURE == GetAltitudeOnWgs84(positionSampleRef)) ? EXIT_FAILURE : status;
+    //status = (EXIT_FAILURE == GetGpsTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetTime(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetEpochTime(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
+    //status = (EXIT_FAILURE == GetEpochTime(positionSampleRef)) ? EXIT_FAILURE : status;
+    //status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDate(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
+    //status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetHorizontalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetVerticalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDirection(positionSampleRef)) ? EXIT_FAILURE : status;
@@ -2085,32 +2096,32 @@ static void PositionHandlerFunction
         {
             status = GetAltitude(positionSampleRef);
         }
-        else if (0 == strcmp(ParamsName, "altOnWgs84"))
+        /*else if (0 == strcmp(ParamsName, "altOnWgs84"))
         {
             status = GetAltitudeOnWgs84(positionSampleRef);
-        }
+        }*/
         else if (strcmp(ParamsName, "loc3d") == 0)
         {
             status = EXIT_SUCCESS;
             status = (Get2Dlocation(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
             status = (GetAltitude(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
         }
-        else if (strcmp(ParamsName, "gpsTime") == 0)
+        /*else if (strcmp(ParamsName, "gpsTime") == 0)
         {
             status = GetGpsTime(positionSampleRef);
-        }
+        }*/
         else if (strcmp(ParamsName, "time") == 0)
         {
             status = GetTime(positionSampleRef);
         }
-        else if (strcmp(ParamsName, "epochTime") == 0)
+        /*else if (strcmp(ParamsName, "epochTime") == 0)
         {
             status = GetEpochTime(positionSampleRef);
         }
         else if (strcmp(ParamsName, "timeAcc") == 0)
         {
             status = GetTimeAccuracy(positionSampleRef);
-        }
+        }*/
         else if (strcmp(ParamsName, "date") == 0)
         {
             status = GetDate(positionSampleRef);
@@ -2142,10 +2153,10 @@ static void PositionHandlerFunction
         {
             status = GetSatelliteStatus(positionSampleRef);
         }
-        else if (strcmp(ParamsName, "dop") == 0)
+        /*else if (strcmp(ParamsName, "dop") == 0)
         {
             status = GetDop(positionSampleRef);
-        }
+        }*/
         else if (strcmp(ParamsName, "posInfo") == 0)
         {
             status = GetPosInfo(positionSampleRef);
@@ -2268,14 +2279,14 @@ static void GetGnssParams
     {
         exit(GetAcquisitionRate());
     }
-    else if (0 == strcmp(params, "LeapSeconds"))
+    /*else if (0 == strcmp(params, "LeapSeconds"))
     {
         exit(GetLeapSeconds());
     }
     else if (0 == strcmp(params, "agpsMode"))
     {
         exit(GetAgpsMode());
-    }
+    }*/
     else if (0 == strcmp(params, "constellation"))
     {
         exit(GetConstellation());
@@ -2284,14 +2295,14 @@ static void GetGnssParams
     {
         exit(GetConstellationArea());
     }
-    else if (0 == strcmp(params, "nmeaSentences"))
+    /*else if (0 == strcmp(params, "nmeaSentences"))
     {
         exit(GetNmeaSentences());
     }
     else if (0 == strcmp(params, "minElevation"))
     {
         exit(GetMinElevation());
-    }
+    }*/
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
              (0 == strcmp(params, "alt"))         ||
@@ -2364,7 +2375,7 @@ static int SetGnssParams
         }
         status = SetConstellationArea(argValPtr, arg2ValPtr);
     }
-    else if (strcmp(argNamePtr, "acqRate") == 0)
+    /*else if (strcmp(argNamePtr, "acqRate") == 0)
     {
         status = SetAcquisitionRate(argValPtr);
     }
@@ -2379,7 +2390,7 @@ static int SetGnssParams
     else if (0 == strcmp(argNamePtr, "minElevation"))
     {
         status = SetMinElevation(argValPtr);
-    }
+    }*/
     else
     {
         printf("Bad parameter request: %s\n", argNamePtr);
