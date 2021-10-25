@@ -85,8 +85,7 @@ PrintMessageContext_t;
  * Helper function to print an array of binary data (hexdump like).
  */
 //-------------------------------------------------------------------------------------------------
-// To be compatible with tafSMSSvc
-/*
+
 static void PrintUCS2Data
 (
     const uint16_t * dataPtr,
@@ -116,7 +115,7 @@ static void PrintUCS2Data
 
     printf("\n");
 }
-*/
+
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -167,9 +166,9 @@ static void PrintMessage
     PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
     le_result_t res;
     le_sms_Type_t smsType;
-    //le_sms_Format_t format;
+    le_sms_Format_t format;
     size_t length;
-    //size_t length, contentSz;
+    size_t contentSz;
     SmsContent_t content;
     char header[20];
 
@@ -186,7 +185,7 @@ static void PrintMessage
     smsType = le_sms_GetType(msgRef);
     switch (smsType)
     {
-        case LE_SMS_RX:
+        case LE_SMS_TYPE_RX:
             cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_RX");
             break;
         //To be compatible with tafSMSSvc
@@ -204,20 +203,11 @@ static void PrintMessage
             break;
     }
 
-    res = le_sms_GetSenderTel(msgRef, content.text, sizeof(content.text));
+    res = le_sms_GetSenderTel(msgRef, content.text, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
     if (res == LE_OK)
     {
         cm_cmn_FormatPrint(" Sender", content.text);
     }
-
-    // To be compatible with tafSMSSvc
-    res = le_sms_GetText(msgRef, content.text, sizeof(content.text));
-    LE_ASSERT(res == LE_OK);
-
-    length = le_sms_GetUserdataLen(msgRef);
-
-    snprintf(header, sizeof(header), " Text (%zd)", length);
-    cm_cmn_FormatPrint(header, content.text);
 
     // To be compatible with tafSMSSvc
     /*
@@ -227,7 +217,7 @@ static void PrintMessage
         cm_cmn_FormatPrint(" Timestamp", content.text);
     }
     */
-    /*
+
     format = le_sms_GetFormat(msgRef);
     switch (format)
     {
@@ -305,7 +295,7 @@ static void PrintMessage
             exit(EXIT_FAILURE);
         }
     }
-    */
+
     if (msgContextPtr->shouldDeleteMessages)
     {
         res = le_sms_DeleteFromStorage(msgRef);
@@ -331,11 +321,10 @@ void cm_sms_Monitor
 {
     static PrintMessageContext_t context = {
         .nbSms = 0,
-        .shouldDeleteMessages = true,
+        .shouldDeleteMessages = false,
         .msgToPrint = -1,
     };
 
-    // To be compatible with tafSMSSvc
     le_sms_AddRxMsgHandler(PrintMessage, &context);
 }
 
@@ -452,7 +441,7 @@ static int ForEachMessage
     int nbSms = 0;
 
     /* Get the ptr of SMS list */
-    listRef = le_sms_CreateNewRxMsgList();    // To be compatible with tafSMSSvc
+    listRef = le_sms_CreateNewRxMsgList();
     if (listRef == NULL)
     {
         return 0;
