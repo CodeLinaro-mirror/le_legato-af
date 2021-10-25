@@ -61,7 +61,8 @@
 #include "file.h"
 #include "ima.h"
 #include "kernelModules.h"
-
+#include <semanage/modules.h>
+#include <regex.h>
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that specifies whether the app should be in a sandbox.
@@ -193,6 +194,38 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define APP_DEFAULT_USER "appdefault"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Domain fixed macro to check before loading the policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define PREFIXDOMAIN "typetransition telaf_admin_t telaf_"
+#define POSTFIXDOMAIN "_exec_t process telaf_"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Overlayfs path for dynamic loading policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define OVERLAYPATH "/data/var_selinux"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Used for string concatenate
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_M_PATH_BYTES 2048
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Used for dynamic loading policy functions
+ */
+//--------------------------------------------------------------------------------------------------
+const char* store_sepolicyPath;
+const char* store_domainName;
+static semanage_handle_t *sh = NULL;
+static uint16_t priority;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3474,6 +3507,287 @@ static void DeleteModuleNodeList
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Hardening security for dynamic loading of Sepolicy
+ * Pattern to search before loading the policy
+ * typetransition telaf_admin_t telaf_[appName]_exec_t process telaf_[appName]_t)
+*/
+//--------------------------------------------------------------------------------------------------
+
+void create_cilPath
+(
+    app_Ref_t appRef
+)
+{
+    char createCil[LIMIT_M_PATH_BYTES];
+
+    if (appRef->sandboxed)
+    {
+        snprintf(createCil, LIMIT_M_PATH_BYTES, "%s%s%s%s%s%s%s%s%s", "cat ", "/", appRef->name, ".pp", " | /usr/libexec/selinux/hll/pp > ", OVERLAYPATH, "/", appRef->name, ".cil");
+        LE_INFO(" Path for create_CIL  '%s':\n", createCil);
+        system(createCil);
+    }
+    else if (appRef->workingDir && appRef->name != NULL)
+    {
+        snprintf(createCil, LIMIT_M_PATH_BYTES, "%s%s%s%s%s%s%s%s%s%s", "cat ", appRef->workingDir, "/", appRef->name, ".pp", " | /usr/libexec/selinux/hll/pp > ", OVERLAYPATH, "/", appRef->name, ".cil");
+        LE_INFO(" Path for create_CIL  '%s':\n", createCil);
+        system(createCil);
+    }
+    else
+    {
+        LE_ERROR("Error in storing Cil path");
+    }
+}
+
+static int cil_Parser
+(
+    app_Ref_t appRef
+)
+{
+    FILE *fp;
+    char finddomainAttr[1024];
+    int retval = 0;
+    char store_cilPath[LIMIT_MAX_PATH_BYTES];
+    char domainName[LIMIT_M_PATH_BYTES];
+    regex_t re;
+
+    create_cilPath(appRef);
+
+    if (appRef->name != NULL)
+    {
+        snprintf(domainName, LIMIT_M_PATH_BYTES, "%s%s%s%s%s", PREFIXDOMAIN, appRef->name, POSTFIXDOMAIN, appRef->name, "_t");
+        LE_INFO(" Sepolicy path for app '%s':\n", domainName);
+    }
+    else
+    {
+        LE_ERROR("Error in creating typetransition domain name");
+    }
+
+    if (regcomp(&re, domainName, REG_EXTENDED) !=0)
+    {
+        LE_ERROR("Cannot compile regex");
+        regfree(&re);
+        return EXIT_FAILURE;
+    }
+
+    if (appRef->name != NULL)
+    {
+        snprintf(store_cilPath, LIMIT_M_PATH_BYTES, "%s%s%s%s", OVERLAYPATH, "/", appRef->name, ".cil");
+        LE_INFO(" Semodule CIL path '%s':\n", store_cilPath);
+    }
+    else
+    {
+        LE_ERROR("Error storing cil file ");
+    }
+
+    fp = fopen(store_cilPath,"r");
+    if (fp == 0)
+    {
+        LE_INFO("Failed to open cil file");
+        regfree(&re);
+        return EXIT_FAILURE;
+    }
+
+    while ((fgets(finddomainAttr, 1024, fp)) != NULL)
+    {
+        finddomainAttr[strlen(finddomainAttr)-1] = '\0';
+        if ((retval = regexec(&re, finddomainAttr, 0, NULL, 0)) == 0)
+        {
+            LE_INFO("Module Policy check - Done");
+            regfree(&re);
+            fclose(fp);
+            return EXIT_SUCCESS;
+        }
+    }
+    regfree(&re);
+    fclose(fp);
+    LE_INFO("Module Policy check - Failed !");
+    return EXIT_FAILURE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semodule dynamic operations for INSTALL, REMOVE sepolicy
+ */
+//--------------------------------------------------------------------------------------------------
+
+void semodule_Install
+(
+    app_Ref_t appRef
+)
+{
+    int result;
+    priority = 100;
+    int commit = 1;
+    int retval;
+    char sepolicyPath[LIMIT_M_PATH_BYTES];
+
+    // Get the sepolicy file name.
+    if (appRef->sandboxed)
+    {
+        snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s", "/", appRef->name, ".pp");
+        LE_INFO(" Sepolicy path for app '%s':\n", sepolicyPath);
+    }
+    else
+    {
+        snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s%s", appRef->workingDir, "/", appRef->name, ".pp");
+        LE_INFO(" Sepolicy path for app '%s':\n", sepolicyPath);
+    }
+
+    if (file_Exists(sepolicyPath))
+    {
+        retval = cil_Parser(appRef);
+
+        if (retval == EXIT_SUCCESS)
+        {
+            LE_INFO("Semodule function for install se policy ..... ");
+
+            // Semanage handle create
+            sh = semanage_handle_create();
+
+            if (!sh)
+            {
+                LE_INFO(" Could not create semanage handle\n......");
+            }
+
+            // Semanage create store if necessary
+            semanage_set_create_store(sh, 1);
+
+            // Connect to policy handler
+            semanage_connect(sh);
+
+            // Begin transaction
+            semanage_begin_transaction(sh);
+
+            // Semanage set default priority
+            semanage_set_default_priority(sh, priority);
+
+            LE_INFO(" Attempting to install module '%s':\n",  sepolicyPath);
+            result = semanage_module_install_file(sh, sepolicyPath);
+
+            if (commit)
+            {
+                LE_INFO("Committing changes:\n");
+                result = semanage_commit(sh);
+            }
+
+            if (result < 0)
+            {
+                LE_INFO( "  Failed!\n");
+                goto cleanup;
+            }
+
+            else if (commit)
+            {
+                LE_DEBUG("Ok: transaction number %d.\n", result);
+            }
+
+            if (semanage_disconnect(sh) < 0)
+            {
+                LE_INFO( "  Error disconnecting\n");
+                goto cleanup;
+            }
+
+            cleanup:
+            if (semanage_is_connected(sh))
+            {
+                if (semanage_disconnect(sh) < 0)
+                    {
+                        LE_INFO( "  Error disconnecting\n");
+                    }
+            }
+            semanage_handle_destroy(sh);
+        }
+        else if (retval == REG_NOMATCH)
+        {
+            LE_ERROR("Never Allow: domain not found !!! cannot load policy");
+        }
+        else
+        {
+            LE_ERROR("An error occured while sepolicy check");
+        }
+    }
+    else
+    {
+        LE_ERROR("Policy package file not found");
+    }
+}
+
+void semodule_Remove
+(
+    app_Ref_t appRef
+)
+{
+    int result;
+    priority = 100;
+    int commit = 1;
+
+    LE_INFO("Semodule function for install se policy ..... ");
+
+    // Semanage handle create
+    sh = semanage_handle_create();
+
+    if (!sh)
+    {
+        LE_INFO(" Could not create semanage handle\n......");
+    }
+
+    // Semanage create store if necessary
+    semanage_set_create_store(sh, 1);
+
+    // Connect to policy handler
+    semanage_connect(sh);
+
+    // Begin transaction
+    semanage_begin_transaction(sh);
+
+    // Semanage set default priority
+    semanage_set_default_priority(sh, priority);
+
+    LE_INFO(" Attempting to remove module '%s':\n", appRef->name);
+    result = semanage_module_remove(sh, appRef->name);
+
+    if (result == -2)
+    {
+        goto next;
+    }
+
+    next:
+    if (commit)
+    {
+        LE_INFO("Committing changes:\n");
+        result = semanage_commit(sh);
+    }
+
+    if (result < 0)
+    {
+        LE_INFO( "  Failed!\n");
+        goto cleanup;
+    }
+
+    else if (commit)
+    {
+        LE_DEBUG("Ok: transaction number %d.\n", result);
+    }
+
+    if (semanage_disconnect(sh) < 0)
+    {
+        LE_INFO( "  Error disconnecting\n");
+        goto cleanup;
+    }
+
+    cleanup:
+    if (semanage_is_connected(sh))
+    {
+        if (semanage_disconnect(sh) < 0)
+        {
+            LE_INFO( "  Error disconnecting\n");
+        }
+    }
+    semanage_handle_destroy(sh);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3549,6 +3863,8 @@ le_result_t app_Start
     }
 
     appRef->state = APP_STATE_RUNNING;
+
+    semodule_Install(appRef);
 
     // Set SMACK rules for this app.
     // Setup the runtime area in the file system.
@@ -3692,6 +4008,8 @@ void app_Stop
         DeleteModuleNodeList(appRef->reqModuleName);
 
         CleanupAppSmackSettings(appRef);
+
+        semodule_Remove(appRef);
 
         appRef->state = APP_STATE_STOPPED;
     }

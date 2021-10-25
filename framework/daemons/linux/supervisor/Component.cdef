@@ -37,6 +37,10 @@ requires:
         logDaemon/logFd.api     [manual-start]
         le_instStat.api         [manual-start]
     }
+    lib:
+    {
+        lib/libsemanage.so.1
+    }
 }
 
 cflags:
