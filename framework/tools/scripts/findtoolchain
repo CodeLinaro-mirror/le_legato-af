@@ -248,7 +248,7 @@ AppendTelAfYoctoBuildToolchain() {
         return 1
     fi
 
-    work_dir="$(readlink -e "${TELAF_ROOT}/../")"
+    work_dir="$(readlink -e "${WORK_ROOT}/")"
     if [ -z "${work_dir}" ]; then
         return 1
     fi
