@@ -408,11 +408,9 @@ void cm_sms_SendBinary
     result = le_sms_SetDestination(msgRef, numberPtr);
     LE_ASSERT(result == LE_OK);
 
-    // To be compatible with tafSMSSvc
-    /*
     result = le_sms_SetBinary(msgRef, contentPtr, contentLen);
     LE_ASSERT(result == LE_OK);
-    */
+
     result = le_sms_Send(msgRef);
     if (result != LE_OK)
     {
@@ -441,7 +439,7 @@ static int ForEachMessage
     int nbSms = 0;
 
     /* Get the ptr of SMS list */
-    listRef = le_sms_CreateNewRxMsgList();
+    listRef = le_sms_CreateRxMsgList();
     if (listRef == NULL)
     {
         return 0;
