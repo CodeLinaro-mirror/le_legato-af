@@ -193,26 +193,18 @@ void PrintGnssHelp
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
          "\t\t\t\t  nmeaMask can be as follows (the values are in hexadecimal):\n"
          "\t\t\t\t\t- 1 ------> GPGGA\n"
-         "\t\t\t\t\t- 2 ------> GPGSA\n"
-         "\t\t\t\t\t- 4 ------> GPGSV\n"
-         "\t\t\t\t\t- 8 ------> GPRMC\n"
-         "\t\t\t\t\t- 10 -----> GPVTG\n"
-         "\t\t\t\t\t- 20 -----> GLGSV\n"
-         "\t\t\t\t\t- 40 -----> GNGNS\n"
-         "\t\t\t\t\t- 80 -----> GNGSA\n"
-         "\t\t\t\t\t- 100 ----> GAGGA\n"
-         "\t\t\t\t\t- 200 ----> GAGSA\n"
-         "\t\t\t\t\t- 400 ----> GAGSV\n"
-         "\t\t\t\t\t- 800 ----> GARMC\n"
-         "\t\t\t\t\t- 1000 ---> GAVTG\n"
-         "\t\t\t\t\t- 2000 ---> PSTIS\n"
-         "\t\t\t\t\t- 4000 ---> PQXFI\n"
-         "\t\t\t\t\t- 8000 ---> PTYPE\n"
-         "\t\t\t\t\t- 10000 --> GPGRS\n"
-         "\t\t\t\t\t- 20000 --> GPGLL\n"
-         "\t\t\t\t\t- 40000 --> DEBUG\n"
-         "\t\t\t\t\t- 80000 --> GPDTM\n"
-         "\t\t\t\t\t- 100000 -> GAGNS\n"
+         "\t\t\t\t\t- 2 ------> GARMC\n"
+         "\t\t\t\t\t- 4 ------> GNGSA\n"
+         "\t\t\t\t\t- 8 ------> GPVTG\n"
+         "\t\t\t\t\t- 10 -----> GPGNS\n"
+         "\t\t\t\t\t- 20 -----> GPDTM\n"
+         "\t\t\t\t\t- 40 -----> GPGSV\n"
+         "\t\t\t\t\t- 80 -----> GLGSV\n"
+         "\t\t\t\t\t- 100 ----> GAGSV\n"
+         "\t\t\t\t\t- 200 ----> GQGSV\n"
+         "\t\t\t\t\t- 400 ----> GBGSV\n"
+         "\t\t\t\t\t- 800 ----> GIGSV\n"
+         "\t\t\t\t\t- FFFFFFFF ---> ALL\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n"
@@ -762,6 +754,7 @@ static int SetAgpsMode
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+#endif
 //-------------------------------------------------------------------------------------------------
 /**
  * This function sets the enabled NMEA sentences.
@@ -778,11 +771,6 @@ static int SetNmeaSentences
 {
     int nmeaMask = le_hex_HexaToInteger(nmeaMaskStr);
 
-    if (nmeaMask < 0)
-    {
-        printf("Bad NMEA sentences mask: %s\n", nmeaMaskStr);
-        return EXIT_FAILURE;
-    }
 
     le_result_t result = le_gnss_SetNmeaSentences(nmeaMask);
 
@@ -811,7 +799,6 @@ static int SetNmeaSentences
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-#endif
 
 
 //-------------------------------------------------------------------------------------------------
@@ -1063,7 +1050,6 @@ static int GetMinElevation
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-#if 0
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the enabled NMEA sentences.
@@ -1105,6 +1091,10 @@ static int GetNmeaSentences
             {
                 printf("\tGPVTG (GPS vector track and speed over the ground) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGNS)
+            {
+                printf("\tGPGNS enabled\n");
+            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GLGSV)
             {
                 printf("\tGLGSV (GLONASS satellites in view) enabled\n");
@@ -1128,6 +1118,18 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_GAGSV)
             {
                 printf("\tGAGSV (Galileo satellites in view) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GQGSV)
+            {
+                printf("\tGQGSV enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GBGSV)
+            {
+                printf("\tGBGSV enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GIGSV)
+            {
+                printf("\tNMEA_MASK_GIGSV enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GARMC)
             {
@@ -1187,7 +1189,6 @@ static int GetNmeaSentences
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-#endif
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2284,10 +2285,10 @@ static void GetGnssParams
     {
         exit(GetConstellationArea());
     }
-    /*else if (0 == strcmp(params, "nmeaSentences"))
+    else if (0 == strcmp(params, "nmeaSentences"))
     {
         exit(GetNmeaSentences());
-    }*/
+    }
     else if (0 == strcmp(params, "minElevation"))
     {
         exit(GetMinElevation());
@@ -2371,11 +2372,11 @@ static int SetGnssParams
     /*else if (strcmp(argNamePtr, "agpsMode") == 0)
     {
         status = SetAgpsMode(argValPtr);
-    }
+    }*/
     else if (strcmp(argNamePtr, "nmeaSentences") == 0)
     {
         status = SetNmeaSentences(argValPtr);
-    }*/
+    }
     else if (0 == strcmp(argNamePtr, "minElevation"))
     {
         status = SetMinElevation(argValPtr);
