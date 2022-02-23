@@ -9,7 +9,7 @@ requires:
 {
     component:
     {
-        ${LEGATO_WDOG_PA}
+        $TELAF_ROOT/components/tafWatchdog/taf_pa_wdog
     }
 }
 
