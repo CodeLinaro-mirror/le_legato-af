@@ -38,9 +38,9 @@ bindings:
     cm.cm.le_mdmCfg -> modemService.le_mdmCfg
     cm.cm.le_ulpm -> powerMgr.le_ulpm
 
-    gnss.gnss.le_gnss -> tafLocationService.taf_gnss
-    gnss.gnss.le_pos -> tafLocationService.taf_pos
-    gnss.gnss.le_posCtrl -> tafLocationService.taf_posCtrl
+    gnss.gnss.le_gnss -> tafLocationSvc.taf_gnss
+    gnss.gnss.le_pos -> tafLocationSvc.taf_pos
+    gnss.gnss.le_posCtrl -> tafLocationSvc.taf_posCtrl
 
     fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
 
