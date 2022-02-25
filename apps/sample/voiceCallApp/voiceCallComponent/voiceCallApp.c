@@ -24,7 +24,7 @@ static le_voicecall_StateHandlerRef_t VoiceCallHandlerRef;
 * Destination Phone number.
 */
 //--------------------------------------------------------------------------------------------------
-static char DestinationNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+static char DestinationNumber[TAF_TYPES_REMOTE_PARTY_NUM_MAX_BYTES];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -479,7 +479,7 @@ static le_result_t isNumValid
     }
     int i = 0;
     int numLength = strlen(phoneNumber);
-    if (numLength+1 > LE_MDMDEFS_PHONE_NUM_MAX_BYTES)
+    if (numLength+1 > TAF_TYPES_REMOTE_PARTY_NUM_MAX_BYTES)
     {
         LE_INFO("The number is too long!");
         return LE_FAULT;

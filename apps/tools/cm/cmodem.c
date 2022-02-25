@@ -61,6 +61,7 @@ const cm_Service_t Services[] = {
         .commandHandler = cm_sim_ProcessSimCommand,
     },
 
+#if 0
     /* Info */
     {
         .serviceNamePtr = "info",
@@ -104,6 +105,7 @@ const cm_Service_t Services[] = {
         .helpHandler = cm_mdmCfg_PrintHelp,
         .commandHandler = cm_mdmCfg_ProcessCommand
     },
+#endif
 };
 
 //--------------------------------------------------------------------------------------------------
