@@ -118,6 +118,7 @@ void PrintGnssHelp
          "\t\t\tgnss fix [FixTime in seconds]\n"
          "\t\t\t\t- Loop for certain time for first position fix. Here, FixTime is optional.\n"
          "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
+         "\t\t\tgnss supportedNmeaSentences --> Supported NMEA sentences (bit mask)\n\n"
          "\t\t\tgnss get <parameter>\n"
          "\t\t\t\t- Used to get different gnss parameter.\n"
          "\t\t\t\t  Follows parameters and their descriptions :\n"
@@ -1183,6 +1184,94 @@ static int GetNmeaSentences
             break;
         default:
             printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Supported NMEA sentences.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSupportedNmeaSentences
+(
+    void
+)
+{
+    le_gnss_NmeaBitMask_t nmeaMask;
+    le_result_t result = le_gnss_GetSupportedNmeaSentences(&nmeaMask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Supported NMEA sentences bit mask = 0x%08X\n", nmeaMask);
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGGA)
+            {
+                printf("\tGPGGA (GPS fix data) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPRMC)
+            {
+                printf("\tGPRMC (GPS recommended minimum data) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GNGSA)
+            {
+                printf("\tGNGSA (GNSS DOP and active satellites) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPVTG)
+            {
+                printf("\tGPVTG (GPS vector track and speed over the ground) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGNS)
+            {
+                printf("\tGPGNS Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPDTM)
+            {
+               printf("\tGPDTM (Local geodetic datum and datum offset from a reference) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGSV)
+            {
+                printf("\tGPGSV (GPS satellites in view) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GLGSV)
+            {
+                printf("\tGLGSV (GLONASS satellites in view) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAGSV)
+            {
+                printf("\tGAGSV (Galileo satellites in view) Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GQGSV)
+            {
+                printf("\tGQGSV Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GBGSV)
+            {
+                printf("\tGBGSV Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GIGSV)
+            {
+                printf("\tGIGSV Supported\n");
+            }
+            break;
+        case LE_FAULT:
+            printf("Failed to get Supported NMEA sentences. See logs for details\n");
+            break;
+        case LE_BUSY:
+            printf("Failed to get Supported NMEA sentences, service is busy\n");
+            break;
+        case LE_TIMEOUT:
+            printf("Failed to get Supported NMEA sentences, timeout error\n");
+            break;
+        default:
+            printf("Failed to get Supported NMEA sentences, error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
             break;
     }
