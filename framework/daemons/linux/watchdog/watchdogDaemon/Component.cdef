@@ -24,7 +24,7 @@ requires:
 
     component:
     {
-        $LEGATO_ROOT/platformAdaptor/wdog/linux/components/le_pa_wdog
+        $TELAF_ROOT/components/tafWatchdog/taf_pa_wdog
     }
 }
 
