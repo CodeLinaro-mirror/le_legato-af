@@ -4315,7 +4315,46 @@ le_result_t le_gnss_GetSupportedNmeaSentences
     le_gnss_NmeaBitMask_t* nmeaMaskPtr    ///< [OUT] Supported NMEA sentences
 )
 {
-    return pa_gnss_GetSupportedNmeaSentences(nmeaMaskPtr);
+    if (NULL == nmeaMaskPtr)
+    {
+        LE_KILL_CLIENT("nmeaMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    le_result_t result = LE_NOT_PERMITTED;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            // Get the Supported NMEA sentences
+            result = pa_gnss_GetSupportedNmeaSentences(nmeaMaskPtr);
+
+            if (LE_OK != result)
+            {
+                LE_ERROR("Unable to get the Supported NMEA sentences, error = %d (%s)",
+                          result, LE_RESULT_TXT(result));
+            }
+        }
+        break;
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_ACTIVE:
+        case LE_GNSS_STATE_DISABLED:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
