@@ -119,6 +119,7 @@ void PrintGnssHelp
          "\t\t\t\t- Loop for certain time for first position fix. Here, FixTime is optional.\n"
          "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
          "\t\t\tgnss supportedNmeaSentences --> Supported NMEA sentences (bit mask)\n\n"
+         "\t\t\tgnss supportedConstellations --> Supported Constellations (bit mask)\n\n"
          "\t\t\tgnss get <parameter>\n"
          "\t\t\t\t- Used to get different gnss parameter.\n"
          "\t\t\t\t  Follows parameters and their descriptions :\n"
@@ -1272,6 +1273,66 @@ static int GetSupportedNmeaSentences
             break;
         default:
             printf("Failed to get Supported NMEA sentences, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Supported Constellations
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSupportedConstellations
+(
+    void
+)
+{
+    le_gnss_ConstellationBitMask_t constMask;
+    le_result_t result = le_gnss_GetSupportedConstellations(&constMask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Supported Constellations bit mask = 0x%08X\n", constMask);
+            if (constMask & LE_GNSS_CONSTELLATION_GLONASS)
+            {
+                printf("\tGLONASS is Supported\n");
+            }
+            if (constMask & LE_GNSS_CONSTELLATION_BEIDOU)
+            {
+                printf("\tBEDIDOU is Supported\n");
+            }
+            if (constMask & LE_GNSS_CONSTELLATION_GALILEO)
+            {
+                printf("\tGALILEO is Supported\n");
+            }
+            if (constMask & LE_GNSS_CONSTELLATION_SBAS)
+            {
+                printf("\tSBAS is Supported\n");
+            }
+            if (constMask & LE_GNSS_CONSTELLATION_QZSS)
+            {
+                printf("\tQZSS is Supported\n");
+            }
+            break;
+        case LE_FAULT:
+            printf("Failed to get Supported Constellations. See logs for details\n");
+            break;
+        case LE_BUSY:
+            printf("Failed to get Supported Constellations, service is busy\n");
+            break;
+        case LE_TIMEOUT:
+            printf("Failed to get Supported Constellations, timeout error\n");
+            break;
+        default:
+            printf("Failed to get Supported Constellations, error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
             break;
     }
@@ -2575,6 +2636,14 @@ COMPONENT_INIT
             }
         }
         exit(DoPosFix(fixPeriod));
+    }
+    else if (strcmp(commandPtr, "supportedNmeaSentences") == 0)
+    {
+        exit(GetSupportedNmeaSentences());
+    }
+    else if (strcmp(commandPtr, "supportedConstellations") == 0)
+    {
+        exit(GetSupportedConstellations());
     }
     else if (strcmp(commandPtr, "get") == 0)
     {
