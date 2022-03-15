@@ -741,11 +741,6 @@ le_result_t app_InstallIndividual
        }
     }
 
-    if (system_Snapshot() != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
     system_MarkModified();
 
     // If the app is just in the unpack dir, and not yet moved to /legato/apps/<hash>,
@@ -864,11 +859,6 @@ le_result_t app_RemoveIndividual
         LE_INFO("Ignoring request to remove non-existent app '%s'.", appNamePtr);
 
         return LE_NOT_FOUND;
-    }
-
-    if (system_Snapshot() != LE_OK)
-    {
-        return LE_FAULT;
     }
 
     char delAppName[PATH_MAX] = "";

@@ -220,6 +220,7 @@
 #include "sysStatus.h"
 #include "ima.h"
 #include "fs.h"
+#include "log.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -324,6 +325,31 @@ static bool ShouldNotDaemonize = false;
  **/
 //--------------------------------------------------------------------------------------------------
 static const char* CurrentStartVersion = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Popen to run system command.
+ **/
+//--------------------------------------------------------------------------------------------------
+static int popen_call(const char *cmd)
+{
+    FILE *stream = NULL;
+    int rst = -1;
+
+    stream = popen(cmd, "w");
+    if (stream == NULL)
+    {
+        LE_ERROR("cmd %s running failed", cmd);
+        return rst;
+    }
+
+    rst = pclose(stream);
+    if (WIFEXITED(rst))
+    {
+        rst = WEXITSTATUS(rst);
+    }
+    return rst;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -519,6 +545,7 @@ static void StartFramework
 
     // Connect to the services we need from the framework daemons.
     LE_DEBUG("---- Connecting to services ----");
+    le_log_ConnectToControlDaemon();
     le_cfg_ConnectService();
     logFd_ConnectService();
     le_instStat_ConnectService();
@@ -1286,23 +1313,60 @@ COMPONENT_INIT
     // over appsWriteable to work with Legato
     if (isReadOnly)
     {
-        LE_INFO("System is read-only. Configuring 'appsWriteable' directory");
+        // mount R/W overlay for "current" folder
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_CURRENT_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (mount("overlay", CURRENT_SYSTEM_PATH, "overlay", MS_SILENT,
+                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH ","
+                         "lowerdir=" CURRENT_SYSTEM_PATH ","
+                         "workdir=" TELAF_APP_OVERLAYFS_WK_CURRENT_PATH) != 0)
+        {
+            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
+                     TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH);
+        } else {
+            (void)popen_call(
+               "if type restorecon > /dev/null ; then\n"
+               "    restorecon " CURRENT_SYSTEM_PATH "\n"
+               "fi\n"
+            );
+        }
+
+        // mount R/W overlay for APP install folder
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (mount("overlay", "/legato/apps", "overlay", MS_SILENT,
+                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_APPS_PATH ","
+                         "lowerdir=/legato/apps,"
+                         "workdir=" TELAF_APP_OVERLAYFS_WK_APPS_PATH) != 0)
+        {
+            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
+                     TELAF_APP_OVERLAYFS_UPPER_APPS_PATH);
+        } else {
+            (void)popen_call(
+               "if type restorecon > /dev/null ; then\n"
+               "    restorecon " "/legato/apps" "\n"
+               "fi\n"
+            );
+        }
+
+        // Overlay to /app/appsWriteable, which is the telaf_rw partition
+        LE_INFO("System is read-only. Configuring 'appsWriteable' directory to /app/appsWriteable");
         // Create the directories to deploy the R/W upper layer
-        (void)mkdir( "/tmp/appsWriteable", 0755 );
-        (void)mkdir( "/tmp/appsWriteable_wk", 0755 );
+        (void)mkdir( "/app/appsWriteable", 0755 );
+        (void)mkdir( "/app/appsWriteable_wk", 0755 );
         // Check if the upper layer is already mounted
         if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH "/appsWriteable"))
         {
             // mount an R/W overlay
             if (mount("overlay", CURRENT_SYSTEM_PATH "/appsWriteable", "overlay", MS_SILENT,
-                             "upperdir=/tmp/appsWriteable,"
+                             "upperdir=/app/appsWriteable,"
                              "lowerdir=" CURRENT_SYSTEM_PATH "/appsWriteable,"
-                             "workdir=/tmp/appsWriteable_wk") != 0)
+                             "workdir=/app/appsWriteable_wk") != 0)
             {
                 LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
                          CURRENT_SYSTEM_PATH "/appsWriteable");
             } else {
-                system(
+                (void)popen_call(
                    "if type restorecon > /dev/null ; then\n"
                    "    restorecon " CURRENT_SYSTEM_PATH "/appsWriteable\n"
                    "fi\n"
