@@ -2135,8 +2135,17 @@ le_result_t user_GetUid
     }
 
     uid_t uid;
+    char usernameLowercase[LIMIT_MAX_USER_NAME_BYTES];
 
-    le_result_t result = GetUid(usernamePtr, &uid);
+    // As yocto build system only supports to create user and group with lowercase name, in order to keep
+    // the same behavior, need to convert user name to lowercase when creating from legato.
+    if (StringToLowercase(usernamePtr, usernameLowercase, LIMIT_MAX_USER_NAME_BYTES) != LE_OK)
+    {
+        LE_ERROR("Cound not convert username(%s) to lowercaes", usernamePtr);
+        return LE_FAULT;
+    }
+
+    le_result_t result = GetUid(usernameLowercase, &uid);
 
     // Release the lock on the passwd file.
     le_flock_Close(fd);

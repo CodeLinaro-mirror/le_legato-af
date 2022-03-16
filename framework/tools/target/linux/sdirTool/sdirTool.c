@@ -57,6 +57,12 @@ static const char* ServerIfPtr = NULL;
 //--------------------------------------------------------------------------------------------------
 #define TEMP_FILE                   "/tmp/sdOutput"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The default linux user name for sandbox application.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APP_DEFAULT_USER "appdefault"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -409,15 +415,15 @@ static le_result_t GetServerUid
     }
 
     // Convert the server's user name into a user ID.
-    result = user_GetUid(userName, uidPtr);
-    if (result != LE_OK)
+    if ((LE_OK != user_GetUid(userName, uidPtr)) &&
+        (LE_OK != user_GetUid(APP_DEFAULT_USER, uidPtr)))
     {
         // Note: This can happen if the server application isn't installed yet.
         //       When the server application is installed, sdir load will be run
         //       again and the bindings will be correctly set up at that time.
         if (strncmp(userName, "app", 3) == 0)
         {
-            LE_DEBUG("Couldn't get UID for application '%s'.  Perhaps it is not installed yet?",
+            LE_INFO("Couldn't get UID for application '%s'.  Perhaps it is not installed yet?",
                      userName + 3);
         }
         else
@@ -546,7 +552,6 @@ static le_result_t GetUserUid
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Gets the Unix user ID for the app configuration node that a given configuration iterator
@@ -593,8 +598,8 @@ static le_result_t GetAppUid
     }
 
     // Convert the app user name into a user ID.
-    result = user_GetUid(userName, uidPtr);
-    if (result != LE_OK)
+    if ((user_GetUid(userName, uidPtr) != LE_OK) &&
+        (user_GetUid(APP_DEFAULT_USER, uidPtr) != LE_OK))
     {
         LE_CRIT("Failed to get user ID for user '%s'. (%s)", userName, LE_RESULT_TXT(result));
         return LE_NOT_FOUND;
