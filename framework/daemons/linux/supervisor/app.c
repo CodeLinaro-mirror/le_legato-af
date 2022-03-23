@@ -3714,71 +3714,84 @@ void semodule_Remove
     int result;
     priority = 100;
     int commit = 1;
+    char sepolicyPath[LIMIT_M_PATH_BYTES];
 
-    LE_INFO("Semodule function for remove se policy ..... ");
+    // Get the sepolicy file name.
+    snprintf(sepolicyPath, LIMIT_M_PATH_BYTES, "%s%s%s%s%s", appRef->installDirPath, "/", "read-only/", appRef->name, ".pp");
+    LE_DEBUG(" Sepolicy path for app '%s':\n", sepolicyPath);
 
-    // Semanage handle create
-    sh = semanage_handle_create();
-
-    if (!sh)
+    if (file_Exists(sepolicyPath))
     {
-        LE_ERROR(" Could not create semanage handle\n......");
-        return;
-    }
+        LE_INFO("Semodule function for remove se policy ..... ");
 
-    // Semanage create store if necessary
-    semanage_set_create_store(sh, 1);
+        // Semanage handle create
+        sh = semanage_handle_create();
 
-    // Connect to policy handler
-    semanage_connect(sh);
+        if (!sh)
+        {
+            LE_ERROR(" Could not create semanage handle\n......");
+            return;
+        }
 
-    // Begin transaction
-    semanage_begin_transaction(sh);
+        // Semanage create store if necessary
+        semanage_set_create_store(sh, 1);
 
-    // Semanage set default priority
-    semanage_set_default_priority(sh, priority);
+        // Connect to policy handler
+        semanage_connect(sh);
 
-    LE_INFO(" Attempting to remove module '%s':\n", appRef->name);
-    result = semanage_module_remove(sh, appRef->name);
+        // Begin transaction
+        semanage_begin_transaction(sh);
 
-    if (result == -2)
-    {
-        goto next;
-    }
+        // Semanage set default priority
+        semanage_set_default_priority(sh, priority);
 
-    next:
-    if (commit)
-    {
-        LE_INFO("Committing changes:\n");
-        result = semanage_commit(sh);
-    }
+        LE_INFO(" Attempting to remove module '%s':\n", appRef->name);
+        result = semanage_module_remove(sh, appRef->name);
 
-    if (result < 0)
-    {
-        LE_INFO( "  Failed!\n");
-        goto cleanup;
-    }
+        if (result == -2)
+        {
+            goto next;
+        }
 
-    else if (commit)
-    {
-        LE_DEBUG("Ok: transaction number %d.\n", result);
-    }
+        next:
+        if (commit)
+        {
+            LE_INFO("Committing changes:\n");
+            result = semanage_commit(sh);
+        }
 
-    if (semanage_disconnect(sh) < 0)
-    {
-        LE_INFO( "  Error disconnecting\n");
-        goto cleanup;
-    }
+        if (result < 0)
+        {
+            LE_INFO( "  Failed!\n");
+            goto cleanup;
+        }
 
-    cleanup:
-    if (semanage_is_connected(sh))
-    {
+        else if (commit)
+        {
+            LE_DEBUG("Ok: transaction number %d.\n", result);
+        }
+
         if (semanage_disconnect(sh) < 0)
         {
             LE_INFO( "  Error disconnecting\n");
+            goto cleanup;
         }
+
+        cleanup:
+        if (semanage_is_connected(sh))
+        {
+            if (semanage_disconnect(sh) < 0)
+            {
+                LE_INFO( "  Error disconnecting\n");
+            }
+        }
+        semanage_handle_destroy(sh);
     }
-    semanage_handle_destroy(sh);
+    else
+    {
+        LE_ERROR("Policy package file not found");
+    }
+
 }
 
 
