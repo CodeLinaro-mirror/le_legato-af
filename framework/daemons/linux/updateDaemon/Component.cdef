@@ -26,6 +26,11 @@ requires:
     {
         appCfg
     }
+
+    lib:
+    {
+        lib/libsemanage.so.1
+    }
 }
 
 sources:

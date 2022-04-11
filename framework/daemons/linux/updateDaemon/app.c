@@ -19,6 +19,7 @@
  *         <appName>/
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -40,7 +41,9 @@
 #include "sysPaths.h"
 #include "fileSystem.h"
 #include "ima.h"
-
+#include <semanage/modules.h>
+#include <regex.h>
+#include <sys/mman.h>
 
 static const char* InstallHookScriptPath = "/legato/systems/current/bin/install-hook";
 
@@ -53,6 +56,22 @@ static const char* PreInstallPath = "/legato/apps/%s/read-only/script/pre-instal
 
 static const char* PostInstallPath = "/legato/apps/%s/read-only/script/post-install";
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Domain fixed macro to check before loading the policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define PREFIXDOMAIN "typetransition telaf_admin_t telaf_"
+#define POSTFIXDOMAIN "_exec_t process telaf_"
+#define SELINUX_MODULE_PATH "/legato/apps/%s/read-only/%s.pp"
+#define SEMODULE_PRIO 100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Overlayfs path for dynamic loading policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define SELINUX_PUBLIC_PATH "/data/var_selinux/"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -702,6 +721,411 @@ bool app_IsAppNameValid
     return true;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Overlayfs path for dynamic loading policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define SELINUX_PUBLIC_PATH "/data/var_selinux/"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Domain fixed macro to check before loading the policy
+ */
+//--------------------------------------------------------------------------------------------------
+#define PREFIXDOMAIN "typetransition telaf_admin_t telaf_"
+#define POSTFIXDOMAIN "_exec_t process telaf_"
+#define SELINUX_MODULE_PATH "/legato/apps/%s/read-only/%s.pp"
+#define SEMODULE_PRIO 100
+
+void create_cilPath(const char* seNamePtr, const char* sePathPtr)
+{
+    char createCil[PATH_MAX+256];
+
+    snprintf(createCil, PATH_MAX+256, "cat %s | /usr/libexec/selinux/hll/pp > " SELINUX_PUBLIC_PATH "%s.cil",
+        sePathPtr, seNamePtr);
+    LE_INFO("CIL %s\n", createCil);
+
+    system(createCil);
+}
+
+le_result_t semodule_Extract
+(
+    const char *seNamePtr,
+    void       **dataPtr,
+    size_t     *dataLenPtr
+)
+{
+    semanage_module_info_t *extract_info = NULL;
+    semanage_module_key_t *modkey = NULL;
+    int         retVal;
+    void      *extPtr = NULL;
+    le_result_t result = LE_OK;
+
+    semanage_handle_t *sh = semanage_handle_create();
+    if (!sh)
+    {
+        LE_ERROR("Could not create semanage handle");
+        result = LE_NOT_POSSIBLE;
+        return result;
+    }
+
+    // Semanage create store if necessary
+    semanage_set_create_store(sh, 1);
+
+    // Connect to policy handler
+    semanage_connect(sh);
+
+    retVal = semanage_module_key_create(sh, &modkey);
+    if (retVal != 0) {
+        LE_ERROR("Could not create module key");
+        result = LE_NOT_POSSIBLE;
+        goto cleanup_extract;
+    }
+
+    retVal = semanage_module_key_set_name(sh, modkey, seNamePtr);
+    if (retVal != 0) {
+        LE_ERROR("Could not set module name");
+        result = LE_NOT_POSSIBLE;
+        goto cleanup_extract;
+    }
+
+    // return LE_NOT_FOUND in case that module is not installed
+    retVal = semanage_module_get_module_info(sh, modkey, &extract_info);
+    if (retVal != 0) {
+        LE_ERROR("No %s.pp in semodule list", seNamePtr);
+        result = LE_NOT_FOUND;
+        goto cleanup_extract;
+    }
+
+    retVal  = semanage_module_key_set_priority(sh, modkey, SEMODULE_PRIO);
+    if (retVal != 0) {
+        LE_ERROR("Could not set module priority");
+        result = LE_NOT_POSSIBLE;
+        goto cleanup_extract;
+    }
+
+    retVal = semanage_module_extract(sh, modkey, 0, &extPtr, dataLenPtr, &extract_info);
+    if (retVal != 0) {
+        LE_ERROR("Could not extract %s", seNamePtr);
+        result = LE_NOT_POSSIBLE;
+        goto cleanup_extract;
+    }
+
+    *dataPtr = extPtr;
+
+cleanup_extract:
+    semanage_module_info_destroy(sh, extract_info);
+    free(extract_info);
+
+    semanage_module_key_destroy(sh, modkey);
+    free(modkey);
+
+    if (semanage_is_connected(sh))
+    {
+        if (semanage_disconnect(sh) < 0)
+        {
+            LE_INFO("Error disconnecting semanage");
+        }
+    }
+    semanage_handle_destroy(sh);
+
+    return result;
+}
+
+static int cil_Parser(const char* seNamePtr, const char* sePathPtr)
+{
+    FILE *fp;
+    char finddomainAttr[1024];
+    int retval = 0;
+    char store_cilPath[PATH_MAX];
+    char domainName[PATH_MAX];
+    regex_t re;
+
+    create_cilPath(seNamePtr, sePathPtr);
+
+    snprintf(domainName, PATH_MAX, "%s%s%s%s%s", PREFIXDOMAIN, seNamePtr, POSTFIXDOMAIN, seNamePtr, "_t");
+    if (regcomp(&re, domainName, REG_EXTENDED) !=0)
+    {
+        LE_ERROR("Cannot compile regex for %s", domainName);
+        regfree(&re);
+        return EXIT_FAILURE;
+    }
+
+    snprintf(store_cilPath, PATH_MAX, SELINUX_PUBLIC_PATH"%s.cil", seNamePtr);
+    fp = fopen(store_cilPath,"r");
+    if (fp == 0)
+    {
+        LE_ERROR("Failed to open cil file for %s", store_cilPath);
+        regfree(&re);
+        return EXIT_FAILURE;
+    }
+
+    while ((fgets(finddomainAttr, 1024, fp)) != NULL)
+    {
+        finddomainAttr[strlen(finddomainAttr)-1] = '\0';
+        if ((retval = regexec(&re, finddomainAttr, 0, NULL, 0)) == 0)
+        {
+            LE_INFO("Module Policy check - Done for %s", store_cilPath);
+            regfree(&re);
+            fclose(fp);
+            return EXIT_SUCCESS;
+        }
+    }
+    regfree(&re);
+    fclose(fp);
+    LE_INFO("Module Policy check - Failed for %s", store_cilPath);
+    return EXIT_FAILURE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find and install SELinux module.
+ */
+//--------------------------------------------------------------------------------------------------
+void semodule_Install
+(
+    const char* seNamePtr,
+    const char* sePathPtr
+)
+{
+    int result;
+    int retval;
+    semanage_handle_t *sh = NULL;
+
+    if (!file_Exists(sePathPtr))
+    {
+        LE_INFO("Cannot found: %s", sePathPtr);
+        return;
+    }
+
+    retval = cil_Parser(seNamePtr, sePathPtr);
+    if (retval != EXIT_SUCCESS)
+    {
+        LE_ERROR("Cli parser for %s is failed", sePathPtr);
+        return;
+    }
+
+    sh = semanage_handle_create();
+    if (!sh)
+    {
+        LE_INFO("Could not create semanage handle");
+        return;
+    }
+
+    // Semanage create store if necessary
+    semanage_set_create_store(sh, 1);
+
+    // Connect to policy handler
+    semanage_connect(sh);
+
+    // Begin transaction
+    semanage_begin_transaction(sh);
+
+    // Semanage set default priority
+    semanage_set_default_priority(sh, SEMODULE_PRIO);
+
+    result = semanage_module_install_file(sh, sePathPtr);
+    if (result < 0)
+    {
+        LE_INFO("Install module failes is failed!, result: %d\n", result);
+        goto cleanup;
+    }
+
+    result = semanage_commit(sh);
+    if (result < 0)
+    {
+        LE_INFO("Committing semodule failed!, result: %d\n", result);
+        goto cleanup;
+    }
+
+    if (semanage_disconnect(sh) < 0)
+    {
+        LE_INFO("Error disconnecting\n");
+        goto cleanup;
+    }
+
+    cleanup:
+    if (semanage_is_connected(sh))
+    {
+        if (semanage_disconnect(sh) < 0)
+        {
+            LE_INFO( "Error disconnecting\n");
+        }
+    }
+    semanage_handle_destroy(sh);
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find if system has specified module or not. If have and the context is the same, skip installing
+ * else install it.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t semodule_TryInstall
+(
+    const char* seNamePtr,
+    const char* sePathPtr
+)
+{
+    void      *dataPtr = NULL;
+    size_t    dataLen = 0;
+    //char sePath[LIMIT_M_PATH_BYTES];
+    FILE *fp;
+    struct stat st;
+    void *dataPp = NULL;
+
+    if (!file_Exists(sePathPtr))
+    {
+        LE_DEBUG("Cannot found: %s", sePathPtr);
+        return LE_OK;
+    }
+
+    le_result_t retVal = semodule_Extract(seNamePtr, &dataPtr, &dataLen);
+    if (retVal == LE_NOT_POSSIBLE)
+    {
+        return retVal;
+    }
+    else if (retVal == LE_NOT_FOUND)
+    {
+        goto module_install;
+    }
+    else
+    {
+        LE_INFO("dataPtr: %p, len: %d", dataPtr, dataLen);
+
+        if (stat(sePathPtr, &st) == -1)
+        {
+            LE_ERROR("Fail to get stat for %s", sePathPtr);
+            goto module_cleanup;
+        }
+
+        if (st.st_size != dataLen)
+        {
+            goto module_install;
+        }
+
+        fp = fopen(sePathPtr, "r");
+        if (fp == 0)
+        {
+            LE_ERROR("Failed to open %s", sePathPtr);
+            retVal = LE_OK;
+            goto module_cleanup;
+        }
+
+        dataPp = malloc(dataLen);
+        if (dataPp == NULL)
+        {
+             LE_ERROR("Cannot malloc %d from heap", dataLen);
+             retVal = LE_NOT_POSSIBLE;
+             goto module_cleanup;
+        }
+
+        fread(dataPp, 1, dataLen, fp);
+        if (memcmp(dataPp, dataPtr, dataLen) == 0)
+        {
+            LE_INFO("Module %s.pp does not change, Skip", seNamePtr);
+            retVal = LE_OK;
+            goto module_cleanup;
+        }
+    }
+
+module_install:
+    LE_INFO("Install: %s", sePathPtr);
+    semodule_Install(seNamePtr, sePathPtr);
+    LE_INFO("Install: %s done", sePathPtr);
+
+module_cleanup:
+    if (dataLen > 0)
+    {
+        munmap(dataPtr, dataLen);
+    }
+
+    if (dataPp != NULL)
+    {
+        free(dataPp);
+    }
+
+    return retVal;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find and remove SELinux module.
+ */
+//--------------------------------------------------------------------------------------------------
+void semodule_Remove
+(
+    const char* seNamePtr,
+    const char* sePathPtr
+)
+{
+    int result;
+    semanage_handle_t *sh = NULL;
+    char semoduleName[LIMIT_MAX_APP_NAME_BYTES];
+    le_utf8_Copy(semoduleName, seNamePtr, LIMIT_MAX_APP_NAME_BYTES, NULL);
+
+    if (!file_Exists(sePathPtr))
+    {
+        return;
+    }
+
+    // Semanage handle create
+    sh = semanage_handle_create();
+    if (!sh)
+    {
+        LE_ERROR(" Could not create semanage handle\n......");
+        return;
+    }
+
+    // Semanage create store if necessary
+    semanage_set_create_store(sh, 1);
+
+    // Connect to policy handler
+    semanage_connect(sh);
+
+    // Begin transaction
+    semanage_begin_transaction(sh);
+
+    // Semanage set default priority
+    semanage_set_default_priority(sh, SEMODULE_PRIO);
+
+    result = semanage_module_remove(sh, semoduleName);
+    if (result == -2)
+    {
+        LE_ERROR("Remove module is failed for %s\n", semoduleName);
+        goto cleanup;
+    }
+
+    LE_INFO("Removing %s.pp...\n", semoduleName);
+    result = semanage_commit(sh);
+    if (result < 0)
+    {
+        LE_ERROR( "Commit failed for %s\n", semoduleName);
+        goto cleanup;
+    }
+    LE_INFO("Removing %s.pp done\n", semoduleName);
+
+    if (semanage_disconnect(sh) < 0)
+    {
+        LE_ERROR("Error disconnecting\n");
+        goto cleanup;
+    }
+
+    cleanup:
+    if (semanage_is_connected(sh))
+    {
+        if (semanage_disconnect(sh) < 0)
+        {
+            LE_ERROR("Error disconnecting\n");
+        }
+    }
+    semanage_handle_destroy(sh);
+
+    return;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -820,6 +1244,10 @@ le_result_t app_InstallIndividual
 
     instStat_ReportAppInstall(appNamePtr);
 
+    char sePathPtr[PATH_MAX];
+    snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appMd5Ptr, appNamePtr);
+    semodule_TryInstall(appNamePtr, sePathPtr);
+
     supCtrl_StartApp(appNamePtr);
 
     LE_INFO("App %s <%s> installed", appNamePtr, appMd5Ptr);
@@ -895,6 +1323,10 @@ le_result_t app_RemoveIndividual
     }
 
     sysStatus_MarkTried();
+
+    char sePathPtr[PATH_MAX];
+    snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appHash, appNamePtr);
+    semodule_Remove(appNamePtr, sePathPtr);
 
     instStat_ReportAppUninstall(appNamePtr);
 
