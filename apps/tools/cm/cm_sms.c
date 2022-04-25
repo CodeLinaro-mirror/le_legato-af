@@ -44,8 +44,12 @@ void cm_sms_PrintSmsHelp
             "\tcm sms get <idx>\n\n"
             "To clear stored SMS:\n"
             "\tcm sms clear\n\n"
+            "To delete specific stored SMS:\n"
+            "\tcm sms clear <idx>\n\n"
             "To count stored SMS:\n"
             "\tcm sms count\n\n"
+            "To switch preferred storage:\n"
+            "\tcm sms switch\n\n"
             "Options:\n"
             "\t<number>: Destination number\n"
             "\t<content>: Text is encoded in ASCII format (ISO8859-15) and"
@@ -302,6 +306,8 @@ static void PrintMessage
         LE_ASSERT((LE_OK == res) || (LE_NO_MEMORY == res));
 
         le_sms_Delete(msgRef);
+
+        printf("\n message[%d] is deleted \n", msgContextPtr->msgToPrint);
     }
 
     msgContextPtr->nbSms++;
@@ -539,6 +545,31 @@ static void ClearOneMessage
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Clear specified messages
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_ClearSpecifiedMessage
+(
+    int index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = true,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(PrintMessage, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get and delete message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Clear all messages
  */
 //-------------------------------------------------------------------------------------------------
@@ -689,6 +720,31 @@ static void HandleSendBin
 
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Swith preferred storage between HLOS and SIM
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_SwitchPreferredStorage
+(
+    void
+)
+{
+    le_sms_Storage_t prefStorage = LE_SMS_STORAGE_UNKNOWN;
+    le_sms_GetPreferredStorage(&prefStorage);
+
+    if(prefStorage == LE_SMS_STORAGE_SIM)
+    {
+        le_sms_SetPreferredStorage(LE_SMS_STORAGE_HLOS);
+        printf("\n Switch storage to HLOS\n");
+    }
+    else
+    {
+        le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM);
+        printf("\n Switch storage to SIM\n");
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for SMS service.
@@ -760,12 +816,27 @@ void cm_sms_ProcessSmsCommand
     }
     else if (strcmp(command, "clear") == 0)
     {
-        cm_sms_ClearAllMessages();
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            cm_sms_ClearAllMessages();
+        }
+        else
+        {
+            int index = atoi(indexStr);
+            cm_sms_ClearSpecifiedMessage(index);
+        }
+
         exit(EXIT_SUCCESS);
     }
     else if (strcmp(command, "count") == 0)
     {
         cm_sms_CountAllMessages();
+        exit(EXIT_SUCCESS);
+    }
+    else if (strcmp(command, "switch") == 0)
+    {
+        cm_sms_SwitchPreferredStorage();
         exit(EXIT_SUCCESS);
     }
     else
