@@ -20,8 +20,8 @@ fi
 # For apps, we save the logs in the tmp file-system, (normally a RAM disk.)  However, if the
 # system is about to be rebooted, then we backup any previously stored RAM based logs to flash.
 # The new logs will also be stored into flash.
-FLASH_LOC="/mnt/flash/legato_logs"
-RAM_LOC="/tmp/legato_logs"
+FLASH_LOC="/data/telaf_crash_logs"
+RAM_LOC="/tmp/telaf_crash_logs"
 
 if [ "$3" = "REBOOT" ]
 then
