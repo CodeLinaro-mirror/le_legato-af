@@ -57,12 +57,6 @@ static const char* ServerIfPtr = NULL;
 //--------------------------------------------------------------------------------------------------
 #define TEMP_FILE                   "/tmp/sdOutput"
 
-//--------------------------------------------------------------------------------------------------
-/**
- * The default linux user name for sandbox application.
- */
-//--------------------------------------------------------------------------------------------------
-#define APP_DEFAULT_USER "appdefault"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -336,6 +330,8 @@ static le_result_t GetServerUid
 
     char userName[LIMIT_MAX_USER_NAME_BYTES];
 
+    uid_t uid;
+
     // If an app name is present in the binding config,
     if (le_cfg_NodeExists(i, "app"))
     {
@@ -375,7 +371,21 @@ static le_result_t GetServerUid
         }
         if (!le_cfg_GetBool(i, path, true))
         {
-            *uidPtr = 0;
+            if (!user_IsTafService(appName))
+            {
+                *uidPtr = 0;
+            }
+            else
+            {
+                if(user_GetDefaultIDs(false, &uid, NULL) != LE_OK)
+                {
+                    *uidPtr = 0;
+                }
+                else
+                {
+                    *uidPtr = uid;
+                }
+            }
 
             return LE_OK;
         }
@@ -416,7 +426,7 @@ static le_result_t GetServerUid
 
     // Convert the server's user name into a user ID.
     if ((LE_OK != user_GetUid(userName, uidPtr)) &&
-        (LE_OK != user_GetUid(APP_DEFAULT_USER, uidPtr)))
+        (LE_OK != user_GetDefaultIDs(true, uidPtr, NULL)))
     {
         // Note: This can happen if the server application isn't installed yet.
         //       When the server application is installed, sdir load will be run
@@ -570,6 +580,7 @@ static le_result_t GetAppUid
     le_result_t result;
 
     char appName[LIMIT_MAX_APP_NAME_BYTES];
+    uid_t uid;
     result = le_cfg_GetNodeName(i, "", appName, sizeof(appName));
     if (result != LE_OK)
     {
@@ -584,7 +595,22 @@ static le_result_t GetAppUid
         le_cfg_GetPath(i, "", path, sizeof(path));
         LE_DEBUG("'%s' = <root>", path);
 
-        *uidPtr = 0;
+        if (!user_IsTafService(appName))
+        {
+            *uidPtr = 0;
+        }
+        else
+        {
+            if(user_GetDefaultIDs(false, &uid, NULL) != LE_OK)
+            {
+                *uidPtr = 0;
+            }
+            else
+            {
+                *uidPtr = uid;
+            }
+        }
+
         return LE_OK;
     }
 
@@ -599,7 +625,7 @@ static le_result_t GetAppUid
 
     // Convert the app user name into a user ID.
     if ((user_GetUid(userName, uidPtr) != LE_OK) &&
-        (user_GetUid(APP_DEFAULT_USER, uidPtr) != LE_OK))
+        (user_GetDefaultIDs(true, uidPtr, NULL) != LE_OK))
     {
         LE_CRIT("Failed to get user ID for user '%s'. (%s)", userName, LE_RESULT_TXT(result));
         return LE_NOT_FOUND;

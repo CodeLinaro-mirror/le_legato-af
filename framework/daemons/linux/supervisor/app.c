@@ -166,7 +166,6 @@
 #define CFG_NODE_RESOURCES                               "resources:/"
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of bytes in a permission string for devices.
@@ -191,13 +190,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_SMACK_PERM_BYTES                            7
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The default DAC user name for sandbox application.
- */
-//--------------------------------------------------------------------------------------------------
-#define APP_DEFAULT_USER "appdefault"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -612,12 +604,9 @@ static le_result_t CreateUserAndGroups
 
         // Get the user ID and primary group ID for this app. If fails, get a default uid & gid.
         if ((user_GetIDs(usernameLowercase, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
-            ((user_GetIDs(APP_DEFAULT_USER, &(appRef->uid), &(appRef->gid)) != LE_OK)))
+            ((user_GetDefaultIDs(true, &(appRef->uid), &(appRef->gid)) != LE_OK)))
         {
-            LE_ERROR("Could not get uid and gid for user '%s' and default '%s' for app '%s'.",
-                     usernameLowercase,
-                     APP_DEFAULT_USER,
-                     appRef->name);
+            LE_ERROR("Could not get the uid and gid for sandboxed app '%s'.", appRef->name);
             return LE_FAULT;
         }
 
@@ -627,11 +616,23 @@ static le_result_t CreateUserAndGroups
     // For unsandboxed apps,
     else
     {
-        // The user and group will be "root" (0).
-        appRef->uid = 0;
-        appRef->gid = 0;
-
-        return LE_OK;
+        if (!user_IsTafService(appRef->name))
+        {
+            appRef->uid = 0;
+            appRef->gid = 0;
+        }
+        else
+        {
+            if (user_GetDefaultIDs(false, &(appRef->uid), &(appRef->gid)) != LE_OK)
+            {
+                LE_WARN("Can't get the uid/gid of unsandboxed app '%s', use ROOT instead.",
+                        appRef->name);
+                appRef->uid = 0;
+                appRef->gid = 0;
+            }
+        }
+        // Create the supplementary groups...
+        return CreateSupplementaryGroups(appRef);
     }
 }
 

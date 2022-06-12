@@ -52,6 +52,8 @@ LE_MEM_DEFINE_STATIC_POOL(UserPool, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE, sizeof
 le_mem_PoolRef_t UserPoolRef = NULL;
 
 
+// Unsandboxed app user.
+static uid_t UnsandboxedUserId = 1000;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -275,6 +277,15 @@ void tu_Init
 
     // Create our default root user/tree association.
     CreateUserInfo(0, "root", "system");
+
+    // Create our unsandboxed app user/tree association. Both root user and unsandboxed
+    // app user use "system" tree as their default tree.
+    char userName[LIMIT_MAX_USER_NAME_BYTES] = {0};
+    LE_FATAL_IF(user_GetDefaultIDs(false, &UnsandboxedUserId, NULL) != LE_OK,
+                "Failed to get the unsandboxed app user ID.");
+    LE_FATAL_IF(user_GetName(UnsandboxedUserId, userName, sizeof(userName)) != LE_OK,
+                "Failed to get the unsandboxed app user name.");
+    CreateUserInfo(UnsandboxedUserId, userName, "system");
 }
 
 
@@ -475,8 +486,8 @@ tdb_TreeRef_t tu_GetRequestedTree
 
     // If we got this far, it's because we have a tree that we need to do an ACL lookup on.  So do
     // so now, if that check fails, we simply bail.
-    if (   (ic_CheckTreePermission(permission, userRef->userName, treeName) == false)
-        && (userRef->userId != 0))
+    if ((ic_CheckTreePermission(permission, userRef->userName, treeName) == false)
+        && (userRef->userId != 0) && (userRef->userId != UnsandboxedUserId))
     {
         LE_ERROR("The user, '%s', id: %d, does not have %s permission on the tree '%s'.",
                  userRef->userName,

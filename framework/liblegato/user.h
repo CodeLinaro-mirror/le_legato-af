@@ -123,6 +123,41 @@ LE_FULL_API le_result_t user_GetIDs
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the default user ID and group ID of sandboxed app or unsandboxed app. If there was an error
+ * then the values at uidPtr and gidPtr are undefined.
+ *
+ * @return
+ *      LE_OK if the successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetDefaultIDs
+(
+    bool   isSandboxedApp,      ///< [IN]  True for sandboxed app, otherwise for unsandboxed app.
+    uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for this user.
+                                ///        This can be NULL if the uid is not needed.
+    gid_t* gidPtr               ///< [OUT] Pointer to a location to store the gid for this user.
+                                ///        This can be NULL if the gid is not needed.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the app is a telaf platform service.
+ *
+ * @return
+ *      true if it's a TelAF service.
+ *      false if it's not a TelAF service.
+ */
+//--------------------------------------------------------------------------------------------------
+bool user_IsTafService
+(
+    const char* appNamePtr    ///< [IN] application name.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the user ID from a user name.
  *
  * @return

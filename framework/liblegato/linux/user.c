@@ -75,6 +75,45 @@ static gid_t MaxLocalGid = 60000;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Default user name for sandboxed application
+ */
+//--------------------------------------------------------------------------------------------------
+#define SANDBOXED_APP_USER "appdefault"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default user name for unsandboxed application
+ */
+//--------------------------------------------------------------------------------------------------
+#define UNSANDBOXED_APP_USER "telaf"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * telaf service table
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* TafServiceTable[] =
+{
+    "tafVoiceCallSvc",
+    "tafSimCardSvc",
+    "tafRadioSvc",
+    "tafAudioSvc",
+    "tafLocationSvc",
+    "tafSMSSvc",
+    "tafDataCallSvc",
+    "tafRemoteSimSvc",
+    "tafPMSvc",
+    "tafUpdateSvc",
+    "tafECallSvc",
+    "tafMRCSvc",
+    "tafGpioSvc",
+    "tafNetSvc",
+    "tafKeyStoreSvc",
+    "tafCanSvc"
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The maximum size in bytes of a password entry and group entry.  The initial default values are a
  * best guess.  These values may be updated on initialization.
  */
@@ -2109,6 +2148,54 @@ le_result_t user_GetIDs
     return r;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the default user ID and group ID of sandboxed app or unsandboxed app. If there was an error
+ * then the values at uidPtr and gidPtr are undefined.
+ *
+ * @return
+ *      LE_OK if the successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetDefaultIDs
+(
+    bool   isSandboxedApp,      ///< [IN]  True for sandboxed app, otherwise for unsandboxed app.
+    uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for this user.
+                                ///        This can be NULL if the uid is not needed.
+    gid_t* gidPtr               ///< [OUT] Pointer to a location to store the gid for this user.
+                                ///        This can be NULL if the gid is not needed.
+)
+{
+    const char* userNamePtr = isSandboxedApp ? SANDBOXED_APP_USER : UNSANDBOXED_APP_USER;
+    return user_GetIDs(userNamePtr, uidPtr, gidPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the app is a telaf platform service.
+ *
+ * @return
+ *      true if it's a TelAF service.
+ *      false if it's not a TelAF service.
+ */
+//--------------------------------------------------------------------------------------------------
+bool user_IsTafService
+(
+    const char* appNamePtr    ///< [IN] application name.
+)
+{
+    int i;
+    for (i = 0; i < NUM_ARRAY_MEMBERS(TafServiceTable); i++)
+    {
+        if(strcmp(appNamePtr, TafServiceTable[i]) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

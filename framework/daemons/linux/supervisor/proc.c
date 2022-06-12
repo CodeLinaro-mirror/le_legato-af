@@ -26,6 +26,8 @@
 #include "smack.h"
 #include "sysStatus.h"
 #include "user.h"
+#include <sys/capability.h>
+#include <linux/securebits.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -258,6 +260,175 @@ EnvVar_t;
 #define FAULT_LIMIT_INTERVAL_RESTART                10   // in seconds
 #define FAULT_LIMIT_INTERVAL_RESTART_APP            10   // in seconds
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static table to enumerate the needed capabilities for each deprivileged TelAF service.
+ * This is just a workaround solution.
+ */
+//--------------------------------------------------------------------------------------------------
+#if (_LINUX_CAPABILITY_VERSION_3 != 0x20080522)
+# error Kernel capability version does not match
+#endif
+
+// Effective Inheritable Permitted
+#define NUMBER_OF_CAP_SETS 3
+
+// Capability Version used by TelAF
+#define TELAF_CAPABILITY_VERSION  _LINUX_CAPABILITY_VERSION_3
+#define TELAF_CAPABILITY_U32S     _LINUX_CAPABILITY_U32S_3
+
+// Helper Macros.
+#define raise_cap(x,set)  u[(x)>>5].flat[set] |= (1<<((x)&31))
+
+// Helper struct.
+typedef struct
+{
+    struct __user_cap_header_struct head;
+    union
+    {
+        struct __user_cap_data_struct set;
+        __u32 flat[NUMBER_OF_CAP_SETS];
+    }u[TELAF_CAPABILITY_U32S];
+}
+Cap_t;
+
+// Service Capability list.
+#define MAX_CAP_LIST_SIZE 5
+typedef struct
+{
+    int cap[MAX_CAP_LIST_SIZE];
+    int size;
+}
+CapList_t;
+
+// Service Capability entry.
+typedef struct
+{
+    char serviceName[LIMIT_MAX_APP_NAME_BYTES];  // Telaf Service name
+    CapList_t capList;                           // Capability list
+}
+ServiceCapEntry_t;
+
+static Cap_t TafCapVar = { 0 };
+
+// Service Capability table.
+static ServiceCapEntry_t ServiceCapTable[] =
+{
+    {"tafNetSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, -1, -1, -1}, 2}},
+    {"tafUpdateSvc", {{CAP_WAKE_ALARM, CAP_SYS_RESOURCE, -1, -1, -1}, 2}},
+    {"tafAudioSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafDataCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafECallSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, CAP_NET_RAW, -1, -1}, 3}},
+    {"tafLocationSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafMRCSvc", {{CAP_WAKE_ALARM, CAP_SYS_BOOT, CAP_SYS_RESOURCE, -1, -1}, 3}},
+    {"tafPMSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_BLOCK_SUSPEND, -1, -1}, 3}},
+    {"tafRadioSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafRemoteSimSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafSMSSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafSimCardSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafVoiceCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
+    {"tafGpioSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}},
+    {"tafKeyStoreSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}},
+    {"tafCanSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}}
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Capability list for a given application name.
+ */
+//--------------------------------------------------------------------------------------------------
+static CapList_t* GetCapList
+(
+    const char* appNamePtr
+)
+{
+    int i;
+    for (i = 0; i < NUM_ARRAY_MEMBERS(ServiceCapTable); i++)
+    {
+        if (strcmp(appNamePtr, ServiceCapTable[i].serviceName) == 0)
+        {
+            LE_INFO("Found a cap entry for service '%s'.", ServiceCapTable[i].serviceName);
+            return &(ServiceCapTable[i].capList);
+        }
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure ambient capabilities.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ConfigCapabilities
+(
+    CapList_t* capListPtr
+)
+{
+    if (capListPtr == NULL)
+    {
+        LE_ERROR("Bad parameters.");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Check kernel capability version.
+    TafCapVar.head.version = TELAF_CAPABILITY_VERSION;
+    if (capget(&(TafCapVar.head), NULL) || (TafCapVar.head.version != TELAF_CAPABILITY_VERSION))
+    {
+        LE_ERROR("Unsupported kernel capability version.");
+        return LE_FAULT;
+    }
+
+    // Get current capabilities.
+    if (capget(&(TafCapVar.head), &(TafCapVar.u[0].set)))
+    {
+        LE_ERROR("Failed to get current capabilities.");
+        return LE_FAULT;
+    }
+
+    /* By default the inheritable capability set is empty which prevents ambient capability
+      from setting via prctl() thus we need first add desired capabilities into inheritable set
+      before setting ambient set.
+    */
+    int i;
+    for (i = 0; i < capListPtr->size; ++i)
+    {
+        int value = capListPtr->cap[i];
+        TafCapVar.raise_cap(value, CAP_INHERITABLE);
+    }
+
+    if (capset(&(TafCapVar.head), &(TafCapVar.u[0].set)))
+    {
+        LE_ERROR("Failed to set current capabilities.");
+        return LE_FAULT;
+    }
+
+    /* NOTE the ambient capability set is present only since Linux 4.3. It allows a non-root user
+      process run with any Linux capabilities configured.
+      See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
+    */
+    for (i = 0; i < capListPtr->size; i++)
+    {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, capListPtr->cap[i], 0, 0) == -1)
+        {
+            LE_ERROR("Failed to prctl(PR_CAP_AMBIENT) for cap(%d).", capListPtr->cap[i]);
+            return LE_FAULT;
+        }
+    }
+
+    /* Setting the secure bit of SECBIT_NO_SETUID_FIXUP stops the kernel from adjusting the
+      process's permitted, effective, and ambient capability sets when the thread's effective
+      and filesystem UIDs are switched between zero and nonzero values.
+      See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
+    */
+    if (prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP, 0, 0, 0) == -1)
+    {
+        LE_ERROR("Failed to prctl(PR_SET_SECUREBITS).");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -974,28 +1145,6 @@ static le_result_t GetArgs
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Configure non-sandboxed processes.
- */
-//--------------------------------------------------------------------------------------------------
-static void ConfigNonSandboxedProcess
-(
-    const char* workingDirPtr       ///< [IN] The path to the process's working directory.
-)
-{
-    // Set the working directory for this process.
-    if (chdir(workingDirPtr) != 0)
-    {
-        LE_FATAL("Could not change working directory to '%s'.  %m", workingDirPtr);
-    }
-
-    // NOTE: For now, at least, we run all unsandboxed apps as root to prevent major permissions
-    //       issues when trying to perform system operations, such as changing routing tables.
-    //       Consider using non-root users with capabilities later for another security layer.
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Send the read end of the pipe to the log daemon for logging.  Closes both ends of the local pipe
  * afterwards.
  */
@@ -1135,44 +1284,53 @@ static void CreateLogPipe
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Confines the calling process into the sandbox.  The current working directory will be set to "/"
+ * Confines the calling process into the non sandbox.  The current working directory will be set.
+ *
+ *Confines the calling process into the sandbox.  The current working directory will be set to "/"
  * relative to the sandbox.
  *
  * @note Kills the calling process if there is an error.
  */
 //--------------------------------------------------------------------------------------------------
-static void ConfineProcInSandbox
+static void ConfineProc
 (
-    const char* sandboxRootPtr, ///< [IN] Path to the sandbox root.
+    const char* workingDirPtr, ///< [IN] Path to the sandbox root.
+    bool isSandboxed,          ///< [IN] if the process is sandboxed
     uid_t uid,                  ///< [IN] The user ID the process should be set to.
     gid_t gid,                  ///< [IN] The group ID the process should be set to.
     const gid_t* groupsPtr,     ///< [IN] List of supplementary groups for this process.
     size_t numGroups            ///< [IN] The number of groups in the supplementary groups list.
 )
 {
-    // @Note: The order of the following statements is important and should not be changed carelessly.
+        // Set the working directory for this process.
+        LE_FATAL_IF(chdir(workingDirPtr) != 0,
+                    "Could not change working directory to '%s'.  %m", workingDirPtr);
 
-    // Change working directory.
-    LE_FATAL_IF(chdir(sandboxRootPtr) != 0,
-                "Could not change working directory to '%s'.  %m", sandboxRootPtr);
+        if (isSandboxed)
+        {
+            // Chroot to the sandbox.
+            LE_FATAL_IF(chroot(workingDirPtr) != 0, "Could not chroot to '%s'.  %m", workingDirPtr);
+        }
 
-    // Chroot to the sandbox.
-    LE_FATAL_IF(chroot(sandboxRootPtr) != 0, "Could not chroot to '%s'.  %m", sandboxRootPtr);
+        // Set the supplementary groups for non ROOT user.
+        if (uid != 0)
+        {
+            // Clear our supplementary groups list.
+            LE_FATAL_IF(setgroups(0, NULL) == -1,
+                    "Could not set the supplementary groups list.  %m.");
 
-    // Clear our supplementary groups list.
-    LE_FATAL_IF(setgroups(0, NULL) == -1, "Could not set the supplementary groups list.  %m.");
+            // Populate our supplementary groups list with the provided list.
+            LE_FATAL_IF(setgroups(numGroups, groupsPtr) == -1,
+                    "Could not set the supplementary groups list.  %m.");
+        }
 
-    // Populate our supplementary groups list with the provided list.
-    LE_FATAL_IF(setgroups(numGroups, groupsPtr) == -1,
-                "Could not set the supplementary groups list.  %m.");
+        // Set our process's primary group ID.
+        LE_FATAL_IF(setgid(gid) == -1, "Could not set the group ID.  %m.");
 
-    // Set our process's primary group ID.
-    LE_FATAL_IF(setgid(gid) == -1, "Could not set the group ID.  %m.");
-
-    // Set our process's user ID.  This sets all of our user IDs (real, effective, saved).  This
-    // call also clears all cababilities.  This function in particular MUST be called after all
-    // the previous system calls because once we make this call we will lose root priviledges.
-    LE_FATAL_IF(setuid(uid) == -1, "Could not set the user ID.  %m.");
+        // Set our process's user ID.  This sets all of our user IDs (real, effective, saved).This
+        // call also clears all cababilities.  This function in particular MUST be called after all
+        // the previous system calls because once we make this call we will lose root priviledges.
+        LE_FATAL_IF(setuid(uid) == -1, "Could not set the user ID.  %m.");
 }
 
 
@@ -1329,27 +1487,41 @@ le_result_t proc_Start
 
         SetEnvironmentVariables(envVars, numEnvVars);
 
-        // Setup the process environment.
-        if (app_GetIsSandboxed(procRef->appRef))
-        {
-            // Get the app's supplementary groups list.
-            gid_t groups[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];
-            size_t numGroups = LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS;
+        // Get the app's supplementary groups list.
+        gid_t groups[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];
+        size_t numGroups = LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS;
 
-            LE_FATAL_IF(app_GetSupplementaryGroups(procRef->appRef, groups, &numGroups) != LE_OK,
-                        "Supplementary groups list is too small.");
+        LE_FATAL_IF(app_GetSupplementaryGroups(procRef->appRef, groups, &numGroups) != LE_OK,
+                    "Supplementary groups list is too small.");
 
-            // Sandbox the process.
-            ConfineProcInSandbox(app_GetWorkingDir(procRef->appRef),
-                                app_GetUid(procRef->appRef),
-                                app_GetGid(procRef->appRef),
-                                groups,
-                                numGroups);
-        }
-        else
+        // Set the needed capabilities for those deprivileged TelAF services.
+        if (app_GetUid(procRef->appRef) != 0)
         {
-            ConfigNonSandboxedProcess(app_GetWorkingDir(procRef->appRef));
+            CapList_t defaultCap = {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1};
+            CapList_t* capListPtr = GetCapList(app_GetName(procRef->appRef));
+
+            if (capListPtr == NULL)
+            {
+                // So specified caps, use the default one.
+                capListPtr = &defaultCap;
+            }
+
+            if (LE_OK != ConfigCapabilities(capListPtr))
+            {
+                LE_ERROR("Failed to set capabilities for app '%s'.", app_GetName(procRef->appRef));
+            }
+            else
+            {
+                LE_INFO("Set capablities for app '%s'.", app_GetName(procRef->appRef));
+            }
         }
+
+        ConfineProc(app_GetWorkingDir(procRef->appRef),
+                    app_GetIsSandboxed(procRef->appRef),
+                    app_GetUid(procRef->appRef),
+                    app_GetGid(procRef->appRef),
+                    groups,
+                    numGroups);
 
         if (procRef->blockCallback != NULL)
         {

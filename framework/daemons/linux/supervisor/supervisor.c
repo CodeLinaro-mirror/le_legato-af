@@ -221,6 +221,7 @@
 #include "ima.h"
 #include "fs.h"
 #include "log.h"
+#include "resourceLimits.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -325,6 +326,49 @@ static bool ShouldNotDaemonize = false;
  **/
 //--------------------------------------------------------------------------------------------------
 static const char* CurrentStartVersion = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * DAC permission/owner set entry for a directory for deprivilege-root
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char* dirName;  ///< Directory name.
+    bool createParentDir;///< True create parent directory if it doesn't exist.
+    bool setPerm;   ///< Ture if need grant all permissions.
+    bool setOwner;  ///< True if need set the owner to depreivilege user.
+}SetDACentry_t;
+
+SetDACentry_t FsSetDACTable[] =
+{
+    {.dirName = KS_BASE_PATH, .createParentDir = true, .setPerm = false, .setOwner = true},
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if a given file path has all DAC permissions (0777).
+ */
+//--------------------------------------------------------------------------------------------------
+static bool HasAllDACPermissions
+(
+    const char* filePath
+)
+{
+    struct stat status;
+    mode_t mode;
+
+    if (stat(filePath, &status))
+    {
+        return false;
+    }
+
+    mode = S_IRWXU|S_IRWXG|S_IRWXO;
+    return ((status.st_mode & mode) == mode) ;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1263,6 +1307,63 @@ COMPONENT_INIT
         LE_INFO("Exit current supervisor and shutdown the old start program");
         State = STATE_RESTARTING_START;
         StopSupervisor();
+    }
+
+    // Set the legato resLimits of supervisor as unlimited by default
+    resLim_ProcLimits_t procLimits = {RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY,
+                                      RLIM_INFINITY};
+    resLim_SetProcLimits(&procLimits);
+
+
+    uid_t unsandboxedUserId = 0;
+    gid_t unsandboxedGroupId = 0;
+    // Get the UID and GID for unsandboxed user.
+    LE_FATAL_IF(user_GetDefaultIDs(false, &unsandboxedUserId, &unsandboxedGroupId) != LE_OK,
+                "Failed to get the unsandboxed app user.");
+
+    // Set correct DAC permission/owner for those UBIFS/TMPFS directories used by
+    // TelAF platform services.This is mandotary if depriviledge-root is enabled.
+    // <TBD: shall be put into yocto later>
+
+    for (int i = 0; i < NUM_ARRAY_MEMBERS(FsSetDACTable); i++)
+    {
+        char* dirPtr = strdup(FsSetDACTable[i].dirName);
+        char* pDirPtr = dirname(dirPtr);
+
+        LE_INFO("Checking DAC for '%s'.", FsSetDACTable[i].dirName);
+        // Grant all permissions if setPerm flag is set.
+        if (le_dir_IsDir(FsSetDACTable[i].dirName))
+        {
+            if (FsSetDACTable[i].setPerm && !HasAllDACPermissions(FsSetDACTable[i].dirName))
+            {
+                if(chmod(FsSetDACTable[i].dirName, S_IRWXU|S_IRWXG|S_IRWXO))
+                {
+                    LE_ERROR("Failed to set permission 0777 to '%s'.", FsSetDACTable[i].dirName);
+                }
+            }
+        }
+        else
+        {
+            if (!le_dir_IsDir(pDirPtr) && FsSetDACTable[i].createParentDir &&
+                FsSetDACTable[i].setOwner)
+            {
+                le_dir_MakePath(pDirPtr, S_IRWXU);
+                LE_INFO("Created directory '%s'.", pDirPtr);
+
+                if (chown(pDirPtr, unsandboxedUserId, unsandboxedGroupId))
+                {
+                    LE_ERROR("Failed to chmod() to directory '%s'.", pDirPtr);
+                }
+            }
+        }
+
+        free(dirPtr);
     }
 
     // Create the Legato runtime directory if it doesn't already exist.
