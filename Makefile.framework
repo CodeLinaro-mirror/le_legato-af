@@ -349,7 +349,7 @@ $(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
 		-I$(LEGATO_SYSROOT)/usr/include/$(PYVERSION)                        \
 		-IC                                                                 \
 		$(CFLAGS)                                                           \
-		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib"                    \
+		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib:/legato/systems/current/lib"                    \
 		-L$(LIB_DIR) -llegato -l$(PYVERSION)
 
 $(LEGATO_PY): $(LEGATO_ROOT)/framework/python/liblegato.py $(LEGATO_PY_SO)

@@ -68,29 +68,6 @@ case "$1" in
         # legato library. If not then follow the old way.
         if [ -f $LD_CACHE_SCRIPT_PATH ]; then
             $LD_CACHE_SCRIPT_PATH /legato/systems/current/lib >/dev/null
-        else
-            if [ -z ""`grep -a '^/legato/.*/liblegato.so$' /etc/ld.so.cache` ]; then
-                # On some platforms, the '[ -w ... ]' returns true even it is located to read-only
-                # file system. Protect against by performing the action in read-write and if failed
-                # replay the action in read-only.
-                LDCONFIG=""
-                if [ -w /etc/ld.so.cache ]; then
-                   ldconfig -i /legato/systems/current/lib 2>/dev/null && LDCONFIG="RW"
-                fi
-                if [ "RW" != "$LDCONFIG" ]; then
-                   echo "/etc/ld.so.cache is R/O"
-                   # Update ld.so cache
-                   if [ -f /tmp/ld.so.cache ]; then
-                       umount /etc/ld.so.cache 2>/dev/null
-                   fi
-                   cp /etc/ld.so.cache /tmp/ld.so.cache
-                   ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
-                   mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
-                   if type restorecon > /dev/null ; then
-                       restorecon /etc/ld.so.cache
-                   fi
-                fi
-            fi
         fi
 
         cd /mnt/legato/
