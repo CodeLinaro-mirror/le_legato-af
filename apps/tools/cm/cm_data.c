@@ -707,7 +707,7 @@ void cm_data_StartDataConnection
 
     if (!timeoutPtr)
     {
-        if ( (result = le_mdc_StartSession(profile)) )
+        if((result = taf_mdc_StartSession(profile)))
         {
             HandleResult("Connection Failure", result, true);
         }
@@ -716,7 +716,7 @@ void cm_data_StartDataConnection
     }
     else if (strtol(timeoutPtr, NULL, 10) == -1)
     {
-        if ( (result = le_mdc_StopSession(profile)) )
+        if ( (result = taf_mdc_StopSession(profile)))
         {
             HandleResult("Stop Failure", result, true);
         }
@@ -730,7 +730,7 @@ void cm_data_StartDataConnection
             HandleResult("Add State Handler Failed", result, false);
         }
 
-        if ( (result = le_mdc_StartSessionAsync(profile)) )
+        if ( (result = taf_mdc_StartSessionAsync(profile)) )
         {
             HandleResult("Connection Failure", result, true);
         }
