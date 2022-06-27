@@ -141,6 +141,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
          "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
          "\t\t\t\t\t- LeapSeconds   --> Current and next leap seconds\n"
+         "\t\t\t\t\t- GpsLeapSeconds --> UTC leap seconds in advance in seconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
          "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
          "\t\t\t\t\t                    Speed accuracy)\n"
@@ -918,6 +919,10 @@ static int GetConstellation
                                                               printf("GALILEO not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("QZSS activated\n") :
                                                               printf("QZSS not activated\n");
+    }
+    else if(result == LE_NOT_PERMITTED)
+    {
+        printf("GNSS is not in ready state!\n");
     }
     else
     {
@@ -1739,6 +1744,47 @@ static int GetLeapSeconds
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets position sample's UTC leap seconds in advance
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGpsLeapSeconds
+(
+   le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint8_t leapSecondsPtr;
+    le_result_t result;
+    result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSecondsPtr);
+    if (LE_OK == result)
+    {
+        printf("Gps Leap seconds : ");
+        if (leapSecondsPtr != UINT8_MAX)
+        {
+            printf("%"PRIu8"s\n", leapSecondsPtr);
+        }
+        else
+        {
+            printf("\n");
+        }
+    }
+    else if(LE_TIMEOUT == result)
+    {
+        printf("Timeout for getting Gps leap seconds\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets the date of updated location.
  *
  * @return
@@ -2302,6 +2348,10 @@ static void PositionHandlerFunction
             status = GetPosInfo(positionSampleRef);
         }
 
+        else if (strcmp(ParamsName, "GpsLeapSeconds") == 0)
+        {
+            status = GetGpsLeapSeconds(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
     }
@@ -2461,6 +2511,7 @@ static void GetGnssParams
              (0 == strcmp(params, "satInfo"))     ||
              (0 == strcmp(params, "satStat"))     ||
              (0 == strcmp(params, "dop"))         ||
+             (0 == strcmp(params,"GpsLeapSeconds"))||
              (0 == strcmp(params, "posInfo")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
