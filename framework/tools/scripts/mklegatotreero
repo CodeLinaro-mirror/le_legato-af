@@ -93,7 +93,9 @@ cd "${OUTPUT_DIR}/systems/current/appsWriteable"
 
 # Make the bin and lib directory
 for f in ../apps/*; do
-    mkdir `basename $f` `basename $f`/bin `basename $f`/lib
+# Give permission to non-root process so that it can generate coredump file in their
+# root working directory if getting crashed.
+    mkdir -m 0777 `basename $f` `basename $f`/bin `basename $f`/lib
 done
 
 # Perform some move of file and make useful links
