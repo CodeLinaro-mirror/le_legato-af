@@ -897,7 +897,7 @@ static le_result_t SetDefaultDevicePermissions
     return LE_OK;
 }
 
-
+#ifdef LE_CONFIG_ENABLE_SMACK
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets SMACK rules for an application based on its bindings.
@@ -1084,7 +1084,7 @@ static void SetDefaultSmackRules
         }
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1512,6 +1512,7 @@ static le_result_t SetSmackRules
     // Clear resource
     CleanupResourceCfg(appRef);
 
+#ifdef LE_CONFIG_ENABLE_SMACK
     // Get the app label.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
@@ -1519,6 +1520,7 @@ static le_result_t SetSmackRules
     SetDefaultSmackRules(appRef, appLabel);
 
     SetSmackRulesForBindings(appRef, appLabel);
+#endif
 
     le_result_t result = SetDefaultDevicePermissions(appRef);
     if (result != LE_OK)
