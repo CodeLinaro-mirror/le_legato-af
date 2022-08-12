@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        le_fwupdate.api  [manual-start]
+        le_fwupdate = taf_fwupdate.api  [manual-start]
     }
 }
 

@@ -10,7 +10,7 @@ executables:
 {
 #if ${LE_CONFIG_LINUX} = y
     cm = (cm)
-    //fwupdate = (fwupdate)
+    fwupdate = (fwupdate)
     //secstore = (secstore)
     //pmtool = (pmtool)
     gnss = (gnss)
@@ -43,7 +43,7 @@ bindings:
     gnss.gnss.le_pos -> tafLocationSvc.taf_pos
     gnss.gnss.le_posCtrl -> tafLocationSvc.taf_posCtrl
 
-    // fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
+    fwupdate.fwupdate.le_fwupdate -> tafUpdateSvc.taf_fwupdate
 
     //secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
 
