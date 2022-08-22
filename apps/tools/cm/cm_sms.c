@@ -42,6 +42,16 @@ void cm_sms_PrintSmsHelp
             "\tcm sms list\n\n"
             "To get specific stored SMS:\n"
             "\tcm sms get <idx>\n\n"
+            "To get statuses of specific stored SMS:\n"
+            "\tcm sms status <idx>\n\n"
+            "To lock specific stored SMS:\n"
+            "\tcm sms lock <idx>\n\n"
+            "To unlock specific stored SMS:\n"
+            "\tcm sms unlock <idx>\n\n"
+            "To mark specific stored SMS as 'read':\n"
+            "\tcm sms mark <idx>\n\n"
+            "To mark specific stored SMS as 'unread':\n"
+            "\tcm sms unmark <idx>\n\n"
             "To clear stored SMS:\n"
             "\tcm sms clear\n\n"
             "To delete specific stored SMS:\n"
@@ -315,6 +325,156 @@ static void PrintMessage
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Message handler used to lock a single message
+ */
+//-------------------------------------------------------------------------------------------------
+static void LockMessage
+(
+    le_sms_MsgRef_t msgRef, ///< [IN] Message ref
+    void* contextPtr        ///< [IN] Context
+)
+{
+    PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
+
+    if ( (msgContextPtr->msgToPrint != -1) &&
+         (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
+    {
+        /* Skipping message */
+        msgContextPtr->nbSms++;
+        return;
+    }
+
+    le_result_t res = le_sms_LockFromStorage(msgRef);
+
+    if(res == LE_OK)
+    {
+        printf("Lock message successfully\n");
+    }
+    else
+    {
+        printf("Lock message unsuccessfully (%d)\n", res);
+    }
+
+    msgContextPtr->nbSms++;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Message handler used to unlock a single message
+ */
+//-------------------------------------------------------------------------------------------------
+static void UnlockMessage
+(
+    le_sms_MsgRef_t msgRef, ///< [IN] Message ref
+    void* contextPtr        ///< [IN] Context
+)
+{
+    PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
+
+    if ( (msgContextPtr->msgToPrint != -1) &&
+         (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
+    {
+        /* Skipping message */
+        msgContextPtr->nbSms++;
+        return;
+    }
+
+    le_result_t res = le_sms_UnlockFromStorage(msgRef);
+
+    if(res == LE_OK)
+    {
+        printf("Unlock message successfully\n");
+    }
+    else
+    {
+        printf("Unlock message unsuccessfully (%d)\n", res);
+    }
+
+    msgContextPtr->nbSms++;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Message handler used to mark a single message as 'read'
+ */
+//-------------------------------------------------------------------------------------------------
+static void MarkReadMessage
+(
+    le_sms_MsgRef_t msgRef, ///< [IN] Message ref
+    void* contextPtr        ///< [IN] Context
+)
+{
+    PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
+
+    if ( (msgContextPtr->msgToPrint != -1) &&
+         (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
+    {
+        /* Skipping message */
+        msgContextPtr->nbSms++;
+        return;
+    }
+
+    le_sms_MarkRead(msgRef);
+
+    msgContextPtr->nbSms++;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Message handler used to mark a single message as 'unread'
+ */
+//-------------------------------------------------------------------------------------------------
+static void MarkUnreadMessage
+(
+    le_sms_MsgRef_t msgRef, ///< [IN] Message ref
+    void* contextPtr        ///< [IN] Context
+)
+{
+    PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
+
+    if ( (msgContextPtr->msgToPrint != -1) &&
+         (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
+    {
+        /* Skipping message */
+        msgContextPtr->nbSms++;
+        return;
+    }
+
+    le_sms_MarkUnread(msgRef);
+
+    msgContextPtr->nbSms++;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Message handler used to get a single message statuses
+ */
+//-------------------------------------------------------------------------------------------------
+static void GetStatus
+(
+    le_sms_MsgRef_t msgRef, ///< [IN] Message ref
+    void* contextPtr        ///< [IN] Context
+)
+{
+    PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
+
+    if ( (msgContextPtr->msgToPrint != -1) &&
+         (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
+    {
+        /* Skipping message */
+        msgContextPtr->nbSms++;
+        return;
+    }
+
+    printf("--[%2u]---------------------------------------------------------------\n", msgContextPtr->nbSms);
+    printf("%s \n", le_sms_GetLockStatus(msgRef) == LE_SMS_LKSTS_LOCKED ? "LOCK" : "UNLOCK");
+    printf("%s \n", le_sms_GetReadStatus(msgRef) == LE_SMS_RXSTS_READ ? "READ" : "UNREAD");
+
+    msgContextPtr->nbSms++;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Monitor incoming messages.
  *
  * @warning Doesn't return.
@@ -521,6 +681,131 @@ void cm_sms_GetMessage
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Read one message status
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_GetMessageStatus
+(
+    int index       ///< [IN] Message index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = false,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(GetStatus, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Lock one message
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_LockMessage
+(
+    int index       ///< [IN] Message index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = false,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(LockMessage, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Unlock one message
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_UnlockMessage
+(
+    int index       ///< [IN] Message index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = false,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(UnlockMessage, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Mark one message as 'read'
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_MarkReadMessage
+(
+    int index       ///< [IN] Message index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = false,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(MarkReadMessage, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Mark one message as 'unread'
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_MarkUnreadMessage
+(
+    int index       ///< [IN] Message index
+)
+{
+    PrintMessageContext_t context = {
+        .nbSms = 0,
+        .shouldDeleteMessages = false,
+        .msgToPrint = index,
+    };
+
+    ForEachMessage(MarkUnreadMessage, &context);
+
+    if (context.nbSms <= index)
+    {
+        fprintf(stderr, "Unable to get message %d\n", index);
+        exit(EXIT_FAILURE);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Callback function used by cm_sms_ClearAllMessages to clear one message.
  */
 //-------------------------------------------------------------------------------------------------
@@ -660,7 +945,7 @@ static void HandleSendBin
         printf("Limiting to %d SMS\n", maxCountSms);
     }
 
-    if (0 == strcmp(filePath, "-"))
+    if (0 == strncmp(filePath, "-", sizeof("-")))
     {
         printf("From stdin ...\n");
         filePtr = stdin;
@@ -713,7 +998,7 @@ static void HandleSendBin
     }
     while ((contentLen > 0) && (index < maxCountSms));
 
-    if (0 != strcmp(filePath, "-"))
+    if (0 != strncmp(filePath, "-", sizeof("-")))
     {
         fclose(filePtr);
     }
@@ -735,13 +1020,27 @@ void cm_sms_SwitchPreferredStorage
 
     if(prefStorage == LE_SMS_STORAGE_SIM)
     {
-        le_sms_SetPreferredStorage(LE_SMS_STORAGE_HLOS);
-        printf("\n Switch storage to HLOS\n");
+        le_result_t res = le_sms_SetPreferredStorage(LE_SMS_STORAGE_HLOS);
+        if(res == LE_OK)
+        {
+            printf("\n Switch storage to HLOS\n");
+        }
+        else
+        {
+            printf("\n Switch storage unsuccessfully\n");
+        }
     }
     else
     {
-        le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM);
-        printf("\n Switch storage to SIM\n");
+        le_result_t res = le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM);
+        if(res == LE_OK)
+        {
+            printf("\n Switch storage to SIM\n");
+        }
+        else
+        {
+            printf("\n Switch storage unsuccessfully\n");
+        }
     }
 }
 
@@ -757,16 +1056,16 @@ void cm_sms_ProcessSmsCommand
 )
 {
 
-    if (strcmp(command, "help") == 0)
+    if (strncmp(command, "help", sizeof("help")) == 0)
     {
         cm_sms_PrintSmsHelp();
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "monitor") == 0)
+    else if (strncmp(command, "monitor", sizeof("monitor")) == 0)
     {
         cm_sms_Monitor();
     }
-    else if (strcmp(command, "send") == 0)
+    else if (strncmp(command, "send", sizeof("send")) == 0)
     {
         cm_cmn_CheckEnoughParams(2, numArgs, "Destination or content missing. e.g. cm sms send <number> <content>");
 
@@ -787,19 +1086,19 @@ void cm_sms_ProcessSmsCommand
 
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "sendbin") == 0)
+    else if (strncmp(command, "sendbin", sizeof("sendbin")) == 0)
     {
         cm_cmn_CheckEnoughParams(2, numArgs, "Destination or content missing. e.g. cm sms sendbin <number> <file> <optional max sms>");
 
         HandleSendBin(numArgs);
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "list") == 0)
+    else if (strncmp(command, "list", sizeof("list")) == 0)
     {
         cm_sms_ListAllMessages();
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "get") == 0)
+    else if (strncmp(command, "get", sizeof("get")) == 0)
     {
         cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms get <idx>");
 
@@ -814,7 +1113,82 @@ void cm_sms_ProcessSmsCommand
         cm_sms_GetMessage(index);
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "clear") == 0)
+    else if (strncmp(command, "mark", sizeof("mark")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms mark <idx>");
+
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int index = atoi(indexStr);
+
+        cm_sms_MarkReadMessage(index);
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "unmark", sizeof("unmark")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms unmark <idx>");
+
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int index = atoi(indexStr);
+
+        cm_sms_MarkUnreadMessage(index);
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "lock", sizeof("lock")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms lock <idx>");
+
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int index = atoi(indexStr);
+
+        cm_sms_LockMessage(index);
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "unlock", sizeof("unlock")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms unlock <idx>");
+
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int index = atoi(indexStr);
+
+        cm_sms_UnlockMessage(index);
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "status", sizeof("status")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms status <idx>");
+
+        const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int index = atoi(indexStr);
+
+        cm_sms_GetMessageStatus(index);
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "clear", sizeof("clear")) == 0)
     {
         const char* indexStr = le_arg_GetArg(2);
         if (NULL == indexStr)
@@ -829,12 +1203,12 @@ void cm_sms_ProcessSmsCommand
 
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "count") == 0)
+    else if (strncmp(command, "count", sizeof("count")) == 0)
     {
         cm_sms_CountAllMessages();
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "switch") == 0)
+    else if (strncmp(command, "switch", sizeof("switch")) == 0)
     {
         cm_sms_SwitchPreferredStorage();
         exit(EXIT_SUCCESS);
