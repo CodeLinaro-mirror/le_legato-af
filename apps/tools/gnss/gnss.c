@@ -441,6 +441,9 @@ static int Restart
         case LE_FAULT:
             printf("Failed to do '%s' restart. See logs for details\n", restartTypePtr);
             break;
+        case LE_UNSUPPORTED:
+            printf("Not Supported!\n");
+            break;
         default:
             printf("Invalid status\n");
             break;
@@ -487,7 +490,7 @@ static int SetAcquisitionRate
             printf("Request is not supported\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"ready\" state\n");
+            printf("GNSS device is not in \"active\" state\n");
             break;
         case LE_TIMEOUT:
             printf("Timeout error\n");
@@ -628,7 +631,7 @@ static int SetConstellation
             printf("Setting constellation %s is not supported\n", constellationStr);
             break;
         case LE_NOT_PERMITTED:
-            printf("The GNSS device is not initialized, disabled or active. See logs for  \
+            printf("The GNSS device is not initialized, disabled or ready. See logs for  \
                     details\n");
             break;
         case LE_FAULT:
@@ -794,6 +797,9 @@ static int SetNmeaSentences
         case LE_TIMEOUT:
             printf("Failed to set enabled NMEA sentences, timeout error\n");
             break;
+       case LE_NOT_PERMITTED:
+            printf("GNSS is not in active state!\n");
+            break;
         default:
             printf("Failed to set enabled NMEA sentences, error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
@@ -917,12 +923,14 @@ static int GetConstellation
                                                               printf("BEIDOU not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("GALILEO activated\n") :
                                                               printf("GALILEO not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("SBAS activated\n") :
+                                                              printf("SBAS not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("QZSS activated\n") :
                                                               printf("QZSS not activated\n");
     }
     else if(result == LE_NOT_PERMITTED)
     {
-        printf("GNSS is not in ready state!\n");
+        printf("GNSS is not in active state!\n");
     }
     else
     {
@@ -1010,7 +1018,7 @@ static int GetAcquisitionRate
             printf("Failed to get acquisition rate. See logs for details\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"ready\" state\n");
+            printf("GNSS device is not in \"active\" state\n");
             break;
         default:
             printf("Invalid status\n");
@@ -1048,6 +1056,9 @@ static int GetMinElevation
             break;
         case LE_UNSUPPORTED:
             printf("Request not supported\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Active\" state\n");
             break;
         default:
             printf("Invalid status\n");
@@ -1188,6 +1199,9 @@ static int GetNmeaSentences
         case LE_TIMEOUT:
             printf("Failed to get enabled NMEA sentences, timeout error\n");
             break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS is not in active state!\n");
+            break;
         default:
             printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
@@ -1276,6 +1290,9 @@ static int GetSupportedNmeaSentences
         case LE_TIMEOUT:
             printf("Failed to get Supported NMEA sentences, timeout error\n");
             break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS is not in Ready state!\n");
+            break;
         default:
             printf("Failed to get Supported NMEA sentences, error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
@@ -1335,6 +1352,9 @@ static int GetSupportedConstellations
             break;
         case LE_TIMEOUT:
             printf("Failed to get Supported Constellations, timeout error\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS is not in ready state!\n");
             break;
         default:
             printf("Failed to get Supported Constellations, error %d (%s)\n",
@@ -1733,6 +1753,10 @@ static int GetLeapSeconds
     else if (LE_TIMEOUT == result)
     {
         printf("Timeout for getting next leap second event.\n");
+    }
+    else if (LE_UNSUPPORTED == result)
+    {
+       printf("Not Supported !\n");
     }
     else
     {
