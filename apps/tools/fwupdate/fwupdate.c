@@ -181,6 +181,7 @@ static le_result_t DownloadFirmware
     const char* fileNamePtr    ///< Name of file containing firmware image
 )
 {
+#if 0
     int fd;
 
     if ( strcmp(fileNamePtr, "-") == 0 )
@@ -223,6 +224,8 @@ static le_result_t DownloadFirmware
     }
 
     return LE_OK;
+#endif
+    return LE_UNSUPPORTED;
 }
 
 
@@ -257,6 +260,7 @@ static le_result_t QueryVersion
         result = LE_FAULT;
     }
 
+#if 0
     if ( le_fwupdate_GetBootloaderVersion(version, sizeof(version)) == LE_OK )
     {
         printf("Bootloader Version: %s\n", version);
@@ -265,6 +269,7 @@ static le_result_t QueryVersion
     {
         result = LE_FAULT;
     }
+#endif
 
     if ( uname(&linuxInfo) == 0 )
     {
@@ -294,7 +299,8 @@ static le_result_t InstallFirmware
 {
     TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
-    printf("Install the firmware, the system will reboot ...\n");
+    printf("Install the firmware ...\n");
+
     return le_fwupdate_Install();
 }
 
@@ -312,6 +318,7 @@ static le_result_t CheckStatus
     void
 )
 {
+#if 0
     le_fwupdate_UpdateStatus_t status;
     char statusStr[LE_FWUPDATE_STATUS_LABEL_LENGTH_MAX];
 
@@ -331,6 +338,8 @@ static le_result_t CheckStatus
 
     printf("Update status: OK.\n");
     return LE_OK;
+#endif
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -348,6 +357,7 @@ static le_result_t MarkGoodFirmware
     void
 )
 {
+#if 0
     bool isSystemGood;
     le_result_t result;
 
@@ -360,6 +370,8 @@ static le_result_t MarkGoodFirmware
     }
 
     return le_fwupdate_MarkGood();
+#endif
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -376,6 +388,7 @@ static le_result_t FullInstallFirmware
     const char* fileNamePtr    ///< Name of file containing firmware image
 )
 {
+#if 0
     le_result_t result;
 
     TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
@@ -394,6 +407,8 @@ static le_result_t FullInstallFirmware
     }
 
     return result;
+#endif
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
