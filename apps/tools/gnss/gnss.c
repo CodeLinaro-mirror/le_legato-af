@@ -5,6 +5,7 @@
  * Tool to debug/monitor GNSS device.
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved
  */
 //-------------------------------------------------------------------------------------------------
 
@@ -53,7 +54,7 @@
 #define CONSTELLATION_GLONASS       0x2
 #define CONSTELLATION_BEIDOU        0x4
 #define CONSTELLATION_GALILEO       0x8
-#define CONSTELLATION_UNUSED        0x10  // not supported : this constellation cannot be set.
+#define CONSTELLATION_SBAS          0x10  //TelSDK supported this constellation
 #define CONSTELLATION_QZSS          0x20
 // @}
 
@@ -93,11 +94,17 @@ void PrintGnssHelp
          "\t\t\tgnss get <parameter>\n"
          "\t\t\tgnss get posInfo\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
-         "\t\t\tgnss set constArea <Constellation> <ConstellationArea>\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
+         "\t\t\tgnss set startMode <StartMode>\n"
+         "\t\t\t\t  be as follows:\n"
+         "\t\t\t\t\t- 0 ---> HOT\n"
+         "\t\t\t\t\t- 1 ---> WARM\n"
+         "\t\t\t\t\t- 2 ---> COLD\n"
+         "\t\t\t\t\t- 3 ---> FACTORY\n"
+         "\t\t\t\t\t- 4 ---> UNKNOWN\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n\n"
          "\t\tDESCRIPTION:\n"
          "\t\t\tgnss help\n"
@@ -129,7 +136,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
-         "\t\t\t\t\t- constArea     --> Area for each constellation\n"
+         "\t\t\t\t\t- magDev        --> Magnitude deviation\n"
+         "\t\t\t\t\t- elliUnc       --> Elliptical Uncertainity\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
@@ -163,24 +171,10 @@ void PrintGnssHelp
          "\t\t\t\t\t- 2 ---> GLONASS\n"
          "\t\t\t\t\t- 4 ---> BEIDOU\n"
          "\t\t\t\t\t- 8 ---> GALILEO\n"
-         "\t\t\t\t\t- 16 --> Unused\n"
+         "\t\t\t\t\t- 16 --> SBAS\n"
          "\t\t\t\t\t- 32 --> QZSS\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t3 for GPS+GLONASS, 47 for GPS+GLONASS+BEIDOU+GALILEO+QZSS\n\n"
-         "\t\t\tgnss set constArea <Constellation> <ConstellationArea>\n"
-         "\t\t\t\t- Used to set constellation area. Allowed when device in 'ready' state. May\n"
-         "\t\t\t\t  require platform reboot, please look platform documentation for details.\n"
-         "\t\t\t\t  Constellation can be as follows:\n"
-         "\t\t\t\t\t- 1 ---> GPS\n"
-         "\t\t\t\t\t- 2 ---> Unused\n"
-         "\t\t\t\t\t- 3 ---> GLONASS\n"
-         "\t\t\t\t\t- 4 ---> GALILEO\n"
-         "\t\t\t\t\t- 5 ---> BEIDOU\n"
-         "\t\t\t\t\t- 6 ---> QZSS\n"
-         "\t\t\t\t  ConstellationArea can be as follows:\n"
-         "\t\t\t\t\t- 0 ---> UNSET_AREA\n"
-         "\t\t\t\t\t- 1 ---> WORLDWIDE_AREA\n"
-         "\t\t\t\t\t- 2 ---> OUTSIDE_US_AREA\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
          "\t\t\t\t\t- alone -----> Standalone agps mode\n"
@@ -539,8 +533,61 @@ static int SetMinElevation
         case LE_UNSUPPORTED:
             printf("Setting the minimum elevation is not supported\n");
             break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Active\" state\n");
+            break;
         case LE_OUT_OF_RANGE:
             printf("The minimum elevation is above range\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function starts the GNSS device in the specified start mode.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int StartMode
+(
+    const char* startModePtr           ///< [IN] Start mode
+)
+{
+    char *end;
+    uint32_t mode = strtoul(startModePtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad mode : %s\n", startModePtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_StartMode(mode);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set the specified start Mode\n");
+            break;
+        case LE_DUPLICATE:
+            printf("The GNSS device is already in Active State\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter to set StartMode\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready State\n");
             break;
         default:
             printf("Invalid status\n");
@@ -602,6 +649,12 @@ static int SetConstellation
         constellationSum -= CONSTELLATION_GALILEO;
         strncat(constellationStr, "GALILEO ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
+    if (constellationSum & CONSTELLATION_SBAS)
+    {
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_SBAS;
+        constellationSum -= CONSTELLATION_SBAS;
+        le_utf8_Append(constellationStr, "SBAS ", sizeof(constellationStr), NULL);
+    }
     if (constellationSum & CONSTELLATION_QZSS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
@@ -645,6 +698,7 @@ static int SetConstellation
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+#if 0
 //-------------------------------------------------------------------------------------------------
 /**
  * This function sets the area for a given constellation
@@ -700,6 +754,7 @@ static int SetConstellationArea
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+#endif
 
 #if 0
 //-------------------------------------------------------------------------------------------------
@@ -941,6 +996,7 @@ static int GetConstellation
 }
 
 
+#if 0
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the area of each constellation of gnss device.
@@ -992,6 +1048,7 @@ static int GetConstellationArea
     return EXIT_SUCCESS;
 }
 
+#endif
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets gnss device acquisition rate.
@@ -1809,6 +1866,80 @@ static int GetGpsLeapSeconds
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets position he position sample's magnetic deviation
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetMagneticDeviation
+(
+   le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    int32_t magneticDeviationPtr ;
+    le_result_t result;
+    result = le_gnss_GetMagneticDeviation(positionSampleRef, &magneticDeviationPtr);
+    if (LE_OK == result)
+    {
+        printf("Magnetic Deviation : ");
+        if (magneticDeviationPtr != INT32_MAX)
+        {
+            printf("%d\n", magneticDeviationPtr);
+        }
+        else
+        {
+            printf("\n");
+        }
+    }
+    else if(LE_TIMEOUT == result)
+    {
+        printf("Timeout for getting Magnetic Deviation\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+static int GetEllipticalUncertainty
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t horUncEllipseSemiMajorPtr;
+    uint32_t horUncEllipseSemiMinorPtr;
+    uint8_t  horConfidencePtr;
+
+    le_result_t result = le_gnss_GetEllipticalUncertainty( positionSampleRef,
+                                                     &horUncEllipseSemiMajorPtr,
+                                                     &horUncEllipseSemiMinorPtr,
+                                                     &horConfidencePtr);
+    if (result == LE_OK)
+    {
+        printf("HorizontalUncertainty SemiMajor: %.2fm/s\n",(float)horUncEllipseSemiMajorPtr);
+        printf("HorizontalUncertainty SemiMinor: %.2fm/s\n",(float)horUncEllipseSemiMinorPtr);
+        printf("Horizontal Confidence level: %d%%\n",horConfidencePtr);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("HorizontalUncertainty invalid [%u, %u %u]\n",
+                horUncEllipseSemiMajorPtr,
+                horUncEllipseSemiMinorPtr,
+                horConfidencePtr);
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets the date of updated location.
  *
  * @return
@@ -2376,6 +2507,14 @@ static void PositionHandlerFunction
         {
             status = GetGpsLeapSeconds(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "magDev") == 0)
+        {
+            status = GetMagneticDeviation(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "elliUnc") == 0)
+        {
+            status = GetEllipticalUncertainty(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
     }
@@ -2505,10 +2644,12 @@ static void GetGnssParams
     {
         exit(GetConstellation());
     }
+    #if 0
     else if (0 == strcmp(params, "constArea"))
     {
         exit(GetConstellationArea());
     }
+    #endif
     else if (0 == strcmp(params, "nmeaSentences"))
     {
         exit(GetNmeaSentences());
@@ -2535,6 +2676,8 @@ static void GetGnssParams
              (0 == strcmp(params, "satInfo"))     ||
              (0 == strcmp(params, "satStat"))     ||
              (0 == strcmp(params, "dop"))         ||
+             (0 == strcmp(params, "magDev"))      ||
+             (0 == strcmp(params, "elliUnc"))     ||
              (0 == strcmp(params,"GpsLeapSeconds"))||
              (0 == strcmp(params, "posInfo")))
     {
@@ -2581,6 +2724,7 @@ static int SetGnssParams
     {
         status = SetConstellation(argValPtr);
     }
+    #if 0
     else if (strcmp(argNamePtr, "constArea") == 0)
     {
         if (NULL == arg2ValPtr)
@@ -2590,6 +2734,7 @@ static int SetGnssParams
         }
         status = SetConstellationArea(argValPtr, arg2ValPtr);
     }
+    #endif
     else if (strcmp(argNamePtr, "acqRate") == 0)
     {
         status = SetAcquisitionRate(argValPtr);
@@ -2605,6 +2750,10 @@ static int SetGnssParams
     else if (0 == strcmp(argNamePtr, "minElevation"))
     {
         status = SetMinElevation(argValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "startMode"))
+    {
+       status = StartMode(argValPtr);
     }
     else
     {
