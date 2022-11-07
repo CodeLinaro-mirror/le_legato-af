@@ -344,6 +344,7 @@ typedef struct
 SetDACentry_t FsSetDACTable[] =
 {
     {.dirName = KS_BASE_PATH, .createParentDir = true, .setPerm = false, .setOwner = true},
+    {.dirName = FSC_BASE_PATH, .createParentDir = true, .setPerm = false, .setOwner = true},
 };
 
 
