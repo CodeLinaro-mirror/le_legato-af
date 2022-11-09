@@ -1705,8 +1705,11 @@ void _le_thread_InitLegatoThreadData
     LE_FATAL_IF(ThreadPool == NULL,
                 "Legato C Runtime Library (liblegato) has not been initialized!");
 
-    LE_FATAL_IF(pthread_getspecific(ThreadLocalDataKey) != NULL,
-                "Legato thread-specific data initialized more than once!");
+    if (pthread_getspecific(ThreadLocalDataKey) != NULL)
+    {
+        LE_WARN("Legato thread-specific data is already initialized.");
+        return;
+    }
 
     // Create a Thread object for the calling thread.
 #if LE_CONFIG_THREAD_NAMES_ENABLED
@@ -1746,9 +1749,9 @@ void le_thread_CleanupLegatoThreadData
 )
 //--------------------------------------------------------------------------------------------------
 {
-    thread_Obj_t* threadPtr = GetCurrentThreadPtr();
+    thread_Obj_t* threadPtr = TryGetCurrentThreadPtr();
 
-    if (threadPtr->mainFunc != NULL)
+    if ((threadPtr == NULL) || (threadPtr->mainFunc != NULL))
     {
         LE_CRIT("Thread was not initialized using le_thread_InitLegatoThreadData().");
     }
