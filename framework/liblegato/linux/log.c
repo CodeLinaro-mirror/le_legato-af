@@ -752,7 +752,7 @@ void fa_log_Init
     TraceRef = le_log_GetTraceRef("logControl");
 
     // Set the syslog format.
-    openlog("Legato", 0, LOG_USER);
+    openlog("TelAF", 0, LOG_USER);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -766,7 +766,7 @@ void log_ReInit
 )
 {
     closelog();
-    openlog("Legato", 0, LOG_USER);
+    openlog("TelAF", 0, LOG_USER);
 }
 
 //--------------------------------------------------------------------------------------------------
