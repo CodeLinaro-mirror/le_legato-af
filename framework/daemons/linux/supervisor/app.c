@@ -3622,26 +3622,24 @@ static int popen_call(const char *cmd)
  * Semodule dynamic operations for Restore sepolicy
  */
 //--------------------------------------------------------------------------------------------------
+
 void semodule_Restore
 (
-    const char* seWorkPtr,
-    const char* sePathPtr
+    const char* sePath
 )
 {
 
-    if (!file_Exists(sePathPtr))
+    if (!le_dir_IsDir(sePath))
     {
-        LE_DEBUG("Cannot found seLinux module for : %s", sePathPtr);
+        LE_ERROR("Cannot found seLinux module for: %s", sePath);
         return;
     }
 
-    semodule_reload();
-
     char cmd[LIMIT_M_PATH_BYTES+128];
-    snprintf(cmd, LIMIT_M_PATH_BYTES+128, "restorecon -R %s", seWorkPtr);
+    snprintf(cmd, LIMIT_M_PATH_BYTES+128, "restorecon -R %s", sePath);
     popen_call(cmd);
 
-    LE_INFO("restore con done for: %s", seWorkPtr);
+    LE_INFO("restore con done for: %s", sePath);
 
     return;
 }
@@ -3829,6 +3827,8 @@ void semodule_Install
         goto cleanup;
     }
 
+    (void)semanage_set_reload(sh, 1);
+
     result = semanage_commit(sh);
     if (result < 0)
     {
@@ -3999,13 +3999,19 @@ le_result_t app_Start
 
     char sePath[LIMIT_M_PATH_BYTES];
     char workPath[LIMIT_M_PATH_BYTES];
+    char installPath[LIMIT_M_PATH_BYTES];
 
-    snprintf(sePath, LIMIT_M_PATH_BYTES, "%s%s%s%s%s",
-        appRef->installDirPath, "/", "read-only/", appRef->name, ".pp");
-    semodule_TryInstall(appRef->name, sePath);
+    snprintf(sePath, LIMIT_M_PATH_BYTES, "%s%s%s%s%s", appRef->installDirPath, "/", "read-only/", appRef->name, ".pp");
+    if (file_Exists(sePath))
+    {
+        semodule_TryInstall(appRef->name, sePath);
 
-    snprintf(workPath, LIMIT_M_PATH_BYTES, "%s%s",appRef->workingDir, "/");
-    semodule_Restore(workPath, sePath);
+        snprintf(installPath, LIMIT_M_PATH_BYTES, "%s%s%s", appRef->installDirPath, "/", "read-only/");
+        semodule_Restore(installPath);
+
+        snprintf(workPath, LIMIT_M_PATH_BYTES, "%s%s",appRef->workingDir, "/");
+        semodule_Restore(workPath);
+    }
 
     // Create /tmp for sandboxed apps and link in /tmp files.
     if (appRef->sandboxed)
