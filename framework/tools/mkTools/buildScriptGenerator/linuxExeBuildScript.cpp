@@ -177,6 +177,20 @@ void LinuxExeBuildScriptGenerator_t::GenerateBuildStatement
     // on-target runtime locations of the libraries needed.
     componentGeneratorPtr->GenerateRunPathLdFlags();
 
+    if (exePtr->appPtr != NULL)
+    {
+
+        if (exePtr->appPtr->isSandboxed == false)
+        {
+            script << " -Wl,--enable-new-dtags,-rpath=\"/legato/systems/current/appsWriteable/"
+                   << exePtr->name << "/lib/" << "\"";
+        }
+        else
+        {
+            script << " -Wl,--enable-new-dtags,-rpath=\"/lib/\"";
+        }
+    }
+
     // Link with all the static libraries that the components need.
     for (const auto& lib : staticLibs)
     {
