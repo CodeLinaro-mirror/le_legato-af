@@ -932,6 +932,8 @@ void semodule_Install
         goto cleanup;
     }
 
+    (void)semanage_set_reload(sh, 1);
+
     result = semanage_commit(sh);
     if (result < 0)
     {
