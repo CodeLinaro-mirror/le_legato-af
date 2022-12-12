@@ -484,7 +484,7 @@ static int SetAcquisitionRate
             printf("Request is not supported\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"active\" state\n");
+            printf("GNSS device is not in \"Ready \" state\n");
             break;
         case LE_TIMEOUT:
             printf("Timeout error\n");
@@ -534,7 +534,7 @@ static int SetMinElevation
             printf("Setting the minimum elevation is not supported\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"Active\" state\n");
+            printf("GNSS device is not in \"Ready\" state\n");
             break;
         case LE_OUT_OF_RANGE:
             printf("The minimum elevation is above range\n");
@@ -684,7 +684,7 @@ static int SetConstellation
             printf("Setting constellation %s is not supported\n", constellationStr);
             break;
         case LE_NOT_PERMITTED:
-            printf("The GNSS device is not initialized, disabled or ready. See logs for  \
+            printf("The GNSS device is not initialized, disabled. See logs for  \
                     details\n");
             break;
         case LE_FAULT:
@@ -853,7 +853,7 @@ static int SetNmeaSentences
             printf("Failed to set enabled NMEA sentences, timeout error\n");
             break;
        case LE_NOT_PERMITTED:
-            printf("GNSS is not in active state!\n");
+            printf("GNSS is not in ready state!\n");
             break;
         default:
             printf("Failed to set enabled NMEA sentences, error %d (%s)\n",
@@ -1075,7 +1075,7 @@ static int GetAcquisitionRate
             printf("Failed to get acquisition rate. See logs for details\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"active\" state\n");
+            printf("GNSS device is not in \"active or ready\" state\n");
             break;
         default:
             printf("Invalid status\n");
@@ -1115,7 +1115,7 @@ static int GetMinElevation
             printf("Request not supported\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS device is not in \"Active\" state\n");
+            printf("GNSS device is not in \"Ready\" state\n");
             break;
         default:
             printf("Invalid status\n");
@@ -1257,7 +1257,7 @@ static int GetNmeaSentences
             printf("Failed to get enabled NMEA sentences, timeout error\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS is not in active state!\n");
+            printf("GNSS is not in active or ready state!\n");
             break;
         default:
             printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
@@ -1886,7 +1886,7 @@ static int GetMagneticDeviation
         printf("Magnetic Deviation : ");
         if (magneticDeviationPtr != INT32_MAX)
         {
-            printf("%d\n", magneticDeviationPtr);
+            printf("%.1f degrees\n", (float)(magneticDeviationPtr/10.0));
         }
         else
         {
