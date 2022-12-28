@@ -327,7 +327,7 @@ static ServiceCapEntry_t ServiceCapTable[] =
     {"tafSMSSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
     {"tafSimCardSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
     {"tafVoiceCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafGpioSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}},
+    {"tafGpioSvc", {{CAP_WAKE_ALARM, CAP_SYS_MODULE, -1, -1, -1}, 2}},
     {"tafKeyStoreSvc", {{CAP_WAKE_ALARM, CAP_FOWNER, CAP_SYS_ADMIN, -1, -1}, 3}},
     {"tafCanSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}}
 };
