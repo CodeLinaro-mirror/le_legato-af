@@ -197,8 +197,11 @@ sbtrace:
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			$(LOCAL_MKEXE_FLAGS)
 
+SRC_FILES := $(wildcard framework/tools/target/linux/bin/*)
+SRC_FILES := $(filter-out framework/tools/target/linux/bin/legato, $(SRC_FILES))
+
 scripts:
-	$(Q)cp -u -P --preserve=all $(wildcard framework/tools/target/linux/bin/*) $(BIN_DIR)
+	$(Q)cp -u -P --preserve=all $(SRC_FILES) $(wildcard $(TELAF_ROOT)/bin/telaf) $(BIN_DIR)
 
 devMode:
 	$(L) MKAPP $@
