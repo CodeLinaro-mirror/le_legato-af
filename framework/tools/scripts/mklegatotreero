@@ -98,15 +98,16 @@ for f in ../apps/*; do
     mkdir -m 0777 `basename $f` `basename $f`/bin `basename $f`/lib
 done
 
-# Perform some move of file and make useful links
+# Deploy symbol links to writeable tree
 for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
    for d in bin lib; do
       for ff in ../../../$ln/read-only/$d/*; do
-         mv $ff `basename $f`/$d/.
-         ln -s /legato/systems/current/appsWriteable/`basename $f`/$d/`basename $ff` \
-               ../../../$ln/read-only/$d/`basename $ff`
+         #mv $ff `basename $f`/$d/.
+         ln -s /legato/systems/current/apps/`basename $f`/read-only/$d/`basename $ff` \
+               ./`basename $f`/$d/`basename $ff`
       done
    done
+
    # Deploy read-only tree for an apps if it exists
    if [ -d ../../../$ln/read-only/usr ]; then
      mkdir -p `basename $f`/usr/
@@ -114,26 +115,24 @@ for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
         mkdir -p `basename $f`/usr/$dd
         for ff in ../../../$ln/read-only/usr/$dd/*; do
            [ -f $ff ] &&
-              mv $ff `basename $f`/usr/$dd/. &&
-              ln -s /legato/systems/current/appsWriteable/`basename $f`/usr/$dd/`basename $ff` \
-                    ../../../$ln/read-only/usr/$dd/`basename $ff`
+              ln -s /legato/systems/current/apps/`basename $f`/read-only/usr/$dd/`basename $ff` \
+                    ./`basename $f`/usr/$dd/`basename $ff`
         done
      done
    fi
+
    # Deploy writeable tree for an apps if it exists
    if [ -d ../../../$ln/writeable ]; then
      for dd in `cd ../../../$ln/writeable; find -type d`; do
         mkdir -p `basename $f`/$dd
         for ff in ../../../$ln/writeable/$dd/*; do
            [ -f $ff ] &&
-              mv $ff `basename $f`/$dd/. &&
-              ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
-                    ../../../$ln/writeable/$dd/`basename $ff`
+               ln -s /legato/systems/current/apps/`basename $f`/writeable/$dd/`basename $ff` \
+                     ./`basename $f`/$dd/`basename $ff`
         done
      done
    fi
 done
-
 
 # Deploy all libs .so into /legato/systems/current/lib if SMACK is disabled
 if [ $DISABLE_SMACK -eq 1 ]; then
