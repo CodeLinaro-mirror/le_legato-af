@@ -12,7 +12,7 @@
 {% endfor %}
 
 #include "legato.h"
-#include "interface.h"
+#include "interfaces.h"
 
 {% for function in functions %}
 {%- if function.comment %}

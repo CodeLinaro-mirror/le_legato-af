@@ -201,6 +201,23 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function for client thread objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ClientThreadDestructor
+(
+    void* objPtr
+)
+{
+    _ClientThreadData_t* clientThreadPtr = objPtr;
+
+    if(clientThreadPtr != NULL)
+    {
+        ifgen_{{apiBaseName}}_CleanupCommonData(clientThreadPtr->sessionRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -216,6 +233,9 @@ static void InitCommonData(void)
     _ClientThreadDataPool = le_mem_InitStaticPool({{apiName}}_ClientThreadData,
                                                   LE_CDATA_COMPONENT_COUNT,
                                                   sizeof(_ClientThreadData_t));
+
+    // Set the destructor for the client thread object.
+    le_mem_SetDestructor(_ClientThreadDataPool, ClientThreadDestructor);
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);

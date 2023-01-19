@@ -220,6 +220,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     _clientDataPtr->handlerPtr = {{parameter|FormatParameterName}};
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
+    _clientDataPtr->callersSessionRef = _ifgen_sessionRef;
     // Create a safeRef to be passed down as the contextPtr
     _LOCK
     contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);

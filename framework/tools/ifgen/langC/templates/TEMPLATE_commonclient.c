@@ -35,6 +35,7 @@ typedef struct
     void                    *contextPtr;        ///< ContextPtr registered with handler
     le_event_HandlerRef_t    handlerRef;        ///< HandlerRef for the registered handler
     le_thread_Ref_t          callersThreadRef;  ///< Caller's thread.
+    le_msg_SessionRef_t      callersSessionRef; ///< Caller's session.
 }
 _ClientData_t;
 
@@ -189,6 +190,43 @@ LE_SHARED void ifgen_{{apiBaseName}}_InitCommonData
             TraceRef = le_log_GetTraceRef("ipc");
         }
 #endif
+    }
+    _UNLOCK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleanup the data of a sessions
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((weak))
+LE_SHARED void ifgen_{{apiBaseName}}_CleanupCommonData
+(
+    le_msg_SessionRef_t _ifgen_sessionRef
+)
+{
+    _LOCK;
+    {
+        le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
+        le_result_t result = le_ref_NextNode(iterRef);
+        _ClientData_t* clientDataPtr;
+
+        while ( result == LE_OK )
+        {
+            clientDataPtr = le_ref_GetValue(iterRef);
+            if ( _ifgen_sessionRef == clientDataPtr->callersSessionRef )
+            {
+                LE_DEBUG("Found client session ref %p; match found, so needs cleanup",
+                         clientDataPtr->callersSessionRef);
+
+                // Release the client data object and related safe reference.
+                le_mem_Release((void*)clientDataPtr);
+                le_ref_DeleteRef( _HandlerRefMap, (void*)le_ref_GetSafeRef(iterRef) );
+            }
+
+            // Get the next value in the reference mpa
+            result = le_ref_NextNode(iterRef);
+        }
     }
     _UNLOCK;
 }
@@ -495,8 +533,9 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     }
     else
     {
-        // Add failed, release the client data.
+        // Add failed, release the client data and safe reference.
         le_mem_Release(_clientDataPtr);
+        le_ref_DeleteRef(_HandlerRefMap, contextPtr);
     }
     {%- endif %}
 
