@@ -289,6 +289,7 @@ bool Lexer_t::IsMatch
 
         case parseTree::Token_t::NAME:
         case parseTree::Token_t::GROUP_NAME:
+        case parseTree::Token_t::CAPABILITY_NAME:
         case parseTree::Token_t::DOTTED_NAME:
             return (   islower(context.top().nextChars[0])
                        || isupper(context.top().nextChars[0])
@@ -514,6 +515,11 @@ parseTree::Token_t* Lexer_t::PullRaw
         case parseTree::Token_t::GROUP_NAME:
 
             PullGroupName(tokenPtr);
+            break;
+
+        case parseTree::Token_t::CAPABILITY_NAME:
+
+            PullCapabilityName(tokenPtr);
             break;
 
         case parseTree::Token_t::IPC_AGENT:
@@ -2029,6 +2035,42 @@ void Lexer_t::PullGroupName
         AdvanceOneCharacter(tokenPtr);
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull a capability name from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullCapabilityName
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (   islower(context.top().nextChars[0])
+           || isupper(context.top().nextChars[0])
+           || (context.top().nextChars[0] == '_') )
+    {
+        AdvanceOneCharacter(tokenPtr);
+    }
+    else
+    {
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of capability name. "
+                               "Capability names must start with a letter "
+                               "('a'-'z' or 'A'-'Z') or an underscore ('_')."));
+    }
+
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0])
+              || isdigit(context.top().nextChars[0])
+              || (context.top().nextChars[0] == '_')
+              || (context.top().nextChars[0] == '-') )
+    {
+        AdvanceOneCharacter(tokenPtr);
+    }
+}
+
 
 
 //--------------------------------------------------------------------------------------------------

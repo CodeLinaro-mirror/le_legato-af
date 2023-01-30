@@ -181,6 +181,10 @@ static parseTree::CompoundItem_t* ParseAppOverride
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::GROUP_NAME);
     }
+    else if (sectionName == "capability")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::CAPABILITY_NAME);
+    }
     else if (sectionName == "maxPriority")
     {
         return ParsePriority(lexer, sectionNameTokenPtr);

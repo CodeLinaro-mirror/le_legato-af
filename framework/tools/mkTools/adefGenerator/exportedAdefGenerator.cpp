@@ -206,6 +206,21 @@ static void GenerateBasicInfo
 
         defStream << "}\n";
     }
+
+    else if (!appPtr->capability.empty())
+    {
+        defStream << "\n"
+                     "capabilities:\n"
+                     "{\n";
+
+        for (auto const &capability : appPtr->capability)
+        {
+            defStream << "    " << capability << "\n";
+        }
+
+        defStream << "}\n";
+    }
+
 }
 
 

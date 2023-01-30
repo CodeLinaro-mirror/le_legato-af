@@ -350,6 +350,24 @@ le_result_t app_GetSupplementaryGroups
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets an application's capability list.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer was too small to hold all capabilities.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_GetCapList
+(
+    app_Ref_t appRef,                 ///< [IN] The application reference.
+    int* capsPtr,                     ///< [OUT] List of caps.
+    size_t* numOfCapsPtr              ///< [IN/OUT] Size of capsPtr buffer on input.  Number of
+                                      ///  caps in capsPtr on output.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This handler must be called when a SIGCHILD is received for a process that belongs to the
  * specified application.
  */

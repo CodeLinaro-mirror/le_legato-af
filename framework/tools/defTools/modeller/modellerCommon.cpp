@@ -730,6 +730,25 @@ void AddGroups
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Makes the application have the required capabilities listed in a given "capability" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddCapability
+(
+    model::App_t* appPtr,
+    const parseTree::TokenListSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto tokenPtr : sectionPtr->Contents())
+    {
+        appPtr->capability.insert(tokenPtr->text);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets whether the Supervisor will start the application automatically at system start-up,
  * or only when asked to do so, based on the contents of a "start:" section in the parse tree.
  */

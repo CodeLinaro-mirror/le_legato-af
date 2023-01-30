@@ -698,6 +698,8 @@ static data::Value_t ModelApp
 
             { "groups", JsonArray(appPtr->groups) },
 
+            { "capability", JsonArray(appPtr->capability) },
+
             // configTrees
 
             {

@@ -124,6 +124,9 @@ std::string Token_t::TypeName
         case GROUP_NAME:
             return "group name";
 
+        case CAPABILITY_NAME:
+            return "capability name";
+
         case IPC_AGENT:
             return "IPC agent";
 

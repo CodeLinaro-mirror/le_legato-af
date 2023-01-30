@@ -120,6 +120,41 @@ static void GenerateGroupsConfig
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the configuration for the list of capabilities that the application's should be a
+ * member of.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateCapabilityConfig
+(
+    std::ofstream& cfgStream,
+    const model::App_t* appPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const auto& capabilityList = appPtr->capability;
+
+    // If the groups list is empty, nothing needs to be done.
+    if (capabilityList.empty())
+    {
+        return;
+    }
+
+    // Capability names are specified by inserting empty leaf nodes under the "capability" branch
+    // of the application's configuration tree.
+    cfgStream << "  \"capability\"" << std::endl;
+    cfgStream << "  {" << std::endl;
+
+    for (auto const &capabilityName : capabilityList)
+    {
+        cfgStream << "    \"" << capabilityName << "\" \"\"" << std::endl;
+    }
+
+    cfgStream << "  }" << std::endl << std::endl;
+}
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -925,6 +960,8 @@ void Generate
     GenerateAppLimitsConfig(cfgStream, appPtr);
 
     GenerateGroupsConfig(cfgStream, appPtr);
+
+    GenerateCapabilityConfig(cfgStream, appPtr);
 
     GenerateFileMappingConfig(cfgStream, appPtr);
 

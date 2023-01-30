@@ -79,6 +79,10 @@ struct App_t : public HasTargetInfo_t
     /// Set of the names of groups that this application's user should be a member of.
     std::set<std::string> groups;
 
+    /// Set of the names of capabilities.
+    std::set<std::string> capability;
+
+
     // Per-user limits:
     PositiveIntLimit_t      cpuShare;           ///< Relative share value
     NonNegativeIntLimit_t   maxFileSystemBytes; ///< Total bytes in sandbox tmpfs file system.

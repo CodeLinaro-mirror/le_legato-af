@@ -125,6 +125,7 @@ class Lexer_t
         void PullName(parseTree::Token_t* tokenPtr);
         void PullDottedName(parseTree::Token_t* tokenPtr);
         void PullGroupName(parseTree::Token_t* tokenPtr);
+        void PullCapabilityName(parseTree::Token_t* tokenPtr);
         void PullIpcAgentName(parseTree::Token_t* tokenPtr);
         void PullQuoted(parseTree::Token_t* tokenPtr, char quoteChar);
         void PullEnvVar(parseTree::Token_t* tokenPtr);

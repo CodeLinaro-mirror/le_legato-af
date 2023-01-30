@@ -66,6 +66,8 @@
 #include <regex.h>
 #include <selinux/restorecon.h>
 #include <sys/mman.h>
+#include <sys/capability.h>
+#include <linux/securebits.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -358,6 +360,8 @@ typedef struct app_Ref
     gid_t           supplementGids[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];  // List of supplementary
                                                                          // group IDs.
     size_t          numSupplementGids;  // Number of supplementary groups for this app.
+    int             capabilities[LIMIT_MAX_NUM_CAPABILITIES];  // List of capabilites.
+    size_t          numOfCapabilities;  // Number of capabilities for this app.
     app_State_t     state;              // Applications current state.
     le_dls_List_t   procs;              // List of processes in this application.
     le_dls_List_t   auxProcs;           // List of auxiliary processes in this application.
@@ -452,6 +456,67 @@ typedef enum
     KILL_HARD           ///< Kills the application ASAP.
 }
 KillType_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data struct for capability name to value entry.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char name[32]; ///< cap name
+    int value;     ///< cap value
+}CapNameToVal_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static table to list all capability name to value entrys.
+ */
+//--------------------------------------------------------------------------------------------------
+static CapNameToVal_t NameToValueTable[] =
+{
+    {"CAP_CHOWN", CAP_CHOWN},
+    {"CAP_DAC_OVERRIDE", CAP_DAC_OVERRIDE},
+    {"CAP_DAC_READ_SEARCH", CAP_DAC_READ_SEARCH},
+    {"CAP_FOWNER",CAP_FOWNER},
+    {"CAP_FSETID", CAP_FSETID},
+    {"CAP_KILL", CAP_KILL},
+    {"CAP_SETGID", CAP_SETGID},
+    {"CAP_SETUID",CAP_SETUID},
+    {"CAP_SETPCAP",CAP_SETPCAP},
+    {"CAP_LINUX_IMMUTABLE", CAP_LINUX_IMMUTABLE},
+    {"CAP_NET_BIND_SERVICE", CAP_NET_BIND_SERVICE},
+    {"CAP_NET_BROADCAST", CAP_NET_BROADCAST},
+    {"CAP_NET_ADMIN", CAP_NET_ADMIN},
+    {"CAP_NET_RAW", CAP_NET_RAW},
+    {"CAP_IPC_LOCK", CAP_IPC_LOCK},
+    {"CAP_IPC_OWNER", CAP_IPC_OWNER},
+    {"CAP_SYS_MODULE", CAP_SYS_MODULE},
+    {"CAP_SYS_RAWIO", CAP_SYS_RAWIO},
+    {"CAP_SYS_CHROOT", CAP_SYS_CHROOT},
+    {"CAP_SYS_PTRACE", CAP_SYS_PTRACE},
+    {"CAP_SYS_PACCT", CAP_SYS_PACCT},
+    {"CAP_SYS_ADMIN", CAP_SYS_ADMIN},
+    {"CAP_SYS_BOOT", CAP_SYS_BOOT},
+    {"CAP_SYS_NICE", CAP_SYS_NICE},
+    {"CAP_SYS_RESOURCE", CAP_SYS_RESOURCE},
+    {"CAP_SYS_TIME", CAP_SYS_TIME},
+    {"CAP_SYS_TTY_CONFIG", CAP_SYS_TTY_CONFIG},
+    {"CAP_MKNOD", CAP_MKNOD},
+    {"CAP_LEASE", CAP_LEASE},
+    {"CAP_AUDIT_WRITE", CAP_AUDIT_WRITE},
+    {"CAP_AUDIT_CONTROL", CAP_AUDIT_CONTROL},
+    {"CAP_SETFCAP", CAP_SETFCAP},
+    {"CAP_MAC_OVERRIDE", CAP_MAC_OVERRIDE},
+    {"CAP_MAC_ADMIN", CAP_MAC_ADMIN},
+    {"CAP_SYSLOG", CAP_SYSLOG},
+    {"CAP_WAKE_ALARM", CAP_WAKE_ALARM},
+    {"CAP_BLOCK_SUSPEND", CAP_BLOCK_SUSPEND},
+    {"CAP_AUDIT_READ", CAP_AUDIT_READ}
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -566,6 +631,100 @@ static le_result_t CreateSupplementaryGroups
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Get the Capability value from the name.
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCapValueFromName(const char* capName, int* valuePtr)
+{
+     const CapNameToVal_t*  capEntryPtr = NameToValueTable;
+     uint32_t count = NUM_ARRAY_MEMBERS(NameToValueTable);
+     while(count)
+     {
+         if ( strcmp(capName, capEntryPtr->name) == 0)
+         {
+             *valuePtr = capEntryPtr->value;
+             return LE_OK;
+         }
+         count--;
+         capEntryPtr++;
+     }
+     return LE_NOT_FOUND;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create the capabilities for an application.
+ *
+ * @todo  Make this function just read the capability from the configTree
+ *       list into the app object.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_result_t CreateCapList
+(
+       app_Ref_t appRef
+)
+{
+    // Get an iterator to the capability list in the config
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+    char node[LIMIT_MAX_PATH_LEN] = { 0 };
+    snprintf(node, sizeof(node), "/apps/%s/%s", appRef->name, "capability");
+    le_cfg_GoToNode(cfgIter, node);
+
+    appRef->numOfCapabilities = 0;
+    if (le_cfg_GoToFirstChild(cfgIter) != LE_OK)
+    {
+        LE_DEBUG("No capabilities setting for app '%s'.",appRef->name);
+        le_cfg_CancelTxn(cfgIter);
+        return LE_OK;
+    }
+
+    size_t i;
+    for (i = 0; i < LIMIT_MAX_NUM_CAPABILITIES; i++)
+    {
+       // Read the capability name from the configTree.
+        char capabilityName[LIMIT_MAX_USER_NAME_BYTES];
+
+        if (le_cfg_GetNodeName(cfgIter, "", capabilityName, sizeof(capabilityName)) != LE_OK)
+        {
+            LE_ERROR("Could not read capability for '%s'.",appRef->name);
+            le_cfg_CancelTxn(cfgIter);
+            return LE_FAULT;
+        }
+
+        LE_INFO("Capability name: %s",capabilityName);
+
+        int capValue = -1;
+        if (GetCapValueFromName(capabilityName, &capValue) != LE_OK)
+        {
+            LE_ERROR("Invalid capability '%s'", capabilityName);
+            le_cfg_CancelTxn(cfgIter);
+            return LE_FAULT;
+        }
+
+        appRef->capabilities[i] = capValue;
+
+        // Go to the next capability.
+        if (le_cfg_GoToNextSibling(cfgIter) != LE_OK)
+        {
+            break;
+        }
+        else if (i >= LIMIT_MAX_NUM_CAPABILITIES - 1)
+        {
+            LE_ERROR("Too many capabilities for app '%s'.",appRef->name);
+            le_cfg_CancelTxn(cfgIter);
+            return LE_FAULT;
+        }
+    }
+
+    appRef->numOfCapabilities = i + 1;
+    le_cfg_CancelTxn(cfgIter);
+    LE_INFO("Capability list size for '%s': %d", appRef->name, appRef->numOfCapabilities);
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3341,6 +3500,11 @@ app_Ref_t app_Create
         goto failed;
     }
 
+    if (CreateCapList(appPtr) != LE_OK)
+    {
+        goto failed;
+    }
+
     // Get the app's install directory path.
     appPtr->installDirPath[0] = '\0';
     if (LE_OK != le_path_Concat("/",
@@ -4395,6 +4559,50 @@ le_result_t app_GetSupplementaryGroups
         }
 
         *numGroupsPtr = appRef->numSupplementGids;
+
+        return LE_OVERFLOW;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's capability list.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer was too small to hold all capabilities.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_GetCapList
+(
+    app_Ref_t appRef,                 ///< [IN] The application reference.
+    int* capsPtr,                     ///< [OUT] List of caps.
+    size_t* numOfCapsPtr              ///< [IN/OUT] Size of capsPtr buffer on input.  Number of
+                                      ///           caps in capsPtr on output.
+)
+{
+    int i = 0;
+
+    if (*numOfCapsPtr >= appRef->numOfCapabilities)
+    {
+        for (i = 0; i < appRef->numOfCapabilities; i++)
+        {
+            capsPtr[i] = appRef->capabilities[i];
+        }
+
+        *numOfCapsPtr = appRef->numOfCapabilities;
+
+        return LE_OK;
+    }
+    else
+    {
+        for (i = 0; i < *numOfCapsPtr; i++)
+        {
+            capsPtr[i] = appRef->capabilities[i];
+        }
+
+        *numOfCapsPtr = appRef->numOfCapabilities;
 
         return LE_OVERFLOW;
     }

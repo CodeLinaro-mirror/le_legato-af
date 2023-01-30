@@ -292,84 +292,33 @@ typedef struct
 }
 Cap_t;
 
-// Service Capability list.
-#define MAX_CAP_LIST_SIZE 5
-typedef struct
-{
-    int cap[MAX_CAP_LIST_SIZE];
-    int size;
-}
-CapList_t;
-
-// Service Capability entry.
-typedef struct
-{
-    char serviceName[LIMIT_MAX_APP_NAME_BYTES];  // Telaf Service name
-    CapList_t capList;                           // Capability list
-}
-ServiceCapEntry_t;
-
-static Cap_t TafCapVar = { 0 };
-
-// Service Capability table.
-static ServiceCapEntry_t ServiceCapTable[] =
-{
-    {"tafNetSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, -1, -1, -1}, 2}},
-    {"tafUpdateSvc", {{CAP_WAKE_ALARM, CAP_SYS_RESOURCE, CAP_DAC_OVERRIDE, CAP_SYS_BOOT, -1}, 4}},
-    {"tafAudioSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafDataCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafECallSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, CAP_NET_RAW, -1, -1}, 3}},
-    {"tafLocationSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafMRCSvc", {{CAP_WAKE_ALARM, CAP_SYS_BOOT, CAP_SYS_RESOURCE, -1, -1}, 3}},
-    {"tafPMSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_BLOCK_SUSPEND, -1, -1}, 3}},
-    {"tafRadioSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafRemoteSimSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafSMSSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafSimCardSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafVoiceCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
-    {"tafGpioSvc", {{CAP_WAKE_ALARM, CAP_SYS_MODULE, -1, -1, -1}, 2}},
-    {"tafKeyStoreSvc", {{CAP_WAKE_ALARM, CAP_FOWNER, CAP_SYS_ADMIN, -1, -1}, 3}},
-    {"tafCanSvc", {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1}}
-};
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Capability list for a given application name.
- */
-//--------------------------------------------------------------------------------------------------
-static CapList_t* GetCapList
-(
-    const char* appNamePtr
-)
-{
-    int i;
-    for (i = 0; i < NUM_ARRAY_MEMBERS(ServiceCapTable); i++)
-    {
-        if (strcmp(appNamePtr, ServiceCapTable[i].serviceName) == 0)
-        {
-            LE_INFO("Found a cap entry for service '%s'.", ServiceCapTable[i].serviceName);
-            return &(ServiceCapTable[i].capList);
-        }
-    }
-
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Configure ambient capabilities.
- */
+ *
+ *Configure ambient capabilities
+ *
+ **/
 //--------------------------------------------------------------------------------------------------
 static le_result_t ConfigCapabilities
 (
-    CapList_t* capListPtr
+    const int* capListPtr,
+    size_t numOfCaps
 )
 {
+    if (numOfCaps == 0)
+    {
+        LE_INFO("No capabilties setting.");
+        return LE_OK;
+    }
+
     if (capListPtr == NULL)
     {
-        LE_ERROR("Bad parameters.");
+        LE_ERROR("Invalid capListPtr.");
         return LE_BAD_PARAMETER;
     }
+
+    Cap_t TafCapVar;
+    memset(&TafCapVar, 0, sizeof(Cap_t));
 
     // Check kernel capability version.
     TafCapVar.head.version = TELAF_CAPABILITY_VERSION;
@@ -386,14 +335,13 @@ static le_result_t ConfigCapabilities
         return LE_FAULT;
     }
 
-    /* By default the inheritable capability set is empty which prevents ambient capability
-      from setting via prctl() thus we need first add desired capabilities into inheritable set
-      before setting ambient set.
-    */
+    // By default the inheritable capability set is empty which prevents ambient capability
+    // from setting via prctl() thus we need first add desired capabilities into inheritable set
+    //  before setting ambient set.
     int i;
-    for (i = 0; i < capListPtr->size; ++i)
+    for (i = 0; i < numOfCaps; ++i)
     {
-        int value = capListPtr->cap[i];
+        int value = capListPtr[i];
         TafCapVar.raise_cap(value, CAP_INHERITABLE);
     }
 
@@ -403,24 +351,24 @@ static le_result_t ConfigCapabilities
         return LE_FAULT;
     }
 
-    /* NOTE the ambient capability set is present only since Linux 4.3. It allows a non-root user
-      process run with any Linux capabilities configured.
-      See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
-    */
-    for (i = 0; i < capListPtr->size; i++)
+    // NOTE the ambient capability set is present only since Linux 4.3. It allows a non-root user
+    // process run with any Linux capabilities configured.
+    // See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
+
+    for (i = 0; i < numOfCaps; i++)
     {
-        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, capListPtr->cap[i], 0, 0) == -1)
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, capListPtr[i], 0, 0) == -1)
         {
-            LE_ERROR("Failed to prctl(PR_CAP_AMBIENT) for cap(%d).", capListPtr->cap[i]);
+            LE_ERROR("Failed to prctl(PR_CAP_AMBIENT) for cap(%d).", capListPtr[i]);
             return LE_FAULT;
         }
     }
 
-    /* Setting the secure bit of SECBIT_NO_SETUID_FIXUP stops the kernel from adjusting the
-      process's permitted, effective, and ambient capability sets when the thread's effective
-      and filesystem UIDs are switched between zero and nonzero values.
-      See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
-    */
+    // Setting the secure bit of SECBIT_NO_SETUID_FIXUP stops the kernel from adjusting the
+    // process's permitted, effective, and ambient capability sets when the thread's effective
+    // and filesystem UIDs are switched between zero and nonzero values.
+    // See more details in https://man7.org/linux/man-pages/man7/capabilities.7.html.
+
     if (prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP, 0, 0, 0) == -1)
     {
         LE_ERROR("Failed to prctl(PR_SET_SECUREBITS).");
@@ -429,6 +377,7 @@ static le_result_t ConfigCapabilities
 
     return LE_OK;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1494,25 +1443,20 @@ le_result_t proc_Start
         LE_FATAL_IF(app_GetSupplementaryGroups(procRef->appRef, groups, &numGroups) != LE_OK,
                     "Supplementary groups list is too small.");
 
-        // Set the needed capabilities for those deprivileged TelAF services.
+        // Get the app's capability list.
+        int caps[LIMIT_MAX_NUM_CAPABILITIES];
+        size_t numCaps = LIMIT_MAX_NUM_CAPABILITIES;
+
+        LE_FATAL_IF(app_GetCapList(procRef->appRef, caps, &numCaps) != LE_OK,
+                    "Capability list is tool small.");
+
+        // Set the needed capabilities for non-root processes.
         if (app_GetUid(procRef->appRef) != 0)
         {
-            CapList_t defaultCap = {{CAP_WAKE_ALARM, -1, -1, -1, -1}, 1};
-            CapList_t* capListPtr = GetCapList(app_GetName(procRef->appRef));
-
-            if (capListPtr == NULL)
+            if (LE_OK != ConfigCapabilities(caps, numCaps))
             {
-                // So specified caps, use the default one.
-                capListPtr = &defaultCap;
-            }
-
-            if (LE_OK != ConfigCapabilities(capListPtr))
-            {
-                LE_ERROR("Failed to set capabilities for app '%s'.", app_GetName(procRef->appRef));
-            }
-            else
-            {
-                LE_INFO("Set capablities for app '%s'.", app_GetName(procRef->appRef));
+                LE_ERROR("Failed to set capabilities for app '%s'.",
+                         app_GetName(procRef->appRef));
             }
         }
 
