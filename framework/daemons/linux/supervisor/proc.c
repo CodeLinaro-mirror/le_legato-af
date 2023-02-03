@@ -315,7 +315,7 @@ static Cap_t TafCapVar = { 0 };
 static ServiceCapEntry_t ServiceCapTable[] =
 {
     {"tafNetSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, -1, -1, -1}, 2}},
-    {"tafUpdateSvc", {{CAP_WAKE_ALARM, CAP_SYS_RESOURCE, CAP_DAC_OVERRIDE, -1, -1}, 3}},
+    {"tafUpdateSvc", {{CAP_WAKE_ALARM, CAP_SYS_RESOURCE, CAP_DAC_OVERRIDE, CAP_SYS_BOOT, -1}, 4}},
     {"tafAudioSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
     {"tafDataCallSvc", {{CAP_WAKE_ALARM, CAP_NET_BIND_SERVICE, CAP_NET_ADMIN, -1, -1}, 3}},
     {"tafECallSvc", {{CAP_WAKE_ALARM, CAP_NET_ADMIN, CAP_NET_RAW, -1, -1}, 3}},
