@@ -1732,6 +1732,25 @@ void _le_thread_InitLegatoThreadData
     thread_InitThread();
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether the calling thread is initialized as a Legato thread or not.
+ *
+ * @return
+ *    - true if the calling thread is initialized as a Legato thread.
+ *    - false if not.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool le_thread_IsLegatoThread
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    thread_Obj_t* threadPtr = TryGetCurrentThreadPtr();
+
+    return (threadPtr != NULL);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

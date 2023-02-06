@@ -728,5 +728,19 @@ void le_thread_CleanupLegatoThreadData
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether the calling thread is initialized as a Legato thread or not.
+ *
+ * @return
+ *    - true if the calling thread is initialized as a Legato thread.
+ *    - false if not.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool le_thread_IsLegatoThread
+(
+    void
+);
+
 
 #endif // LEGATO_THREAD_INCLUDE_GUARD
