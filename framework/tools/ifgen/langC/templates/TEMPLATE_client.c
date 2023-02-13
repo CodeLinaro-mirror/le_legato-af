@@ -438,6 +438,83 @@ void {{apiName}}_SetServerDisconnectHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+// Session close handler without exiting.
+//
+// Dispatches session close notifications to the registered client handler function (if any) without
+// exit.
+//--------------------------------------------------------------------------------------------------
+static void NonExitSessionCloseHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void *contextPtr
+)
+{
+    _ClientThreadData_t* clientThreadPtr = contextPtr;
+
+    le_msg_DeleteSession( clientThreadPtr->sessionRef );
+
+    // Need to delete the thread specific data, since it is no longer valid.  If a new
+    // client session is started, new thread specific data will be allocated.
+    le_mem_Release(clientThreadPtr);
+    if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+    {
+        LE_FATAL("pthread_setspecific() failed!");
+    }
+
+    LE_DEBUG("======= '%s' service spontaneously disconnected ========", SERVICE_INSTANCE_NAME);
+
+    if (clientThreadPtr->disconnectHandler)
+    {
+        clientThreadPtr->disconnectHandler(clientThreadPtr->contextPtr);
+    }
+    LE_WARN("Component for {{apiName}} disconnected\n");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set handler called when server disconnection is detected.
+ *
+ * When a server connection is lost, call this handler without exit.
+ *
+ * @warning When using the API, it needs the application developer to handle some cases like
+ * re-connecting and recycling the resources.
+ * For most of cases, it is safe to use SetServerDisconnectHandler.
+ */
+//--------------------------------------------------------------------------------------------------
+void {{apiName}}_SetNonExitServerDisconnectHandler
+(
+    {{apiName}}_DisconnectHandler_t disconnectHandler,
+    void *contextPtr
+)
+{
+    if (ifgen_{{apiBaseName}}_HasLocalBinding())
+    {
+        // Local bindings don't disconnect
+        return;
+    }
+
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
+
+    if (NULL == clientThreadPtr)
+    {
+        LE_CRIT("Trying to set disconnect handler for non-existent client session for '%s' service",
+                SERVICE_INSTANCE_NAME);
+    }
+    else
+    {
+        clientThreadPtr->disconnectHandler = disconnectHandler;
+        clientThreadPtr->contextPtr = contextPtr;
+
+        if (disconnectHandler)
+        {
+            le_msg_SetSessionCloseHandler(clientThreadPtr->sessionRef,
+                                          NonExitSessionCloseHandler,
+                                          clientThreadPtr);
+        }
+    }
+}
+
 {%- endif %}
 
 

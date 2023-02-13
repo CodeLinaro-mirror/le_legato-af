@@ -85,6 +85,23 @@ LE_FULL_API void {{apiName}}_SetServerDisconnectHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set handler called when server disconnection is detected without exiting.
+ *
+ * When a server connection is lost, call this handler without exit.
+ *
+ * @warning When using the API, it needs the application developer to handle some cases like
+ * re-connecting and recycling the resources.
+ * For most of cases, it is safe to use SetServerDisconnectHandler.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_FULL_API void {{apiName}}_SetNonExitServerDisconnectHandler
+(
+    {{apiName}}_DisconnectHandler_t disconnectHandler,
+    void *contextPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  *
  * Disconnect the current client thread from the service providing this API.
  *
