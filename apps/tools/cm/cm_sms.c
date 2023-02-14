@@ -60,6 +60,10 @@ void cm_sms_PrintSmsHelp
             "\tcm sms count\n\n"
             "To switch preferred storage:\n"
             "\tcm sms switch\n\n"
+            "To activate cell broadcast:\n"
+            "\tcm sms encb <phone id>\n\n"
+            "To deactivate cell broadcast:\n"
+            "\tcm sms discb <phone id>\n\n"
             "Options:\n"
             "\t<number>: Destination number\n"
             "\t<content>: Text is encoded in ASCII format (ISO8859-15) and"
@@ -313,7 +317,17 @@ static void PrintMessage
     if (msgContextPtr->shouldDeleteMessages)
     {
         res = le_sms_DeleteFromStorage(msgRef);
-        LE_ASSERT((LE_OK == res) || (LE_NO_MEMORY == res));
+
+        if (res != LE_OK)
+        {
+            if (res == LE_BUSY)
+            {
+                fprintf(stderr, "SMS '%d' is LOCKED\n", msgContextPtr->nbSms);
+            }
+
+            fprintf(stderr, "Unable to remove SMS '%d'\n", msgContextPtr->nbSms);
+            exit(EXIT_FAILURE);
+        }
 
         le_sms_Delete(msgRef);
 
@@ -466,8 +480,9 @@ static void GetStatus
         return;
     }
 
-    printf("--[%2u]---------------------------------------------------------------\n", msgContextPtr->nbSms);
-    printf("%s \n", le_sms_GetLockStatus(msgRef) == LE_SMS_LKSTS_LOCKED ? "LOCK" : "UNLOCK");
+    printf("--[%2u]---------------------------------------------------------------\n",
+           msgContextPtr->nbSms);
+    printf("%s \n", le_sms_GetLockStatus(msgRef) == LE_SMS_LKSTS_LOCKED ? "LOCKED" : "UNLOCK");
     printf("%s \n", le_sms_GetReadStatus(msgRef) == LE_SMS_RXSTS_READ ? "READ" : "UNREAD");
 
     msgContextPtr->nbSms++;
@@ -1044,6 +1059,50 @@ void cm_sms_SwitchPreferredStorage
     }
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Activate cell broadcast
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_ActivateCellBroadcast
+(
+    int8_t phoneId
+)
+{
+    le_result_t res = le_sms_ActivateCellBroadcast(phoneId);
+
+    if(res == LE_OK)
+    {
+        printf("\n Activate cell broadcast\n");
+    }
+    else
+    {
+        printf("\n Activate cell broadcast unsuccessfully\n");
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Deactivate cell broadcast
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_sms_DeactivateCellBroadcast
+(
+    int8_t phoneId
+)
+{
+    le_result_t res = le_sms_DeactivateCellBroadcast(phoneId);
+
+    if(res == LE_OK)
+    {
+        printf("\n Deactivate cell broadcast\n");
+    }
+    else
+    {
+        printf("\n Deactivate cell broadcast unsuccessfully\n");
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for SMS service.
@@ -1211,6 +1270,40 @@ void cm_sms_ProcessSmsCommand
     else if (strncmp(command, "switch", sizeof("switch")) == 0)
     {
         cm_sms_SwitchPreferredStorage();
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "encb", sizeof("encb")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs,
+                                 "Index of message missing. e.g. cm sms encb <phoneId>");
+
+        const char* phone = le_arg_GetArg(2);
+        if (NULL == phone)
+        {
+            LE_ERROR("phone is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int phoneId = atoi(phone);
+
+        cm_sms_ActivateCellBroadcast(phoneId);
+
+        exit(EXIT_SUCCESS);
+    }
+    else if (strncmp(command, "discb", sizeof("discb")) == 0)
+    {
+        cm_cmn_CheckEnoughParams(1, numArgs,
+                                 "Index of message missing. e.g. cm sms discb <phoneId>");
+
+        const char* phone = le_arg_GetArg(2);
+        if (NULL == phone)
+        {
+            LE_ERROR("phone is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int phoneId = atoi(phone);
+
+        cm_sms_DeactivateCellBroadcast(phoneId);
+
         exit(EXIT_SUCCESS);
     }
     else
