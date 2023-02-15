@@ -59,7 +59,7 @@ void cm_sms_PrintSmsHelp
             "To count stored SMS:\n"
             "\tcm sms count\n\n"
             "To switch preferred storage:\n"
-            "\tcm sms switch\n\n"
+            "\tcm sms switch <storage>\n\n"
             "To activate cell broadcast:\n"
             "\tcm sms encb <phone id>\n\n"
             "To deactivate cell broadcast:\n"
@@ -70,6 +70,7 @@ void cm_sms_PrintSmsHelp
             " characters have to exist in the GSM 23.038 7 bit alphabet\n"
             "\t<file>: File path OR - for standard input (stdin)\n"
             "\t<optional max sms>: (Optional) Limit for the number of SMS the file is split in\n"
+            "\t<storage>: 0-NONE, 1-SIM, 2-HLOS\n\n"
             );
 }
 
@@ -837,10 +838,11 @@ static void ClearOneMessage
     if (res != LE_OK)
     {
         fprintf(stderr, "Unable to remove SMS '%d'\n", *nbSmsPtr);
-        exit(EXIT_FAILURE);
     }
-
-    ++(*nbSmsPtr);
+    else
+    {
+        ++(*nbSmsPtr);
+    }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -879,8 +881,9 @@ void cm_sms_ClearAllMessages
 )
 {
     int nbSms = 0;
+    int nbDeletedSms = 0;
 
-    nbSms = ForEachMessage(ClearOneMessage, &nbSms);
+    nbSms = ForEachMessage(ClearOneMessage, &nbDeletedSms);
 
     if (nbSms == 0)
     {
@@ -889,7 +892,7 @@ void cm_sms_ClearAllMessages
     else
     {
         printf("Removed %d SMS message%s.\n",
-            nbSms, (nbSms == 1) ? "" : "s");
+            nbDeletedSms, (nbDeletedSms == 1) ? "" : "s");
     }
 }
 
@@ -1022,40 +1025,60 @@ static void HandleSendBin
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Swith preferred storage between HLOS and SIM
+ * Swith preferred storage among None/HLOS/SIM
  */
 //-------------------------------------------------------------------------------------------------
 void cm_sms_SwitchPreferredStorage
 (
-    void
+    int storage
 )
 {
     le_sms_Storage_t prefStorage = LE_SMS_STORAGE_UNKNOWN;
-    le_sms_GetPreferredStorage(&prefStorage);
+    le_result_t res = le_sms_GetPreferredStorage(&prefStorage);
 
-    if(prefStorage == LE_SMS_STORAGE_SIM)
+    switch(prefStorage)
     {
-        le_result_t res = le_sms_SetPreferredStorage(LE_SMS_STORAGE_HLOS);
-        if(res == LE_OK)
-        {
-            printf("\n Switch storage to HLOS\n");
-        }
-        else
-        {
-            printf("\n Switch storage unsuccessfully\n");
-        }
+        case LE_SMS_STORAGE_NONE:
+            printf("\n Current storage is NONE\n");
+            break;
+        case LE_SMS_STORAGE_SIM:
+            printf("\n Current storage is SIM\n");
+            break;
+        case LE_SMS_STORAGE_HLOS:
+            printf("\n Current storage is HLOS\n");
+            break;
+        default:
+            printf("\n Current storage is UNKNOWN\n");
+            return;
+    }
+
+    switch(storage)
+    {
+        case 0:
+            prefStorage = LE_SMS_STORAGE_NONE;
+            printf("\n Try to switch storage to NONE\n");
+            break;
+        case 1:
+            prefStorage = LE_SMS_STORAGE_SIM;
+            printf("\n Try to switch storage to SIM\n");
+            break;
+        case 2:
+            prefStorage = LE_SMS_STORAGE_HLOS;
+            printf("\n Try to switch storage to HLOS\n");
+            break;
+        default:
+            printf("\n unsupported value\n");
+            return;
+    }
+
+    res = le_sms_SetPreferredStorage(prefStorage);
+    if(res == LE_OK)
+    {
+        printf("\n Switch storage successfully\n");
     }
     else
     {
-        le_result_t res = le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM);
-        if(res == LE_OK)
-        {
-            printf("\n Switch storage to SIM\n");
-        }
-        else
-        {
-            printf("\n Switch storage unsuccessfully\n");
-        }
+        printf("\n Switch storage failed\n");
     }
 }
 
@@ -1269,7 +1292,17 @@ void cm_sms_ProcessSmsCommand
     }
     else if (strncmp(command, "switch", sizeof("switch")) == 0)
     {
-        cm_sms_SwitchPreferredStorage();
+        cm_cmn_CheckEnoughParams(1, numArgs, "Storage type missing. e.g. cm sms switch 0");
+
+        const char* storageStr = le_arg_GetArg(2);
+        if (NULL == storageStr)
+        {
+            LE_ERROR("storageStr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int storage = atoi(storageStr);
+
+        cm_sms_SwitchPreferredStorage(storage);
         exit(EXIT_SUCCESS);
     }
     else if (strncmp(command, "encb", sizeof("encb")) == 0)
