@@ -140,9 +140,11 @@ cm_data_get_param() {
 cm_data_connect () {
     local opt=$1
     local info=$(cm data info)
+    local phoneid=$(cm_data_get_param "$info" "PhoneId")
     local index=$(cm_data_get_param "$info" "Index")
     local apn=$(cm_data_get_param "$info" "APN")
     local status=$(cm_data_get_param "$info" "Connected")
+    local default_phoneid=$(cm_data_get_param "$info" "Default_phoneid")
     local default_profile=$(cm_data_get_param "$info" "Default_profile")
 
     if [ "$opt" = "-1" ]; then
@@ -153,6 +155,12 @@ cm_data_connect () {
         # update_dns disconnect
         exit 0
     fi
+
+    if [ "$default_phoneid" != "$phoneid" ]; then
+        echo "[WARNING]default phoneid[$default_phoneid] does not equal to current phoneid[$phoneid]"
+        echo "[WARNING]Use \"cm data default_profile <phoneid> <index>\" to set default profile"
+    fi
+
 
     if [ "$default_profile" != "$index" ]; then
         echo "[WARNING]default profile[$default_profile] does not equal to current profile[$index]"

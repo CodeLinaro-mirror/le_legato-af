@@ -5,6 +5,7 @@
  * Handle data connection control related functionality
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 //-------------------------------------------------------------------------------------------------
 
@@ -12,7 +13,6 @@
 #include "interfaces.h"
 #include "cm_data.h"
 #include "cm_common.h"
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -39,6 +39,8 @@ void cm_data_PrintDataHelp
             "\tcm data info\n\n"
             "To set profile in use:\n"
             "\tcm data profile <index>\n\n"
+            "To set phone id in use:\n"
+            "\tcm data phoneid <index>\n\n"
             "To set apn for profile in use:\n"
             "\tcm data apn <apn>\n\n"
             "To set pdp type for profile in use:\n"
@@ -52,7 +54,7 @@ void cm_data_PrintDataHelp
             "To monitor the data connection:\n"
             "\tcm data watch\n\n"
             "To set a default profile, this profile is used for setting gateway and route when using this profile to make a call:\n"
-            "\tcm data default_profile <index>\n\n"
+            "\tcm data default_profile <optional phoneid> <index>\n\n"
             "To start a data connection, please ensure that your profile has been configured correctly.\n"
             "Also ensure your modem is registered to the network. To verify, use 'cm radio' and check 'Status'.\n\n"
             );
@@ -63,7 +65,7 @@ static char *callEventToString(le_mdc_ConState_t callEvent)
     switch (callEvent)
     {
         case LE_MDC_DISCONNECTED:
-            return "disconnect";
+            return "disconnected";
         case LE_MDC_CONNECTING:
             return "connecting";
         case LE_MDC_CONNECTED:
@@ -106,10 +108,11 @@ static DataBearerTechnologies_t DataBearerTechnologies = {
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Identifies which profile index we are configuring with the data tool
+ * Identifies which phone id and profile index we are configuring with the data tool
  * Note: When starting a data connection, it will only utilize the default profile index 1
  */
 //-------------------------------------------------------------------------------------------------
+#define PHONEID_IN_USE  "tools/cmodem/phoneIdInUse"
 #define PROFILE_IN_USE  "tools/cmodem/profileInUse"
 
 #define MAX_STR_SIZE    256
@@ -165,6 +168,34 @@ static void HandleResult
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Gets the phone id in use from configDB
+ */
+//-------------------------------------------------------------------------------------------------
+static uint32_t GetPhoneIdInUse
+ (
+     void
+ )
+{
+    uint32_t phoneId;
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn(PHONEID_IN_USE);
+
+    // if node does not exist, set phoneId to 0 which will be ignored
+    if (!le_cfg_NodeExists(iteratorRef, ""))
+    {
+        phoneId = 0;
+    }
+    else
+    {
+        phoneId = le_cfg_GetInt(iteratorRef, "", 0);
+    }
+
+    le_cfg_CancelTxn(iteratorRef);
+
+    return phoneId;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Gets the profile in use from configDB
  */
 //-------------------------------------------------------------------------------------------------
@@ -203,7 +234,19 @@ static le_mdc_ProfileRef_t GetDataProfile
     void
 )
 {
-    return le_mdc_GetProfile( GetProfileInUse() );
+    uint32_t phoneId = GetPhoneIdInUse();
+    uint32_t profileId = GetProfileInUse();
+
+    // If phone id is equal to 0, which means phone id is not set or not used to support single SIM
+    // otherwise phone id is used to support DSSA or DSDA
+    if(phoneId == 0)
+    {
+        return le_mdc_GetProfile( profileId );
+    }
+    else
+    {
+        return le_mdc_GetProfileEx(phoneId, profileId);
+    }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -551,6 +594,43 @@ static void ConnectionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Callback for the connection state
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConnectionEventHandler
+(
+    le_mdc_ProfileRef_t       profileRef,
+    le_mdc_ConState_t         state,
+    const le_mdc_StateInfo_t  *infoPtr,
+    void* contextPtr
+)
+{
+    uint32_t profileId=0;
+    le_result_t result = LE_OK;
+    uint8_t phoneId;
+
+    if(profileRef == NULL)
+    {
+        LE_ERROR("Null pointer");
+        return;
+    }
+
+    profileId = le_mdc_GetProfileIndex(profileRef);
+
+    result = le_mdc_GetPhoneId(profileRef, &phoneId);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to get phone id");
+        return;
+    }
+
+    LE_INFO("phoneId: %d, profile: %d, state: %s, iptype: %d\n",
+        phoneId, profileId, callEventToString(state), infoPtr->ipType);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Callback for checking if our data connection was was successful before the timeout.
  */
 //--------------------------------------------------------------------------------------------------
@@ -634,6 +714,33 @@ int cm_data_SetProfileInUse
 
         le_cfg_SetInt(iteratorRef, "", profileInUse);
         le_cfg_CommitTxn(iteratorRef);
+
+        return EXIT_SUCCESS;
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Set the phone id in use in configDB
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_data_SetPhoneIdInUse
+(
+    int phoneIdInUse
+)
+{
+    if ( 0 != phoneIdInUse && 1 != phoneIdInUse && 2 != phoneIdInUse )
+    {
+       printf("Phone id is not valid! Should be 0(not used), 1 and 2\n");
+       return EXIT_FAILURE;
+    }
+    else
+    {
+        le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(PHONEID_IN_USE);
+
+        le_cfg_SetInt(iteratorRef, "", phoneIdInUse);
+        le_cfg_CommitTxn(iteratorRef);
+
         return EXIT_SUCCESS;
     }
 }
@@ -764,6 +871,49 @@ void cm_data_MonitorDataConnection
     StartDataBearerMonitoring(profile);
 
     le_mdc_AddSessionStateHandler(profile, ConnectionStateHandler, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Monitor all data connections.
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_data_MonitorAllDataConnection
+(
+    void
+)
+{
+    taf_dcs_ProfileInfo_t profilesInfoPtr[TAF_DCS_PROFILE_LIST_MAX_ENTRY];
+    size_t listSize;
+    le_result_t result;
+    le_mdc_ProfileRef_t profileRef = NULL;
+
+    for(int phoneId = 1; phoneId <= 2; phoneId++)
+    {
+        result = le_mdc_GetProfileListEx(phoneId,profilesInfoPtr, &listSize);
+        if(result != LE_OK)
+        {
+            LE_ERROR("Getting profile list for phone id %d failed", phoneId);
+            continue;
+        }
+
+        for (int i = 0; i < listSize; i++)
+        {
+            const taf_dcs_ProfileInfo_t *profileInfoPtr = &profilesInfoPtr[i];
+
+            profileRef = le_mdc_GetProfileEx(phoneId, profileInfoPtr->index);
+
+            if (NULL == profileRef)
+            {
+                printf("Invalid profile %p\n", profileRef);
+                continue;
+            }
+
+            printf("add handler for phoneid %d and profile %d\n", phoneId, profileInfoPtr->index);
+            le_mdc_AddSessionStateHandler(profileRef, ConnectionEventHandler, NULL);
+
+        }
+    }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -915,18 +1065,34 @@ int cm_data_SetAuthentication
 
 //-------------------------------------------------------------------------------------------------
 /**
- * This function prints a profile index.
+ * This function prints a phone id and profile index.
  */
 //-------------------------------------------------------------------------------------------------
-static void PrintProfileIndex
+static le_result_t PrintPhoneAndProfileIndex
 (
-    uint32_t profileIndex
+    le_mdc_ProfileRef_t profileRef   ///< [IN] profile reference
 )
 {
+    uint8_t phoneId;
+    uint32_t profileIndex;
+    char phoneIdStr[5];
     char profileIndexStr[5];
+    le_result_t res = LE_OK;
 
+    profileIndex = le_mdc_GetProfileIndex(profileRef);
+
+    res = le_mdc_GetPhoneId(profileRef, &phoneId);
+
+    if (res != LE_OK)
+    {
+        return res;
+    }
+    snprintf(phoneIdStr, sizeof(phoneIdStr), "%u", phoneId);
     snprintf(profileIndexStr, sizeof(profileIndexStr), "%u", profileIndex);
+    cm_cmn_FormatPrint("PhoneId", phoneIdStr);
     cm_cmn_FormatPrint("Index", profileIndexStr);
+
+    return res;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1017,12 +1183,24 @@ static le_result_t PrintAuthentication
     return res;
 }
 
-static le_result_t PrintDefaultProfile()
+static le_result_t PrintDefaultProfileInfo()
 {
+    char phoneIdStr[5];
     char profileStr[5];
+    uint8_t phoneId;
+    uint32_t profileId;
+    le_result_t res = LE_OK;
 
-    uint32_t profileId  = le_mdc_GetDefaultProfileIndex();
+    res = le_mdc_GetDefaultPhoneIdAndProfileId(&phoneId, &profileId);
+
+    if (res != LE_OK)
+    {
+        return res;
+    }
+
+    snprintf(phoneIdStr, sizeof(phoneIdStr), "%u", phoneId);
     snprintf(profileStr, sizeof(profileStr), "%u", profileId);
+    cm_cmn_FormatPrint("Default_phoneid", phoneIdStr);
     cm_cmn_FormatPrint("Default_profile", profileStr);
 
     return LE_OK;
@@ -1127,7 +1305,7 @@ int cm_data_GetProfileInfo
 {
     int exitStatus = EXIT_SUCCESS;
 
-    if (LE_OK != PrintDefaultProfile())
+    if (LE_OK != PrintDefaultProfileInfo())
     {
         exitStatus = EXIT_FAILURE;
     }
@@ -1140,7 +1318,10 @@ int cm_data_GetProfileInfo
         return EXIT_FAILURE;
     }
 
-    PrintProfileIndex(le_mdc_GetProfileIndex(profileRef));
+    if (LE_OK != PrintPhoneAndProfileIndex(profileRef))
+    {
+        exitStatus = EXIT_FAILURE;
+    }
 
     if (LE_OK != PrintApnName(profileRef))
     {
@@ -1170,6 +1351,83 @@ int cm_data_GetProfileInfo
     return exitStatus;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will return all profile informations.
+ *
+ * @todo Hardcoded to return the first profile at the moment, will revisit when dcsDaemon allows
+ * us to start a data connection on another profile.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_data_GetAllProfileInfo
+(
+    void
+)
+{
+    int exitStatus = EXIT_SUCCESS;
+    taf_dcs_ProfileInfo_t profilesInfoPtr[TAF_DCS_PROFILE_LIST_MAX_ENTRY];
+    size_t listSize;
+    le_result_t result;
+    le_mdc_ProfileRef_t profileRef = NULL;
+
+    for(int phoneId = 1; phoneId <= 2; phoneId++)
+    {
+        result = le_mdc_GetProfileListEx(phoneId,profilesInfoPtr, &listSize);
+        if(result != LE_OK)
+        {
+            LE_ERROR("Getting profile list for phone id %d failed", phoneId);
+            continue;
+        }
+
+        for (int i = 0; i < listSize; i++)
+        {
+            const taf_dcs_ProfileInfo_t *profileInfoPtr = &profilesInfoPtr[i];
+
+            profileRef = le_mdc_GetProfileEx(phoneId, profileInfoPtr->index);
+
+            if (NULL == profileRef)
+            {
+                printf("Invalid profile %p\n", profileRef);
+                continue;
+            }
+
+            if (LE_OK != PrintPhoneAndProfileIndex(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+
+            if (LE_OK != PrintApnName(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+
+            if (LE_OK != PrintPdpType(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+
+            if (LE_OK != PrintIsConnected(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+
+            if (LE_OK != PrintAuthentication(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+
+            if (LE_OK != PrintNetworkConfiguration(profileRef))
+            {
+                exitStatus = EXIT_FAILURE;
+            }
+        }
+    }
+
+    return exitStatus;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for data service.
@@ -1193,6 +1451,10 @@ void cm_data_ProcessDataCommand
     {
         exit(cm_data_GetProfileInfo());
     }
+    else if (strcmp(command, "allinfo") == 0)
+    {
+        exit(cm_data_GetAllProfileInfo());
+    }
     else if (strcmp(command, "profile") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1,
@@ -1205,6 +1467,20 @@ void cm_data_ProcessDataCommand
                 exit(EXIT_FAILURE);
             }
             exit(cm_data_SetProfileInUse(atoi(dataParam)));
+        }
+    }
+    else if (strcmp(command, "phoneid") == 0)
+    {
+        if (cm_cmn_CheckEnoughParams(1,
+                                     numArgs,
+                                     "Phone id missing. e.g. cm data phoneid <index>"))
+        {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
+            exit(cm_data_SetPhoneIdInUse(atoi(dataParam)));
         }
     }
     else if (strcmp(command, "connect") == 0)
@@ -1296,20 +1572,35 @@ void cm_data_ProcessDataCommand
         // which comes via Ctrl-C on the command line
         cm_data_MonitorDataConnection();
     }
+    else if (strcmp(command, "monitor") == 0)
+    {
+        // This command option includes no exit() because it keeps running over time to monitor
+        // data connection, e.g. via SIGKILL which comes via Ctrl-C on the command line
+        cm_data_MonitorAllDataConnection();
+    }
     else if (strcmp(command, "default_profile") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1,
-                                     numArgs,
-                                     "Profile index missing. e.g. cm data default_profile <index>"))
-        {
-            if (NULL == dataParam)
-            {
-                LE_ERROR("dataParam is NULL");
-                exit(EXIT_FAILURE);
-            }
+        uint8_t phoneId;
+        uint32_t profileId;
 
+        if (numArgs == 3)
+        {
+            
+            profileId = (uint32_t)atoi(le_arg_GetArg(2));
             le_result_t result = le_mdc_SetDefaultProfileIndex(atoi(dataParam));
             HandleResult("Setting default profile", result, true);
+        }
+        else if (numArgs == 4)
+        {
+            phoneId = (uint8_t)atoi(le_arg_GetArg(2));
+            profileId = (uint32_t)atoi(le_arg_GetArg(3));
+            le_result_t result = le_mdc_SetDefaultProfileIndexEx(phoneId, profileId);
+            HandleResult("Setting default profile", result, true);
+        }
+        else
+        {
+            printf("Invalid parameter.\n");
+            exit(EXIT_FAILURE);
         }
     }
     else
