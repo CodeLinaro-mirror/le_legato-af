@@ -28,6 +28,8 @@ void cm_sim_PrintSimHelp
 {
     printf("SIM usage\n"
             "=========\n\n"
+            "To get sim count:\n"
+            "\tcm sim count\n\n"
             "To get sim status:\n"
             "\tcm sim\n"
             "\tcm sim status\n\n"
@@ -221,36 +223,56 @@ static void AuthenticationResponse
 //-------------------------------------------------------------------------------------------------
 int cm_sim_GetSimStatus()
 {
-    le_sim_States_t state = LE_SIM_STATE_UNKNOWN;
+    int simCount = 0;
 
-    state = le_sim_GetState(SimId);
-
-    switch (state)
-    {
-        case LE_SIM_INSERTED:
-            printf("SIM card is inserted and locked (LE_SIM_INSERTED).\n");
-            break;
-        case LE_SIM_ABSENT:
-            printf("SIM card is absent (LE_SIM_ABSENT).\n");
-            break;
-        case LE_SIM_READY:
-            printf("SIM card is inserted and unlocked (LE_SIM_READY).\n");
-            break;
-        case LE_SIM_BLOCKED:
-            printf("SIM card is blocked (LE_SIM_BLOCKED).\n");
-            break;
-        case LE_SIM_BUSY:
-            printf("SIM card is busy (LE_SIM_BUSY).\n");
-            break;
-        case LE_SIM_POWER_DOWN:
-            printf("SIM card is powered down (LE_SIM_POWER_DOWN).\n");
-            break;
-        default:
-            printf("Unknown SIM state.\n");
-            break;
+    le_result_t res = le_sim_GetSlotCount(&simCount);
+    if (res != LE_OK) {
+        printf("Error! No SIM slot in device. Res: %d\n", (int) res);
+        return EXIT_FAILURE;
     }
+    taf_sim_Id_t simidOrg = SimId;
 
-    printf("\n");
+    printf("Total SIMs: %d\n", simCount);
+    printf("===============================================\n");
+    for (int i = 0; i < simCount; i++) {
+        if (i == 1) {
+            SimId = (simidOrg == LE_SIM_EXTERNAL_SLOT_1) ? LE_SIM_EXTERNAL_SLOT_2 : LE_SIM_EXTERNAL_SLOT_1;
+        }
+
+        le_sim_States_t state = LE_SIM_STATE_UNKNOWN;
+
+        state = le_sim_GetState(SimId);
+
+        printf("SIM Slot#%d: ", (int) SimId);
+
+        switch (state)
+        {
+            case LE_SIM_INSERTED:
+                printf("SIM card is inserted and locked (LE_SIM_INSERTED).\n");
+                break;
+            case LE_SIM_ABSENT:
+                printf("SIM card is absent (LE_SIM_ABSENT).\n");
+                break;
+            case LE_SIM_READY:
+                printf("SIM card is inserted and unlocked (LE_SIM_READY).\n");
+                break;
+            case LE_SIM_BLOCKED:
+                printf("SIM card is blocked (LE_SIM_BLOCKED).\n");
+                break;
+            case LE_SIM_BUSY:
+                printf("SIM card is busy (LE_SIM_BUSY).\n");
+                break;
+            case LE_SIM_POWER_DOWN:
+                printf("SIM card is powered down (LE_SIM_POWER_DOWN).\n");
+                break;
+            default:
+                printf("Unknown SIM state.\n");
+                break;
+        }
+    }
+    printf("===============================================\n");
+    le_sim_SelectCard(simidOrg);
+    SimId = simidOrg;
 
     return EXIT_SUCCESS;
 }
@@ -418,6 +440,68 @@ int cm_sim_GetCardType
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function will attempt to get the slot count (Total number of slots).
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_sim_GetSlotCount
+(
+    void
+)
+{
+    int simCount;
+    le_result_t res;
+    int ret = EXIT_SUCCESS;
+
+    res = le_sim_GetSlotCount(&simCount);
+
+    if (res != LE_OK)
+    {
+        simCount = 0;
+        ret = EXIT_FAILURE;
+    }
+
+    printf("Slot count: %d\n", simCount);
+
+    return ret;
+}
+
+char* cm_sim_SimStateToString(le_sim_States_t state)
+{
+
+    char* stateString = "";
+
+    switch (state)
+    {
+        case LE_SIM_INSERTED:
+            stateString = "SIM card is inserted but locked.";
+            break;
+        case LE_SIM_ABSENT:
+            stateString = "SIM card is absent.";
+            break;
+        case LE_SIM_READY:
+            stateString = "SIM card is inserted and unlocked.";
+            break;
+        case LE_SIM_BLOCKED:
+            stateString = "SIM card is blocked.";
+            break;
+        case LE_SIM_BUSY:
+            stateString = "SIM card is busy.";
+            break;
+        case LE_SIM_POWER_DOWN:
+            stateString = "SIM card is powered down.";
+            break;
+        default:
+            stateString = "Unknown SIM state.";
+            break;
+    }
+
+    return stateString;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function will attempt to get the SIM info (Home PLMN,...).
  *
  * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
@@ -429,29 +513,58 @@ int cm_sim_GetSimInfo
 )
 {
     int ret = EXIT_SUCCESS;
+    int simCount = 0;
 
-    cm_sim_GetCardType();
+    ret = le_sim_GetSlotCount(&simCount);
+    taf_sim_Id_t simidOrg = SimId;
 
-    if (EXIT_SUCCESS != cm_sim_GetSimIccid())
-    {
-        ret = EXIT_FAILURE;
+    printf("Total SIM Slot: %d\n", simCount);
+    printf("===============================================\n");
+    for (int i = 0; i < simCount; i++) {
+        if (i == 1) {
+            SimId = (simidOrg == LE_SIM_EXTERNAL_SLOT_1) ? LE_SIM_EXTERNAL_SLOT_2 : LE_SIM_EXTERNAL_SLOT_1;
+        }
+
+        cm_sim_GetCardType();
+
+        if (simCount > 1) {
+            printf("Default SIM: %s\n", i == 0 ? "Yes": "No");
+        }
+
+        bool isSimPreent = le_sim_IsPresent(SimId);
+        printf("SIM Availability: %s\n", isSimPreent ? "Yes": "No");
+
+        printf("SIM State: %s\n", cm_sim_SimStateToString(le_sim_GetState(SimId)));
+
+        bool isSimReady = le_sim_IsReady(SimId);
+        printf("SIM Ready: %s\n", isSimReady ? "True": "False");
+
+        if (EXIT_SUCCESS != cm_sim_GetSimIccid())
+        {
+            ret = EXIT_FAILURE;
+        }
+        if (EXIT_SUCCESS != cm_sim_GetNetworkOperator())
+        {
+            ret = EXIT_FAILURE;
+        }
+        if (EXIT_SUCCESS != cm_sim_GetSimEid())
+        {
+            ret = EXIT_FAILURE;
+        }
+        if (EXIT_SUCCESS != cm_sim_GetSimImsi())
+        {
+            ret = EXIT_FAILURE;
+        }
+        if (EXIT_SUCCESS != cm_sim_GetSimPhoneNumber())
+        {
+            ret = EXIT_FAILURE;
+        }
+
+        printf("===============================================\n");
     }
-    if (EXIT_SUCCESS != cm_sim_GetNetworkOperator())
-    {
-        ret = EXIT_FAILURE;
-    }
-    if (EXIT_SUCCESS != cm_sim_GetSimEid())
-    {
-        ret = EXIT_FAILURE;
-    }
-    if (EXIT_SUCCESS != cm_sim_GetSimImsi())
-    {
-        ret = EXIT_FAILURE;
-    }
-    if (EXIT_SUCCESS != cm_sim_GetSimPhoneNumber())
-    {
-        ret = EXIT_FAILURE;
-    }
+
+    le_sim_SelectCard(simidOrg);
+    SimId = simidOrg;
 
     return ret;
 }
@@ -901,6 +1014,10 @@ void cm_sim_ProcessSimCommand
         {
             exit(cm_sim_StorePin(pinPtr));
         }
+    }
+    else if (strcmp(command, "count") == 0)
+    {
+        exit(cm_sim_GetSlotCount());
     }
     else if (strcmp(command, "info") == 0)
     {
