@@ -42,6 +42,7 @@ struct Token_t: public Content_t
         NAME,               ///< Name safe to use as a program identifier in C-like languages.
         DOTTED_NAME,        ///< Name safe to use as a java package name.
         GROUP_NAME,         ///< Name safe to use as a user group name in Unix.
+        CAPABILITY_NAME,    ///< Name safe to use as a capability name in Unix.
         IPC_AGENT,          ///< App or user name in a binding (e.g., "appName" or "<userName>").
         INTEGER,            ///< Integer number, possibly with a 'K' suffix.
         SIGNED_INTEGER,     ///< Like Integer, but supports both positive and negative values.

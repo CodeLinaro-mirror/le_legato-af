@@ -109,6 +109,7 @@ static const char* TafServiceTable[] =
     "tafGpioSvc",
     "tafNetSvc",
     "tafKeyStoreSvc",
+    "tafSomeipGWSvc",
     "tafCanSvc"
 };
 

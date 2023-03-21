@@ -1726,6 +1726,18 @@ void PrintSummary
         }
     }
 
+    // Capabilities
+    if (appPtr->isSandboxed && !appPtr->capability.empty())
+    {
+        std::cout << LE_I18N("  Capability is added to the following")
+                  << std::endl;
+        for (auto& capability : appPtr->capability)
+        {
+            std::cout << "    " << capability << std::endl;
+        }
+    }
+
+
     // IPC interfaces and bindings.
     std::list<const model::ApiClientInterfaceInstance_t*> requiredClientIfs;
     std::list<const model::ApiClientInterfaceInstance_t*> boundClientIfs;
@@ -2100,6 +2112,10 @@ model::App_t* GetApp
         else if (sectionName == "groups")
         {
             AddGroups(appPtr, ToTokenListSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "capability")
+        {
+            AddCapability(appPtr, ToTokenListSectionPtr(sectionPtr));
         }
         else if (sectionName == "maxFileSystemBytes")
         {

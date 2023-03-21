@@ -29,6 +29,8 @@ static void ModelAppOverrides
 {
     bool groupsOverridden = false;
 
+    bool capabilityOverridden = false;
+
     // Iterate over the list of contents of the app section in the parse tree.
     for (auto subsectionPtr : appSectionPtr->Contents())
     {
@@ -53,6 +55,15 @@ static void ModelAppOverrides
                 groupsOverridden = true;
             }
             AddGroups(appPtr, ToTokenListSectionPtr(subsectionPtr));
+        }
+        else if (subsectionName == "capability")
+        {
+            if (!capabilityOverridden)
+            {
+                appPtr->capability.clear();
+                capabilityOverridden = true;
+            }
+            AddCapability(appPtr, ToTokenListSectionPtr(subsectionPtr));
         }
         else if (subsectionName == "maxCoreDumpFileBytes")
         {
