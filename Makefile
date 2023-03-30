@@ -335,10 +335,11 @@ endif
 
 # Set flags for test coverage
 ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
-  MKSYS_FLAGS += --cflags=--coverage --ldflags=--coverage
+  MKSYS_FLAGS += --cflags=--coverage --cxxflags=--coverage --ldflags=--coverage
 
   ifneq ($(LE_CONFIG_TEST_COVERAGE_DIR),)
-    MKSYS_FLAGS += --cflags=-fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR)
+    MKSYS_FLAGS += --cflags=-fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR) \
+    --cxxflags=-fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR)
   endif
 
   export TEST_COVERAGE := 1

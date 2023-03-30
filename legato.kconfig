@@ -308,7 +308,7 @@ config TEST_COVERAGE_DIR
   string "On-target code coverage directory"
   depends on TEST_COVERAGE
   default "" if TARGET_LOCALHOST
-  default "/mnt/flash/coverage"
+  default "/tmp/coverage"
   ---help---
   On-target directory to write runtime code coverage results to.
 
