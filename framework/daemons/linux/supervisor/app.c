@@ -2312,17 +2312,8 @@ static le_result_t CreateFileLink
         return LE_OK;
     }
 
-    if (!appRef->sandboxed)
-    {
-        // Create a symlink at the specified path.
-        if (symlink(srcPtr, destPath) != 0)
-        {
-            LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            goto failure;
-        }
-    }
     // For devices, create a new device node for the app
-    else if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
+    if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
     {
         char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
         le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
@@ -2370,8 +2361,31 @@ static le_result_t CreateFileLink
 
         fd_Close(fd);
 
-        // Bind mount file into the sandbox.
-        if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
+        // In order to maintain consistency with other apps(e.g. app built into image), if this file
+        // belongs to this app, we need to make destPath as a file and srcPtr as symlink.
+        if (strstr(srcPtr, APPS_INSTALL_DIR) != NULL)
+        {
+            if (LE_OK != file_Copy(srcPtr, destPath, NULL))
+            {
+                LE_ERROR("Could not copy file from '%s' to '%s'", srcPtr, destPath);
+                goto failure;
+            }
+
+            // Get and recover file modes
+            struct stat st;
+            if (stat(srcPtr, &st) != 0)
+            {
+                LE_ERROR("Could not stat file for '%s'. %m", srcPtr);
+                goto failure;
+            }
+
+            if (chmod(destPath, st.st_mode) != 0)
+            {
+                LE_ERROR("Could not do chmod for '%s'. %m", destPath);
+                goto failure;
+            }
+        }
+        else if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
         {
             LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
             goto failure;
