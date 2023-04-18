@@ -66,6 +66,11 @@ static void GenerateAppLimitsConfig
 
     cfgStream << "  \"cpuShare\" [" << appPtr->cpuShare.Get() << "]" << std::endl;
 
+    if (appPtr->username != "")
+    {
+        cfgStream << "  \"username\" \"" << appPtr->username << "\"" << std::endl;
+    }
+
     if (appPtr->maxFileSystemBytes.IsSet())
     {
         // This is not supported for unsandboxed apps.
@@ -135,7 +140,7 @@ static void GenerateCapabilityConfig
 {
     const auto& capabilityList = appPtr->capability;
 
-    // If the groups list is empty, nothing needs to be done.
+    // If the capability list is empty, nothing needs to be done.
     if (capabilityList.empty())
     {
         return;
@@ -153,7 +158,6 @@ static void GenerateCapabilityConfig
 
     cfgStream << "  }" << std::endl << std::endl;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------

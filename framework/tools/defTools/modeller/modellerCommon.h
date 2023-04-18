@@ -178,6 +178,18 @@ void AddCapability
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Makes the application have the required username listed in a given "username" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddUsername
+(
+    model::App_t* appPtr,
+    const parseTree::TokenListSection_t* sectionPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets whether the Supervisor will start the application automatically at system start-up,
  * or only when asked to do so, based on the contents of a "start:" section in the parse tree.
  */

@@ -362,6 +362,7 @@ typedef struct app_Ref
     size_t          numSupplementGids;  // Number of supplementary groups for this app.
     int             capabilities[LIMIT_MAX_NUM_CAPABILITIES];  // List of capabilites.
     size_t          numOfCapabilities;  // Number of capabilities for this app.
+    char*           cfgUser;            // User Name of the application.
     app_State_t     state;              // Applications current state.
     le_dls_List_t   procs;              // List of processes in this application.
     le_dls_List_t   auxProcs;           // List of auxiliary processes in this application.
@@ -657,6 +658,50 @@ static le_result_t GetCapValueFromName(const char* capName, int* valuePtr)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create the username for an application.
+ *
+ * @todo  Make this function just read the username from the configTree
+ *       list into the app object.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void InitAppUserName
+(
+       app_Ref_t appRef
+)
+{
+    // Get an iterator to the capability list in the config
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+    char path[LIMIT_MAX_PATH_LEN] = { 0 };
+    snprintf(path, sizeof(path), "/apps/%s/%s", appRef->name, "username");
+
+    // Read the username from the configTree.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    if (LE_OK != le_cfg_GetString(cfgIter, path, userName, sizeof(userName), ""))
+    {
+        LE_CRIT("Config app userName too long (app name '%s').", appRef->name);
+        le_cfg_CancelTxn(cfgIter);
+        return;
+    }
+
+    if (userName[0] == '\0')
+    {
+        le_cfg_CancelTxn(cfgIter);
+        return;
+    }
+
+    if (appRef->cfgUser == NULL)
+    {
+        appRef->cfgUser = le_mem_ForceAlloc(AppPool);
+        le_utf8_Copy(appRef->cfgUser, userName, LIMIT_MAX_USER_NAME_BYTES, NULL);
+    }
+
+    LE_INFO("Get username (%s) for app '%s' in configTree", appRef->cfgUser, appRef->name);
+    le_cfg_CancelTxn(cfgIter);
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create the capabilities for an application.
  *
  * @todo  Make this function just read the capability from the configTree
@@ -742,59 +787,29 @@ static le_result_t CreateUserAndGroups
     app_Ref_t appRef        // The app to create user and groups for.
 )
 {
-    // For sandboxed apps,
-    if (appRef->sandboxed)
+    char username[LIMIT_MAX_USER_NAME_BYTES] = { 0 };
+    const char* defaultUserPtr = appRef->sandboxed ? APP_SANDBOXED_USER : APP_UNSANDBOXED_USER;
+
+    // Get the app user in configTree and save it in appRef->cfgUser.
+    InitAppUserName(appRef);
+
+    if ((appRef->cfgUser != NULL) &&
+        (StringToLowercase(appRef->cfgUser, username, LIMIT_MAX_USER_NAME_BYTES) != LE_OK))
     {
-        // Compute the unique user name for the application.
-        char username[LIMIT_MAX_USER_NAME_BYTES];
-        char usernameLowercase[LIMIT_MAX_USER_NAME_BYTES];
-
-        if (user_AppNameToUserName(appRef->name, username, sizeof(username)) != LE_OK)
-        {
-            LE_ERROR("The user name '%s' is too long for app '%s'.", username, appRef->name);
-            return LE_FAULT;
-        }
-
-        if (StringToLowercase(username, usernameLowercase, LIMIT_MAX_USER_NAME_BYTES) != LE_OK)
-        {
-            LE_ERROR("Cound not convert username(%s) to lowercaes", username);
-            return LE_FAULT;
-        }
-
-        // Get the user ID and primary group ID for this app. If fails, get a default uid & gid.
-        if ((user_GetIDs(usernameLowercase, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
-            ((user_GetDefaultIDs(true, &(appRef->uid), &(appRef->gid)) != LE_OK)))
-        {
-            LE_ERROR("Could not get the uid and gid for sandboxed app '%s'.", appRef->name);
-            return LE_FAULT;
-        }
-
-        // Create the supplementary groups...
-        return CreateSupplementaryGroups(appRef);
+        LE_ERROR("Cound not convert username(%s) of app (%s) to lowercaes",
+                 appRef->cfgUser, appRef->name);
+        return LE_FAULT;
     }
-    // For unsandboxed apps,
-    else
+
+    if ((user_GetIDs(username, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
+        (user_GetIDs(defaultUserPtr, &(appRef->uid), &(appRef->gid)) != LE_OK))
     {
-        if (!user_IsTafService(appRef->name))
-        {
-            appRef->uid = 0;
-            appRef->gid = 0;
-        }
-        else
-        {
-            if (user_GetDefaultIDs(false, &(appRef->uid), &(appRef->gid)) != LE_OK)
-            {
-                LE_WARN("Can't get the uid/gid of unsandboxed app '%s', use ROOT instead.",
-                        appRef->name);
-                appRef->uid = 0;
-                appRef->gid = 0;
-            }
-        }
-        // Create the supplementary groups...
-        return CreateSupplementaryGroups(appRef);
+        LE_ERROR("Failed to get the uid/gid of app (%s).", appRef->name);
+        return LE_FAULT;
     }
+
+    return CreateSupplementaryGroups(appRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**

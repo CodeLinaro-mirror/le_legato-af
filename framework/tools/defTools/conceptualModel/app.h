@@ -82,6 +82,9 @@ struct App_t : public HasTargetInfo_t
     /// Set of the names of capabilities.
     std::set<std::string> capability;
 
+    /// Set the username string.
+    std::string  username;
+
 
     // Per-user limits:
     PositiveIntLimit_t      cpuShare;           ///< Relative share value

@@ -185,6 +185,10 @@ static parseTree::CompoundItem_t* ParseAppOverride
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::CAPABILITY_NAME);
     }
+    else if (sectionName == "username")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);
+    }
     else if (sectionName == "maxPriority")
     {
         return ParsePriority(lexer, sectionNameTokenPtr);

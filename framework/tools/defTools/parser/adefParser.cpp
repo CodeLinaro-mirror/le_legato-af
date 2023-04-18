@@ -644,6 +644,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::CAPABILITY_NAME);
     }
+    else if (sectionName == "username")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);
+    }
     else if (sectionName == "processes")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseProcessesSubsection);
