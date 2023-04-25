@@ -330,8 +330,6 @@ static void PrintMessage
             exit(EXIT_FAILURE);
         }
 
-        le_sms_Delete(msgRef);
-
         printf("\n message[%d] is deleted \n", msgContextPtr->msgToPrint);
     }
 
