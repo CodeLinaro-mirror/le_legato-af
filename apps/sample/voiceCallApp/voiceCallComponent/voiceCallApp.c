@@ -172,11 +172,6 @@ static void DisconnectAllAudio
     }
     if(AudioOutputConnectorRef)
     {
-        le_audio_DeleteConnector(AudioOutputConnectorRef);
-        AudioOutputConnectorRef = NULL;
-    }
-    if(AudioOutputConnectorRef)
-    {
         if(FileAudioRef)
         {
             LE_INFO("Disconnect %p from connector.%p", FileAudioRef, AudioOutputConnectorRef);
@@ -187,6 +182,11 @@ static void DisconnectAllAudio
             LE_INFO("Disconnect %p from connector.%p", FeOutRef, AudioOutputConnectorRef);
             le_audio_Disconnect(AudioOutputConnectorRef, FeOutRef);
         }
+    }
+    if(AudioOutputConnectorRef)
+    {
+        le_audio_DeleteConnector(AudioOutputConnectorRef);
+        AudioOutputConnectorRef = NULL;
     }
     if(FeOutRef)
     {
