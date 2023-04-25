@@ -176,6 +176,11 @@ endif
 # Set flags for test coverage
 ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
   CFLAGS += --coverage
+  LOCAL_MKEXE_FLAGS += --cflags=--coverage --ldflags=--coverage
+  ifneq ($(LE_CONFIG_TEST_COVERAGE_DIR),)
+    CFLAGS += -fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR)
+    LOCAL_MKEXE_FLAGS += --cflags=-fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR)
+  endif
 endif
 
 # IMA checking is done during run time. Also IMA checking may be done (e.g. new app install)
@@ -191,7 +196,9 @@ IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
 PA_START_NAME         := Component_le_pa_start
 PA_START_LIB          := $(LIB_DIR)/lib$(PA_START_NAME).so
 PA_START_CFLAGS       := $(CFLAGS) -I$(LINUX_SRC_DIR)/start
-PA_START_LDFLAGS      := -ldl
+PA_START_LDFLAGS      := $(CFLAGS) -ldl
+PA_START_OBJ_DIR      := $(BUILD_DIR)/$(PA_START_NAME)
+PA_START_OBJS         := $(PA_START_OBJ_DIR)/pa_start.o
 ifeq ($(LE_CONFIG_QMI),y)
 ifeq ($(LE_CONFIG_MDM9X15),y)
   # MDM9x15 doesn't have the necessary QMI API
@@ -227,6 +234,8 @@ endif # end not LE_CONFIG_QMI
 # Source files for startSystem executable
 START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
               $(LINUX_SRC_DIR)/common/ima.c
+START_OBJ_DIR := $(BUILD_DIR)/startSystem
+START_OBJS := $(patsubst %.c,$(START_OBJ_DIR)/%.o,$(notdir $(START_SRCS)))
 
 # ========== MAIN RECIPES ============
 
@@ -264,17 +273,20 @@ $(PA_START_LIB): $(PA_START_BINARY_LIB) | $(LIB_DIR)
 	$(L) COPY $@
 	$(Q)cp -p $< $@
 else # have le_pa_start sources
-$(PA_START_LIB): $(PA_START_SRCS) | $(LIB_DIR)
-	$(L) CCLD $@
+$(PA_START_OBJS): $(PA_START_SRCS) | $(PA_START_OBJ_DIR)
+	$(L) CC $@
+	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ -c $< \
+	    $(PA_START_CFLAGS)
+$(PA_START_LIB): $(PA_START_OBJS) | $(LIB_DIR)
+	$(L) LD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $< \
 	    -fPIC                                                \
 	    -shared                                              \
-	    $(PA_START_CFLAGS)                                   \
 	    $(PA_START_LDFLAGS)
 endif # end have le_pa_start sources
 
 # Rules for creating directories.
-$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR) $(STATIC_LIB_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR) $(STATIC_LIB_DIR) $(PA_START_OBJ_DIR) $(START_OBJ_DIR):
 	$(Q)mkdir -p $@
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.
@@ -365,11 +377,21 @@ $(LIB_DIR)/microSupervisor.o: $(RTOS_SRC_DIR)/microSupervisor/microSupervisor.c 
 	$(L) CC $@
 	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS)
 
-$(BIN_DIR)/startSystem: $(START_SRCS) | liblegato $(PA_START_LIB) $(BIN_DIR)
-	$(L) CCLD $@
-	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
+$(START_OBJ_DIR)/%.o: $(LINUX_SRC_DIR)/start/%.c | $(START_OBJ_DIR)
+	$(L) CC $@
+	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS) \
 		-I$(LEGATO_ROOT)/framework/liblegato/linux \
-		-I$(LEGATO_ROOT)/framework/daemons/linux/common \
+		-I$(LEGATO_ROOT)/framework/daemons/linux/common
+
+$(START_OBJ_DIR)/%.o: $(LINUX_SRC_DIR)/common/%.c | $(START_OBJ_DIR)
+	$(L) CC $@
+	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS) \
+		-I$(LEGATO_ROOT)/framework/liblegato/linux \
+		-I$(LEGATO_ROOT)/framework/daemons/linux/common
+
+$(BIN_DIR)/startSystem: $(START_OBJS) | liblegato $(PA_START_LIB) $(BIN_DIR)
+	$(L) LD $@
+	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
 		$(STATIC_LIB_DIR)/liblegato.a $(IMA_LIBS) -ldl -lpthread
 
 $(BIN_DIR)/supervisor: liblegato $(BIN_DIR)
