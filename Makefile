@@ -36,7 +36,7 @@
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m
+TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m sa525m
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
@@ -105,7 +105,7 @@ export TARGET
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 ifneq ($(TARGET),nothing)
   $(info Building Legato for target '$(TARGET)', telAf path '$(TELAF_ROOT)')
-  ifneq ($(findstring $(TARGET), sa415m sa515m),)
+  ifneq ($(findstring $(TARGET), sa415m sa515m sa525m),)
     export DISABLE_SMACK=1
     $(info DISABLE_SMACK->'$(DISABLE_SMACK)' for target '$(TARGET)')
   endif

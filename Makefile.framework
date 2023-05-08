@@ -157,9 +157,11 @@ TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 
 #To support hard float, fix  me later
 ifneq ($(filter %gcc %clang %gcc% %clang%,$(TARGET_CC)),)
-  CFLAGS += -Wall -Werror -march=armv7-a -mthumb
   ifneq ($(findstring $(TARGET),sa415m sa515m),)
+    CFLAGS += -Wall -Werror -march=armv7-a -mthumb
     CFLAGS += -mfpu=neon -mfloat-abi=hard
+  else ifneq ($(findstring $(TARGET),sa525m),)
+    CFLAGS += -Wall -Werror -march=armv8-a
   endif
 else ifneq ($(filter %armcc%,$(TARGET_CC)),)
   CFLAGS += --diag_error=warning

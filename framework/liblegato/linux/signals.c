@@ -217,8 +217,10 @@ static void ShowStackSignalHandler
     pcPtr = (void*)ctxPtr->rip;
 #elif defined(__mips__)
     pcPtr = (void*)ctxPtr->sc_pc;
+#elif defined(__aarch64__)
+    pcPtr = (void*)ctxPtr->pc;
 #else
-# warning "Architecture is not supported"
+    # warning "Architecture is not supported"
 #endif
 
     // Show process, pid and tid

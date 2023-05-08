@@ -767,7 +767,7 @@ static le_result_t CreateCapList
 
     appRef->numOfCapabilities = i + 1;
     le_cfg_CancelTxn(cfgIter);
-    LE_INFO("Capability list size for '%s': %d", appRef->name, appRef->numOfCapabilities);
+    LE_INFO("Capability list size for '%s': %"PRIuS, appRef->name, appRef->numOfCapabilities);
     return LE_OK;
 }
 
@@ -4083,7 +4083,7 @@ le_result_t semodule_TryInstall
     }
     else
     {
-        LE_INFO("dataPtr: %p, len: %d", dataPtr, dataLen);
+        LE_INFO("dataPtr: %p, len: %"PRIuS, dataPtr, dataLen);
 
         if (stat(sePathPtr, &st) == -1)
         {
@@ -4107,7 +4107,7 @@ le_result_t semodule_TryInstall
         dataPp = malloc(dataLen);
         if (dataPp == NULL)
         {
-             LE_ERROR("Cannot malloc %d from heap", dataLen);
+             LE_ERROR("Cannot malloc %"PRIuS" from heap", dataLen);
              retVal = LE_NOT_POSSIBLE;
              goto module_cleanup;
         }

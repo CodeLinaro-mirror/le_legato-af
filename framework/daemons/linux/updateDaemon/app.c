@@ -996,7 +996,7 @@ le_result_t semodule_TryInstall
     }
     else
     {
-        LE_INFO("dataPtr: %p, len: %d", dataPtr, dataLen);
+        LE_INFO("dataPtr: %p, len: %"PRIuS, dataPtr, dataLen);
 
         if (stat(sePathPtr, &st) == -1)
         {
@@ -1020,7 +1020,7 @@ le_result_t semodule_TryInstall
         dataPp = malloc(dataLen);
         if (dataPp == NULL)
         {
-             LE_ERROR("Cannot malloc %d from heap", dataLen);
+             LE_ERROR("Cannot malloc %"PRIuS" from heap", dataLen);
              retVal = LE_NOT_POSSIBLE;
              goto module_cleanup;
         }

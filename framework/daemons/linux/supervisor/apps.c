@@ -2442,7 +2442,7 @@ le_result_t le_appInfo_GetName
     leRet = le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
     if (leRet != LE_OK)
     {
-        LE_CRIT("Copy error[%d]!, pid: %d, appName: %s, token: %s, appNameNumElements: %d",
+        LE_CRIT("Copy error[%d]!, pid: %d, appName: %s, token: %s, appNameNumElements: %"PRIuS,
             leRet, pid, appName, token, appNameNumElements);
         return leRet;
     }
