@@ -7,6 +7,7 @@
  * <hr>
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -497,7 +498,7 @@ le_result_t secSocket_Delete
 le_result_t secSocket_Write
 (
     secSocket_Ctx_t* ctxPtr,      ///< [INOUT] Secure socket context pointer
-    char*            dataPtr,     ///< [IN] Data pointer
+    const char*      dataPtr,     ///< [IN] Data pointer
     size_t           dataLen      ///< [IN] Data length
 )
 {
