@@ -629,25 +629,25 @@ static int SetConstellation
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GPS;
         constellationSum -= CONSTELLATION_GPS;
-        strncat(constellationStr, "GPS ", sizeof(constellationStr)-strlen(constellationStr)-1);
+        le_utf8_Append(constellationStr, "GPS ", sizeof(constellationStr), NULL);
     }
     if (constellationSum & CONSTELLATION_GLONASS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GLONASS;
         constellationSum -= CONSTELLATION_GLONASS;
-        strncat(constellationStr, "GLONASS ", sizeof(constellationStr)-strlen(constellationStr)-1);
+        le_utf8_Append(constellationStr, "GLONASS ", sizeof(constellationStr), NULL);
     }
     if (constellationSum & CONSTELLATION_BEIDOU)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_BEIDOU;
         constellationSum -= CONSTELLATION_BEIDOU;
-        strncat(constellationStr, "BEIDOU ", sizeof(constellationStr)-strlen(constellationStr)-1);
+        le_utf8_Append(constellationStr, "BEIDOU ", sizeof(constellationStr), NULL);
     }
     if (constellationSum & CONSTELLATION_GALILEO)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GALILEO;
         constellationSum -= CONSTELLATION_GALILEO;
-        strncat(constellationStr, "GALILEO ", sizeof(constellationStr)-strlen(constellationStr)-1);
+        le_utf8_Append(constellationStr, "GALILEO ", sizeof(constellationStr), NULL);
     }
     if (constellationSum & CONSTELLATION_SBAS)
     {
@@ -659,9 +659,9 @@ static int SetConstellation
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
         constellationSum -= CONSTELLATION_QZSS;
-        strncat(constellationStr, "QZSS ", sizeof(constellationStr)-strlen(constellationStr)-1);
+        le_utf8_Append(constellationStr, "QZSS ", sizeof(constellationStr), NULL);
     }
-    strncat(constellationStr, "]", sizeof(constellationStr)-strlen(constellationStr)-1);
+    le_utf8_Append(constellationStr, "]", sizeof(constellationStr), NULL);
 
     LE_INFO("Setting constellation %s",constellationStr);
 
@@ -2125,9 +2125,9 @@ static int GetDop
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    uint16_t dop[LE_GNSS_RES_UNKNOWN];
+    uint16_t dop[LE_GNSS_RES_UNKNOWN] = { 0 };
     bool err = false;
-    le_result_t result;
+    le_result_t result = LE_FAULT;
     le_gnss_DopType_t dopType = LE_GNSS_PDOP;
     le_gnss_Resolution_t DopRes;
 
@@ -2835,6 +2835,11 @@ COMPONENT_INIT
     else if (strcmp(commandPtr, "restart") == 0)
     {
         const char* restartTypePtr = le_arg_GetArg(1);
+        if (restartTypePtr == NULL)
+        {
+            printf("Restart type is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
         // Following function exit on failure, so no need to check return code.
         CheckEnoughParams( 1,
                            numArgs,

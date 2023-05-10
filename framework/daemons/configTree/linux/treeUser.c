@@ -475,7 +475,7 @@ tdb_TreeRef_t tu_GetRequestedTree
     else if (permission == TU_TREE_WRITE)
     {
         LE_DEBUG("** Attempting write access on the default tree, '%s'.", userRef->treeName);
-        strncpy(treeName, userRef->treeName, sizeof(treeName));
+        le_utf8_Copy(treeName, userRef->treeName, sizeof(treeName), NULL);
         treeName[MAX_TREE_NAME_BYTES - 1] = '\0';
     }
     else

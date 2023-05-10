@@ -176,7 +176,7 @@ static le_result_t ImportPublicCert
 
     if (checkExpiry)
     {
-        strncpy(checkExpiryOption, CHECK_EXPIRY_OPTION, sizeof(checkExpiryOption)- 1);
+        le_utf8_Copy(checkExpiryOption, CHECK_EXPIRY_OPTION, sizeof(checkExpiryOption), NULL);
     }
 
     snprintf(cmd, sizeof(cmd), "SECFS=/sys/kernel/security && "

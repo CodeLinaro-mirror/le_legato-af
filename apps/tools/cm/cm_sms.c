@@ -904,7 +904,7 @@ void cm_sms_CountAllMessages
     void
 )
 {
-    int nbSms;
+    int nbSms = 0;
 
     nbSms = ForEachMessage(NULL, NULL);
 

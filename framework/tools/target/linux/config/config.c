@@ -254,7 +254,7 @@ static json_t* CreateJsonNodeFromIterator
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char nodeName[LE_CFG_NAME_LEN_BYTES] = "";
+    char nodeName[LE_CFG_NAME_LEN_BYTES] = { 0 };
 
     le_cfg_nodeType_t type = le_cfg_GetNodeType(iterRef, "");
     le_cfg_GetNodeName(iterRef, "", nodeName, sizeof(nodeName));
@@ -278,7 +278,7 @@ static json_t* CreateJsonNodeFromIterator
 
         case LE_CFG_TYPE_STRING:
             {
-                char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+                char strBuffer[LE_CFG_STR_LEN_BYTES] = { 0 };
                 le_cfg_GetString(iterRef, "", strBuffer, LE_CFG_STR_LEN_BYTES, "");
                 json_object_set_new(nodePtr, JSON_FIELD_VALUE, json_string(strBuffer));
             }
@@ -572,7 +572,7 @@ static int HandleGetUserFriendly
 
         default:
             {
-                char nodeValue[LE_CFG_STR_LEN_BYTES] = "";
+                char nodeValue[LE_CFG_STR_LEN_BYTES] = { 0 };
 
                 le_cfg_GetString(iterRef, "", nodeValue, LE_CFG_STR_LEN_BYTES, "");
                 printf("%s\n", nodeValue);
@@ -634,7 +634,7 @@ static int HandleGetJSON
 
             // JSON node for the tree.
             json_t* treeNodePtr = CreateJsonNode(treeName, "tree");
-            strcat(treeName, ":/");
+            le_utf8_Append(treeName, ":/", sizeof(treeName), NULL);
 
             // Start a read transaction at the specified node path.  Then dump the value, (if any.)
             le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(treeName);
@@ -662,18 +662,18 @@ static int HandleGetJSON
         {
             case LE_CFG_TYPE_STEM:
                 {
-                    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
-                    char nodeType[LE_CFG_STR_LEN_BYTES] = "";
+                    char strBuffer[LE_CFG_STR_LEN_BYTES] = { 0 };
+                    char nodeType[LE_CFG_STR_LEN_BYTES] = { 0 };
                     le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
 
                     // If no name, we are dumping a complete tree.
                     if (strlen(strBuffer) == 0)
                     {
-                        strcpy(nodeType, "tree");
+                        le_utf8_Copy(nodeType, "tree", sizeof(nodeType), NULL);
                     }
                     else
                     {
-                        strcpy(nodeType, NodeTypeStr(type));
+                        le_utf8_Copy(nodeType, NodeTypeStr(type), sizeof(nodeType), NULL);
                     }
 
                     nodePtr = CreateJsonNode(strBuffer, nodeType);
@@ -747,6 +747,11 @@ static le_result_t HandleImportJSONIteration
 
     // Check type
     const char* typeStr = json_string_value(json_object_get(nodePtr, JSON_FIELD_TYPE));
+    if (typeStr == NULL)
+    {
+        printf("Type is NULL.\n");
+        return LE_FAULT;
+    }
     le_cfg_nodeType_t type = GetNodeTypeFromString(typeStr);
 
     switch (type)
@@ -756,7 +761,15 @@ static le_result_t HandleImportJSONIteration
             break;
 
         case LE_CFG_TYPE_STRING:
-            le_cfg_SetString(iterRef, "", json_string_value(value));
+            {
+                const char* jsonStr = json_string_value(value);
+                if (jsonStr == NULL)
+                {
+                    printf("Json string is NULL.\n");
+                    return LE_FAULT;
+                }
+                le_cfg_SetString(iterRef, "", jsonStr);
+            }
             break;
 
         case LE_CFG_TYPE_INT:
@@ -771,8 +784,8 @@ static le_result_t HandleImportJSONIteration
             {
                 // Iterate on children
                 json_t* childrenPtr = json_object_get(nodePtr, JSON_FIELD_CHILDREN);
-                json_t* childPtr;
-                int i;
+                json_t* childPtr = NULL;
+                int i = 0;
 
                 json_array_foreach(childrenPtr, i, childPtr)
                 {
@@ -780,6 +793,11 @@ static le_result_t HandleImportJSONIteration
                     const char* name = json_string_value(json_object_get(childPtr,
                                                                          JSON_FIELD_NAME));
 
+                    if (name  == NULL)
+                    {
+                        printf("Name is NULL.\n");
+                        return LE_FAULT;
+                    }
                     // Is node exist with this name?
                     le_cfg_nodeType_t existingType = le_cfg_GetNodeType(iterRef, name);
                     switch (existingType)

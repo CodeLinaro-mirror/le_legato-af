@@ -1844,6 +1844,12 @@ static void UpdateUsersAndGroups
     // make sure it has a user account and primary group in the new passwd and group files.
     char* pathArrayPtr[] = { "/legato/systems/current/apps", NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return;
+    }
+
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
     {

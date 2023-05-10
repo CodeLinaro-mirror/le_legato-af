@@ -400,6 +400,11 @@ static le_result_t AppendSeparator
 
     if (EndsWithSeparator(iterPtr) == false)
     {
+        if (iterPtr->pathSize >= LIMIT_MAX_PATH_BYTES)
+        {
+            LE_ERROR("Path size is overflow.");
+            return LE_OVERFLOW;
+        }
         result = le_utf8_Copy(iterPtr->path + iterPtr->pathSize,
                               iterPtr->separator,
                               LIMIT_MAX_PATH_BYTES - iterPtr->pathSize,

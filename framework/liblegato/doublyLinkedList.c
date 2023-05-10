@@ -131,6 +131,7 @@ void le_dls_AddBefore
     // If this assert fails on a newly created link, ensure the link has been initialized
     // with LE_DLS_LINK_INIT
     LE_ASSERT(newLinkPtr &&
+              currentLinkPtr &&
               !newLinkPtr->nextPtr &&
               !newLinkPtr->prevPtr);
 
@@ -305,7 +306,7 @@ le_dls_Link_t* le_dls_PeekNext
     const le_dls_Link_t* currentLinkPtr     ///< [IN] Get the link that is relative to this link.
 )
 {
-    if (currentLinkPtr == listPtr->headLinkPtr->prevPtr)
+    if (currentLinkPtr == NULL || currentLinkPtr == listPtr->headLinkPtr->prevPtr)
     {
         // We are at the tail already so there is no next link.
         return NULL;

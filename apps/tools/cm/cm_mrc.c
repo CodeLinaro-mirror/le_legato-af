@@ -540,6 +540,11 @@ void cm_mrc_ProcessRadioCommand
             for (index = 2 ; index < numArgs ; index++)
             {
                 ratStrPtr = le_arg_GetArg(index);
+                if (ratStrPtr == NULL)
+                {
+                    LE_ERROR("RAT is NULL.");
+                    exit(EXIT_FAILURE);
+                }
                 LE_DEBUG("Args (%d) => '%s'",index, ratStrPtr);
 
                 if (0 == strcmp(ratStrPtr, "AUTO"))

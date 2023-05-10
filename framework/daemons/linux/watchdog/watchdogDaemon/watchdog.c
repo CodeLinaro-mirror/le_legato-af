@@ -911,8 +911,8 @@ static void CreateMandatoryWatchdog
     le_clk_Time_t maxWatchdogTime = MakeTimerInterval(maxWatchdogTimeout);
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
-    strncpy(newDogPtr->key.appName, appNamePtr, sizeof(newDogPtr->key.appName));
-    strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
+    le_utf8_Copy(newDogPtr->key.appName, appNamePtr, sizeof(newDogPtr->key.appName), NULL);
+    le_utf8_Copy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName), NULL);
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
     // time for the application to start.
@@ -947,8 +947,8 @@ static MandatoryWatchdogObj_t* CreateFrameworkWatchdog
     le_clk_Time_t maxWatchdogTime = MakeTimerInterval(maxWatchdogTimeout);
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
-    strncpy(newDogPtr->key.appName, "framework", sizeof(newDogPtr->key.appName));
-    strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
+    le_utf8_Copy(newDogPtr->key.appName, "framework", sizeof(newDogPtr->key.appName), NULL);
+    le_utf8_Copy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName), NULL);
     LE_ASSERT(newDogPtr->key.procName[LIMIT_MAX_PROCESS_NAME_LEN] == '\0');
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
