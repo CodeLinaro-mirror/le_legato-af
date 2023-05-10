@@ -434,6 +434,11 @@ void* le_hashmap_Put
             le_hashmap_Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr,
                                                                le_hashmap_Entry_t,
                                                                entryListLink);
+            if (currentEntryPtr == NULL)
+            {
+                LE_ERROR("Current entry is NULL.");
+                return NULL;
+            }
 
             // Replace existing value if the keys match.
             if (EqualKeys(currentEntryPtr->keyPtr,

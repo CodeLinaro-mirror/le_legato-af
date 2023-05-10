@@ -1136,10 +1136,10 @@ static le_result_t CreateUser
  * Change string to lowercase
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t StringToLowercase(const char *input, char *output, int maxSize)
+static le_result_t StringToLowercase(const char *input, char *output, size_t maxSize)
 {
-    int inputSize;
-    int i;
+    size_t inputSize;
+    size_t i;
 
     if ((input == NULL) || (output== NULL))
     {
@@ -1165,7 +1165,15 @@ static le_result_t StringToLowercase(const char *input, char *output, int maxSiz
             output[i] = input[i];
         }
     }
-    output[i] = '\0';
+
+    if (i >= maxSize)
+    {
+        output[maxSize - 1] = '\0';
+    }
+    else
+    {
+        output[i] = '\0';
+    }
 
     return LE_OK;
 }

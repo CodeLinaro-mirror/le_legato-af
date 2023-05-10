@@ -897,6 +897,7 @@ static void AddProcesses
             procEnvPtr->processes.push_back(procPtr);
 
             procPtr->SetName(procName);
+
             if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
             {
                 i++;

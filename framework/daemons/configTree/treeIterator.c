@@ -153,6 +153,12 @@ static void InsertTreeName
         // position and we're done.  Otherwise if it's a duplicate, we're done.  If it's larger,
         // continue the search until we either find the end of the list or we find a suitable
         // insertion location.
+        if (treeName == NULL)
+        {
+            LE_ERROR("Tree name is NULL.");
+            return;
+        }
+
         int result = strcmp(itemPtr->treeName, treeName);
 
         if (result > 0)

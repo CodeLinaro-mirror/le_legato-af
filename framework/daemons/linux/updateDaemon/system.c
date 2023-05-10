@@ -414,8 +414,13 @@ int system_GetPreviousSystemIndex
 
     char* pathArrayPtr[] = { (char*)SystemPath, NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
-    FTSENT* entPtr;
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return highestFound;
+    }
 
+    FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
     {
         if (   (entPtr->fts_info == FTS_D)
@@ -1057,6 +1062,11 @@ void system_RemoveUnusedApps
     // used in any system.
     char* pathArrayPtr[] = { "/legato/apps", NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return;
+    }
 
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
@@ -1111,6 +1121,11 @@ bool system_AppUsedInAnySystem
 {
     char* pathArrayPtr[] = { "/legato/systems", NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return false;
+    }
 
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
@@ -1180,6 +1195,11 @@ void system_RemoveUnneeded
     // system, and delete any "bad" systems while we are at it.
     char * pathArrayPtr[] = { (char*)SystemPath, NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return;
+    }
 
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
