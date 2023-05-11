@@ -45,6 +45,9 @@ typedef enum
     LE_SDTP_MSGID_BIND,             ///< Create one binding.  The payload is the binding details.
                                     ///  If the Service Directory runs into an error, it will
                                     ///  drop the connection to the sdir tool without responding.
+
+    LE_SDTP_MSGID_FIND_SERVICE,     ///< Get the service information by service's user and server
+                                    ///  interface name.
 }
 le_sdtp_MsgType_t;
 
@@ -64,5 +67,18 @@ typedef struct
 }
 le_sdtp_Msg_t;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The service information response, which contains the server protocol ID and max payload size.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_result_t result;                     ///< result of response.
+    char id[LIMIT_MAX_PROTOCOL_ID_BYTES];   ///< Unique identifier for the protocol of the service.
+    size_t maxPayloadSize;                  ///< Max payload size (in bytes) in this protocol.
+}
+le_sdtp_resp_t;
 
 #endif // SDIR_TOOL_PROTOCOL_H_INCLUDE_GUARD

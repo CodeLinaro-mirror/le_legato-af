@@ -45,7 +45,7 @@ static const char* ClientIfPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
-/// Server interface specifier string (used by Bind()).
+/// Server interface specifier string (used by Bind() and Get()).
 //--------------------------------------------------------------------------------------------------
 static const char* ServerIfPtr = NULL;
 
@@ -77,6 +77,7 @@ static void PrintHelpAndExit
         "    sdir list --format=json\n"
         "    sdir load\n"
         "    sdir bind CLIENT_IF SERVER_IF\n"
+        "    sdir get SERVER_IF\n"
         "    sdir help\n"
         "    sdir -h\n"
         "    sdir --help\n"
@@ -104,6 +105,9 @@ static void PrintHelpAndExit
         "                appName.externInterfaceName\n"
         "                <userName>.executableName.componentName.interfaceName\n"
         "                <userName>.externInterfaceName\n"
+        "\n"
+        "    sdir get SERVER_IF\n"
+        "            Get the service information of specified server interface.\n"
         "\n"
         "    sdir help\n"
         "    sdir -h\n"
@@ -833,6 +837,56 @@ static void Bind
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Execute the 'get' command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Get
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Initialize the "User API".
+    user_Init();
+
+    // Construct the request message.
+    le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
+    le_sdtp_Msg_t* reqPayloadPtr = le_msg_GetPayloadPtr(msgRef);
+
+    reqPayloadPtr->msgType = LE_SDTP_MSGID_FIND_SERVICE;
+
+    // Parse the server interface specifier.
+    ParseInterfaceSpec(ServerIfPtr,
+                       &reqPayloadPtr->server,
+                       reqPayloadPtr->serverInterfaceName,
+                       sizeof(reqPayloadPtr->serverInterfaceName));
+
+    // Send the message and wait for a response.
+    msgRef = le_msg_RequestSyncResponse(msgRef);
+
+    // If a response message was not received, then the operation failed.
+    if (msgRef == NULL)
+    {
+        ExitWithErrorMsg("Communication with Service Directory failed.");
+    }
+
+    // Get the response.
+    le_sdtp_resp_t* resPayloadPtr = le_msg_GetPayloadPtr(msgRef);
+    if (resPayloadPtr->result != LE_OK)
+    {
+        fprintf(stderr, "Failed to get service info (%s).\n", LE_RESULT_TXT(resPayloadPtr->result));
+        exit(EXIT_FAILURE);
+    }
+
+    printf("protocol ID = '%s'\n", resPayloadPtr->id);
+    printf("max message size = %d bytes\n", resPayloadPtr->maxPayloadSize);
+
+    exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Positional argument callback function that gets called with the CLIENT_IF argument from the
  * command line.
  **/
@@ -883,6 +937,11 @@ static void CommandArgHandler
     if (strcmp(CommandPtr, "bind") == 0)
     {
         le_arg_AddPositionalCallback(ClientIfArgHandler);
+        le_arg_AddPositionalCallback(ServerIfArgHandler);
+    }
+    // The get service info command expects one argument: the server interface.
+    else if (strcmp(CommandPtr, "get") == 0)
+    {
         le_arg_AddPositionalCallback(ServerIfArgHandler);
     }
 }
@@ -959,6 +1018,10 @@ COMPONENT_INIT
     else if (strcmp(CommandPtr, "bind") == 0)
     {
         Bind();
+    }
+    else if (strcmp(CommandPtr, "get") == 0)
+    {
+        Get();
     }
     else
     {

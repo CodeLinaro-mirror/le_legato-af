@@ -2482,6 +2482,45 @@ static void SdirToolBind
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handles a "show" request from the 'sdir' tool.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SdirToolFindService
+(
+    le_msg_MessageRef_t msgRef  ///< [in] Reference to the received message.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_sdtp_Msg_t* reqPyldPtr = le_msg_GetPayloadPtr(msgRef);
+    le_sdtp_resp_t* resPyldMsgPtr = le_msg_GetPayloadPtr(msgRef);
+
+    // Find the user by the uid.
+    User_t* serverUserPtr = GetUser(reqPyldPtr->server);
+
+    // Find the serviceConnection object by the user.
+    ServerConnection_t* connectionPtr = FindService(serverUserPtr, reqPyldPtr->serverInterfaceName);
+
+    if (connectionPtr == NULL)
+    {
+        LE_WARN("Can not find service (uid=%d, interface=%s).", reqPyldPtr->server,
+                                                                reqPyldPtr->serverInterfaceName);
+        resPyldMsgPtr->result = LE_NOT_FOUND;
+        le_mem_Release(serverUserPtr);
+        return;
+    }
+
+    le_mem_Release(serverUserPtr);
+
+    // Fill the service info in the response.
+    resPyldMsgPtr->result = LE_OK;
+    resPyldMsgPtr->maxPayloadSize = connectionPtr->interface.maxProtocolMsgSize;
+    LE_ASSERT(LE_OK == le_utf8_Copy(resPyldMsgPtr->id, connectionPtr->interface.protocolId,
+                                    sizeof(resPyldMsgPtr->id), NULL));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process a message received from the "sdir" tool.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2514,6 +2553,11 @@ static void SdirToolRecv
         case LE_SDTP_MSGID_BIND:
 
             SdirToolBind(msgPtr);
+            break;
+
+        case LE_SDTP_MSGID_FIND_SERVICE:
+
+            SdirToolFindService(msgRef);
             break;
 
         default:
