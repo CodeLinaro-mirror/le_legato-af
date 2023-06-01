@@ -108,6 +108,17 @@ for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
       done
    done
    # Deploy read-only tree for an apps if it exists
+   for d in scripts cfg; do
+     if [ -d ../../../$ln/read-only/$d ]; then
+       mkdir -m 0777 `basename $f`/$d
+       for ff in ../../../$ln/read-only/$d/*; do
+         mv $ff `basename $f`/$d/.
+         ln -s /legato/systems/current/appsWriteable/`basename $f`/$d/`basename $ff` \
+               ../../../$ln/read-only/$d/`basename $ff`
+       done
+     fi
+   done
+
    if [ -d ../../../$ln/read-only/usr ]; then
      mkdir -p `basename $f`/usr/
      for dd in `cd ../../../$ln/read-only/usr; find -type d`; do
