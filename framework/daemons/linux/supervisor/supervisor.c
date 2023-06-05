@@ -547,7 +547,6 @@ static void StartFramework
 
     // Connect to the services we need from the framework daemons.
     LE_DEBUG("---- Connecting to services ----");
-    le_log_ConnectToControlDaemon();
     le_cfg_ConnectService();
     logFd_ConnectService();
     le_instStat_ConnectService();
