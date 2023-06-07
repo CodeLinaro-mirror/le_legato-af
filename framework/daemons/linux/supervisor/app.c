@@ -326,6 +326,25 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/usr/lib/arm-linux-gnueabihf/libstdc++.so.6", .dest = "/lib/"}
 };
 
+#elif defined(TARGET_IMPORTS_ARMV8)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all applications by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+static const FileLinkObj_t DefaultSystemLinks[] =
+{
+    {.src = "/lib/ld-linux-aarch64.so.1", .dest = "/lib/"},
+    {.src = "/lib/libc.so.6", .dest = "/lib/"},
+    {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
+    {.src = "/lib/librt.so.1", .dest = "/lib/"},
+    {.src = "/lib/libdl.so.2", .dest = "/lib/"},
+    {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
+    {.src = "/lib/libm.so.6", .dest = "/lib/"},
+    {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
+};
+
 #else
 #error No "TARGET_IMPORTS_x" defined.
 #endif
