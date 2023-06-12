@@ -96,6 +96,7 @@ static le_result_t MkDirTree
 )
 {
     char* slashPtr = (char *)filePathPtr;
+
     char dirPath[PATH_MAX];
 
     if (NULL == FsPrefixPtr)
@@ -103,11 +104,47 @@ static le_result_t MkDirTree
         return LE_UNSUPPORTED;
     }
 
-    while ((slashPtr = strchr (slashPtr + 1, '/')))
-    {
-        memset(dirPath, 0, PATH_MAX);
-        le_utf8_Copy(dirPath, FsPrefixPtr, PATH_MAX, NULL);
-        le_utf8_Append(dirPath, filePathPtr, slashPtr - filePathPtr, NULL);
+    memset(dirPath, 0, PATH_MAX);
+    le_utf8_Copy(dirPath, FsPrefixPtr, PATH_MAX, NULL);
+
+    do {
+        LE_DEBUG("slashPtr: %s", slashPtr);
+        size_t dirPathLen = strlen(dirPath);
+        size_t numBytes = 0;
+
+        // create tmp string to store substring before the next slash
+        char tmpPath[PATH_MAX] = "";
+
+        // detect if there is next slash, if not, stop here
+        if((strchr(slashPtr + 1, '/')))
+        {
+            // Skip slash char
+            if(slashPtr[0] == '/')
+            {
+                slashPtr++;
+            }
+            // copy substring before the next slash
+            if(le_utf8_CopyUpToSubStr(tmpPath, slashPtr, "/", PATH_MAX, &numBytes) != LE_OK)
+            {
+                LE_ERROR("overflow");
+                return LE_FAULT;
+            }
+        }
+        else
+        {
+            return LE_OK;
+        }
+
+        LE_DEBUG("tmpPath: %s", tmpPath);
+
+        // Combine path string with upper level folders
+        if (le_path_Concat("/", dirPath, PATH_MAX - dirPathLen, tmpPath, NULL) != LE_OK)
+        {
+            LE_ERROR("overflow");
+            return LE_FAULT;
+        }
+
+        LE_DEBUG("mkdir for dirPath: %s", dirPath);
         if ((-1 == mkdir(dirPath, S_IRWXU)) && (EEXIST != errno))
         {
             if (EROFS == errno)
@@ -123,7 +160,9 @@ static le_result_t MkDirTree
                 return LE_FAULT;
             }
         }
-    }
+
+    } while (((slashPtr = strchr(slashPtr + 1, '/'))));
+
     return LE_OK;
 }
 
