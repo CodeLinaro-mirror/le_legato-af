@@ -62,13 +62,14 @@
 #include "file.h"
 #include "ima.h"
 #include "kernelModules.h"
+#ifdef LE_CONFIG_ENABLE_SELINUX
 #include <semanage/modules.h>
-#include <regex.h>
 #include <selinux/restorecon.h>
+#endif // LE_CONFIG_ENABLE_SELINUX
+#include <linux/securebits.h>
+#include <regex.h>
 #include <sys/mman.h>
 #include <sys/capability.h>
-#include <linux/securebits.h>
-
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that specifies whether the app should be in a sandbox.
@@ -256,6 +257,8 @@ static const FileLinkObj_t DefaultTmpLinks[] =
  * Files and directories to link into all applications by default for the default system.
  */
 //--------------------------------------------------------------------------------------------------
+#ifndef LE_CONFIG_TARGET_SIMULATION
+
 static const FileLinkObj_t DefaultSystemLinks[] =
 {
     {.src = "/lib/ld-linux-x86-64.so.2", .dest = "/lib/"},
@@ -267,6 +270,25 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libm.so.6", .dest = "/lib/"},
     {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
 };
+
+#else
+
+// Libaries location are different, for Ubuntu20.04 & Ubuntu18.04 as belows.
+static const FileLinkObj_t DefaultSystemLinks[] =
+{
+    {.src = "/lib/x86_64-linux-gnu/libc.so.6", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/librt.so.1", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libdl.so.2", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libgcc_s.so.1", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libm.so.6", .dest = "/lib/"},
+    {.src = "/usr/lib/x86_64-linux-gnu/libstdc++.so.6", .dest = "/lib/"},
+
+    // Caution: for sandboxed app, we must make some abs path to store dynamic libs in simulation env.
+    {.src = "/lib64/ld-linux-x86-64.so.2", .dest = "/lib64/"},
+    {.src = "/lib/x86_64-linux-gnu/libpthread.so.0", .dest = "/lib/x86_64-linux-gnu/"},
+};
+
+#endif
 
 #elif defined(TARGET_IMPORTS_X86)
 
@@ -3643,6 +3665,7 @@ app_Ref_t app_Create
         goto failed;
     }
 
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Enable "notify_on_release" for this app, so the Supervisor will be notified when this app
     // stops.
     // Need to account for the characters other than app name in the path of notify_on_release.
@@ -3652,6 +3675,7 @@ app_Ref_t app_Create
               < sizeof(notifyPath));
 
     file_WriteStr(notifyPath, "1", 0);
+#endif
 
     le_cfg_CancelTxn(cfgIterator);
     return appPtr;
@@ -3741,6 +3765,7 @@ void app_Delete
     le_mem_Release(appRef);
 }
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  *  Overlayfs path for dynamic loading policy
@@ -4166,7 +4191,7 @@ module_cleanup:
 
     return retVal;
 }
-
+#endif // LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Starts an application.
@@ -4217,6 +4242,7 @@ le_result_t app_Start
         return LE_FAULT;
     }
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
     char sePath[LIMIT_M_PATH_BYTES];
     char workPath[LIMIT_M_PATH_BYTES];
     char installPath[LIMIT_M_PATH_BYTES];
@@ -4232,7 +4258,7 @@ le_result_t app_Start
         snprintf(workPath, LIMIT_M_PATH_BYTES, "%s%s",appRef->workingDir, "/");
         semodule_Restore(workPath);
     }
-
+#endif // LE_CONFIG_ENABLE_SELINUX
     // Create /tmp for sandboxed apps and link in /tmp files.
     if (appRef->sandboxed)
     {
@@ -4780,6 +4806,43 @@ application '%s'. Restarting app by default.", proc_GetName(procRef), appRef->na
     return LE_OK;
 }
 
+#ifdef LE_CONFIG_TARGET_SIMULATION
+//--------------------------------------------------------------------------------------------------
+/**
+ * In simulation environment (docker container), the cgroup's release_agent strategy is unuseful.
+ * So we should simulate the '_appStopClient' application and send a UDP notification message to
+ * the stop server monitor.
+ *
+ * Caution: This function must be used after 'waitpid', when the child process has been reaped
+ * and legato is working on its own data structures.
+ */
+//--------------------------------------------------------------------------------------------------
+static void notifyAppStopServer(const char *appName)
+{
+    int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (fd == -1) {
+        LE_INFO("Can't be reaped normaly: %s", appName);
+        return;
+    }
+
+    struct sockaddr_un svaddr;
+    memset(&svaddr, 0, sizeof(struct sockaddr_un));
+    svaddr.sun_family = AF_UNIX;
+    le_utf8_Copy(svaddr.sun_path, LE_CONFIG_RUNTIME_DIR "/AppStopServer", sizeof(svaddr.sun_path) - 1, NULL);
+    size_t appNameLen = strlen(appName);
+
+    ssize_t numBytesSent;
+    do
+    {
+        numBytesSent = sendto(fd, appName, appNameLen,
+                            0, (struct sockaddr*)&svaddr, sizeof(struct sockaddr_un));
+    }
+    while ((numBytesSent == -1) && (errno == EINTR));
+
+    close(fd);
+}
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4831,6 +4894,9 @@ void app_SigChildHandler
                         *faultActionPtr = FAULT_ACTION_STOP_APP;
                     }
                 }
+#ifdef LE_CONFIG_TARGET_SIMULATION
+                notifyAppStopServer(appRef->name);
+#endif
                 break;
 
             case FAULT_ACTION_IGNORE:

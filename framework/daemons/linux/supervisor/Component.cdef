@@ -39,7 +39,9 @@ requires:
     }
     lib:
     {
+    #if ${LE_CONFIG_ENABLE_SELINUX} =y
         lib/libsemanage.so.1
+    #endif
     }
 }
 

@@ -186,7 +186,7 @@ void ComponentBuildScriptGenerator_t::GenerateRunPathLdFlags
     script << " -Wl,--enable-new-dtags,-rpath=\"\\$$ORIGIN/../lib:/legato/systems/current/lib";
 
     // When building for execution on the build host, add the localhost bin/lib directory.
-    if (buildParams.target == "localhost")
+    if (buildParams.target == "localhost" || buildParams.target == "simulation")
     {
         script << ":$$LEGATO_BUILD/framework/lib";
     }
