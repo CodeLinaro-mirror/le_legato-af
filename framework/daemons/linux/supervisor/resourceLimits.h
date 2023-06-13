@@ -21,14 +21,14 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int maxCoreDumpFileBytes;
-    int maxFileBytes;
-    int maxLockedMemoryBytes;
-    int maxFileDescriptors;
-    int maxStackBytes;
-    int maxMQueueBytes;
-    int maxThreads;
-    int maxQueuedSignals;
+    rlim_t maxCoreDumpFileBytes;
+    rlim_t maxFileBytes;
+    rlim_t maxLockedMemoryBytes;
+    rlim_t maxFileDescriptors;
+    rlim_t maxStackBytes;
+    rlim_t maxMQueueBytes;
+    rlim_t maxThreads;
+    rlim_t maxQueuedSignals;
 } resLim_ProcLimits_t;
 
 //--------------------------------------------------------------------------------------------------

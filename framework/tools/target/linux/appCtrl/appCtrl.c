@@ -1064,6 +1064,12 @@ static void PrintAppObjs
     {
         const ProcObj_t* procObjPtr = le_hashmap_GetValue(iter);
 
+        if (procObjPtr == NULL)
+        {
+            printf("Process object is NULL.\n");
+            return;
+        }
+
         printf("%s%s[%d] (", prefixPtr, procObjPtr->procName, procObjPtr->procID);
 
         // Iterate over the list of threads and print them.
@@ -1418,7 +1424,13 @@ static int GetProcessArgs
     int i = APP_NAME_INDEX + 1;
     for (; i < le_arg_NumArgs(); i++)
     {
-        if (strcmp(le_arg_GetArg(i), "--") == 0)
+        const char* arg = le_arg_GetArg(i);
+        if (arg == NULL)
+        {
+            printf("Argument %d is NULL.\n", i);
+            return -1;
+        }
+        if (strcmp(arg, "--") == 0)
         {
             *argsStartIndexPtr = i;
             break;
@@ -1809,8 +1821,9 @@ static void NoRunProcNameArgHandler
 
     char delim[2] = ",";
     char* token;
+    char* savePtr = NULL;
 
-    token = strtok(procNames, delim);
+    token = strtok_r(procNames, delim, &savePtr);
 
     while (token != NULL)
     {
@@ -1821,7 +1834,7 @@ static void NoRunProcNameArgHandler
 
         le_sls_Queue(&ProcNameList, &(procNamePtr->link));
 
-        token = strtok(NULL, delim);
+        token = strtok_r(NULL, delim, &savePtr);
     }
 
     free(procNames);
@@ -1843,8 +1856,9 @@ static void DebugProcNameArgHandler
 
     char delim[2] = ",";
     char* token;
+    char* savePtr = NULL;
 
-    token = strtok(procNames, delim);
+    token = strtok_r(procNames, delim, &savePtr);
 
     while (token != NULL)
     {
@@ -1855,7 +1869,7 @@ static void DebugProcNameArgHandler
 
         le_sls_Queue(&DebugNameList, &(procNamePtr->link));
 
-        token = strtok(NULL, delim);
+        token = strtok_r(NULL, delim, &savePtr);
     }
 
     free(procNames);
@@ -1958,8 +1972,10 @@ COMPONENT_INIT
                                    le_hashmap_HashUInt32,
                                    le_hashmap_EqualsUInt32);
 
+    const char* arg = le_arg_GetArg(0);
+
     // Parse arguments.
-    if ( (le_arg_NumArgs() >= 2) && (strcmp(le_arg_GetArg(0), "runProc") == 0) )
+    if ( (le_arg_NumArgs() >= 2) && arg != NULL && (strcmp(arg, "runProc") == 0) )
     {
         // For the runProc parse the options manually because the automatic parser does not handle
         // all the options we need.

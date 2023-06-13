@@ -8,9 +8,25 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 
-
 #ifndef LEGATO_SRC_USER_INCLUDE_GUARD
 #define LEGATO_SRC_USER_INCLUDE_GUARD
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The default DAC user name for sandbox application.
+*/
+//--------------------------------------------------------------------------------------------------
+
+#define APP_SANDBOXED_USER "appdefault"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The default DAC user name for unsandbox application.
+*/
+//--------------------------------------------------------------------------------------------------
+
+#define APP_UNSANDBOXED_USER "root"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -138,21 +154,6 @@ le_result_t user_GetDefaultIDs
                                 ///        This can be NULL if the uid is not needed.
     gid_t* gidPtr               ///< [OUT] Pointer to a location to store the gid for this user.
                                 ///        This can be NULL if the gid is not needed.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check if the app is a telaf platform service.
- *
- * @return
- *      true if it's a TelAF service.
- *      false if it's not a TelAF service.
- */
-//--------------------------------------------------------------------------------------------------
-bool user_IsTafService
-(
-    const char* appNamePtr    ///< [IN] application name.
 );
 
 

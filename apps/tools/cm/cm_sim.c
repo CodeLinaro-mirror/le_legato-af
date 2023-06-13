@@ -141,6 +141,11 @@ static le_sim_Id_t SimIdFromString
 
     for(i = 0; i < NUM_ARRAY_MEMBERS(SimIdStringAssocs); i++)
     {
+        if (strPtr == NULL)
+        {
+            LE_ERROR("SIM ID is NULL.");
+            return LE_SIM_ID_MAX;
+        }
         if (0 == strcmp(SimIdStringAssocs[i].strPtr, strPtr))
         {
             return SimIdStringAssocs[i].simId;
@@ -157,6 +162,12 @@ static taf_sim_LockType_t GetLockType
     const char * lockPtr
 )
 {
+    if (lockPtr == NULL)
+    {
+        LE_ERROR("Lock type is NULL.");
+        exit(EXIT_FAILURE);
+    }
+
     if(strcmp(lockPtr,"PIN1") == 0) {
         return TAF_SIM_PIN1;
     } else if(strcmp(lockPtr,"PIN2") == 0) {
@@ -584,6 +595,12 @@ int cm_sim_EnterPin
 {
     le_result_t     res = LE_OK;
     taf_sim_LockType_t lockType = GetLockType(lockPtr);
+
+    if (pin == NULL)
+    {
+        LE_ERROR("PIN is NULL.");
+        return EXIT_FAILURE;
+    }
     res = le_sim_EnterPIN(SimId, lockType, pin);
 
     switch (res)
@@ -627,6 +644,11 @@ int cm_sim_ChangePin
     le_result_t     res = LE_OK;
 
     taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    if (oldPinPtr == NULL)
+    {
+        LE_ERROR("Old PIN is NULL.");
+        return EXIT_FAILURE;
+    }
     res = le_sim_ChangePIN(SimId, lockType, oldPinPtr, newPinPtr);
 
     switch(res)
@@ -668,6 +690,11 @@ int cm_sim_LockSim
     le_result_t     res = LE_OK;
 
     taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    if (pin == NULL)
+    {
+        LE_ERROR("PIN is NULL.");
+        return EXIT_FAILURE;
+    }
     res = le_sim_Lock(SimId, lockType, pin);
 
     switch (res)
@@ -709,6 +736,11 @@ int cm_sim_UnlockSim
     le_result_t     res = LE_OK;
 
     taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    if (pin == NULL)
+    {
+        LE_ERROR("PIN is NULL.");
+        return EXIT_FAILURE;
+    }
     res = le_sim_Unlock(SimId, lockType, pin);
 
     switch (res)
@@ -752,6 +784,11 @@ int cm_sim_UnblockSim
     le_result_t     res = LE_OK;
 
     taf_sim_LockType_t lockType = GetLockType(lockPtr);
+    if (pukPtr == NULL)
+    {
+        LE_ERROR("PUK is NULL.");
+        return EXIT_FAILURE;
+    }
     res = le_sim_Unblock(SimId, lockType, pukPtr, newPinPtr);
     switch (res)
     {
@@ -838,6 +875,12 @@ int cm_sim_Select
     le_result_t res;
 
     simId = SimIdFromString(typeStr);
+
+    if (typeStr == NULL)
+    {
+        printf("Type is NULL.\n");
+        return EXIT_FAILURE;
+    }
 
     if (simId >= LE_SIM_ID_MAX)
     {

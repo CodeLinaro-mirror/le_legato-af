@@ -6,6 +6,7 @@
  * <hr>
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -23,7 +24,6 @@
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -41,8 +41,6 @@ le_result_t secSocket_Init
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
- *  - LE_FORMAT_ERROR  Expired certificate
  *  - LE_FAULT         Failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -62,12 +60,7 @@ le_result_t secSocket_AddCertificate
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
- *  - LE_TIMEOUT       Timeout during execution
  *  - LE_FAULT         Internal error
- *  - LE_NO_MEMORY     Memory allocation issue
- *  - LE_CLOSED        In case of end of file error
- *  - LE_COMM_ERROR    Connection failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Connect
@@ -122,7 +115,6 @@ le_result_t secSocket_Delete
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  */
 //--------------------------------------------------------------------------------------------------
@@ -144,8 +136,6 @@ le_result_t secSocket_Write
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
- *  - LE_FAULT         Internal error
- *  - LE_TIMEOUT       Timeout during execution
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Read

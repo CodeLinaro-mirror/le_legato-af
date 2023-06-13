@@ -1582,18 +1582,35 @@ void cm_data_ProcessDataCommand
     {
         uint8_t phoneId;
         uint32_t profileId;
+        const char* arg2 = le_arg_GetArg(2);
+        if (arg2 == NULL)
+        {
+            printf("Invalid parameter.\n");
+            exit(EXIT_FAILURE);
+        }
 
         if (numArgs == 3)
         {
-            
-            profileId = (uint32_t)atoi(le_arg_GetArg(2));
+            if (dataParam == NULL)
+            {
+                printf("Invalid parameter.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            profileId = (uint32_t)atoi(arg2);
             le_result_t result = le_mdc_SetDefaultProfileIndex(atoi(dataParam));
             HandleResult("Setting default profile", result, true);
         }
         else if (numArgs == 4)
         {
-            phoneId = (uint8_t)atoi(le_arg_GetArg(2));
-            profileId = (uint32_t)atoi(le_arg_GetArg(3));
+            const char* arg3 = le_arg_GetArg(3);
+            if (arg3 == NULL)
+            {
+                printf("Invalid parameter.\n");
+                exit(EXIT_FAILURE);
+            }
+            phoneId = (uint8_t)atoi(arg2);
+            profileId = (uint32_t)atoi(arg3);
             le_result_t result = le_mdc_SetDefaultProfileIndexEx(phoneId, profileId);
             HandleResult("Setting default profile", result, true);
         }

@@ -2452,8 +2452,8 @@ static void InitDisplayTableMaxDataSize
 //--------------------------------------------------------------------------------------------------
 static void InitDisplayTable
 (
-    ColumnInfo_t* table, ///< [IN] Table ref.
-    size_t tableSize     ///< [IN] Table size.
+    ColumnInfo_t* table,    ///< [IN] Table ref.
+    size_t tableSize        ///< [IN] Table size.
 )
 {
     // Some columns in ThreadObjTableInfo needs its maxDataSize figured out.
@@ -2741,61 +2741,61 @@ static int PrintInspectHeader
     switch (InspectType)
     {
         case INSPECT_INSP_TYPE_MEM_POOL:
-            strncpy(inspectTypeString, "Memory Pools", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Memory Pools", inspectTypeStringSize, NULL);
             table = MemPoolTableInfo;
             tableSize = MemPoolTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_THREAD_OBJ:
-            strncpy(inspectTypeString, "Thread Objects", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Thread Objects", inspectTypeStringSize, NULL);
             table = ThreadObjTableInfo;
             tableSize = ThreadObjTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_TIMER:
-            strncpy(inspectTypeString, "Timers", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Timers", inspectTypeStringSize, NULL);
             table = TimerTableInfo;
             tableSize = TimerTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
-            strncpy(inspectTypeString, "Mutexes", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Mutexes", inspectTypeStringSize, NULL);
             table = MutexTableInfo;
             tableSize = MutexTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
-            strncpy(inspectTypeString, "Semaphores", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Semaphores", inspectTypeStringSize, NULL);
             table = SemaphoreTableInfo;
             tableSize = SemaphoreTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_SAFE_REF:
-            strncpy(inspectTypeString, "Safe References", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "Safe References", inspectTypeStringSize, NULL);
             table = RefMapTableInfo;
             tableSize = RefMapTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_IPC_SERVERS:
-            strncpy(inspectTypeString, "IPC Server Interface", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "IPC Server Interface", inspectTypeStringSize, NULL);
             table = ServiceObjTableInfo;
             tableSize = ServiceObjTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_IPC_CLIENTS:
-            strncpy(inspectTypeString, "IPC Client Interface", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "IPC Client Interface", inspectTypeStringSize, NULL);
             table = ClientObjTableInfo;
             tableSize = ClientObjTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
-            strncpy(inspectTypeString, "IPC Server Interface Sessions", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "IPC Server Interface Sessions", inspectTypeStringSize, NULL);
             table = SessionObjTableInfo;
             tableSize = SessionObjTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
-            strncpy(inspectTypeString, "IPC Client Interface Sessions", inspectTypeStringSize);
+            le_utf8_Copy(inspectTypeString, "IPC Client Interface Sessions", inspectTypeStringSize, NULL);
             table = SessionObjTableInfo;
             tableSize = SessionObjTableInfoSize;
             break;
@@ -3955,8 +3955,8 @@ static void LookupThreadName
             if (threadObjSafeRefAddr == (size_t)threadObjRef->safeRef)
             {
                 // copy thread name to the out buffer
-                strncpy(threadObjNameBuffer, THREAD_NAME(threadObjRef->name),
-                    threadObjNameBufferSize);
+                le_utf8_Copy(threadObjNameBuffer, THREAD_NAME(threadObjRef->name),
+                    threadObjNameBufferSize, NULL);
                 return;
             }
         }

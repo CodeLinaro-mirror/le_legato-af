@@ -266,7 +266,7 @@ le_sls_Link_t* le_sls_PeekNext
     const le_sls_Link_t* currentLinkPtr     ///< [IN] Get the link that is relative to this link.
 )
 {
-    if (currentLinkPtr == listPtr->tailLinkPtr)
+    if (currentLinkPtr == NULL || currentLinkPtr == listPtr->tailLinkPtr)
     {
         // We are at the tail already so there is no next link.
         return NULL;

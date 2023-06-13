@@ -897,6 +897,7 @@ static void AddProcesses
             procEnvPtr->processes.push_back(procPtr);
 
             procPtr->SetName(procName);
+
             if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
             {
                 i++;
@@ -1520,6 +1521,9 @@ void PrintSummary
         }
 
         std::cout << LE_I18N("  Has the following limits:") << std::endl;
+        std::cout << mk::format(LE_I18N("    username: %s"),
+                                appPtr->username)
+                  << std::endl;
         std::cout << mk::format(LE_I18N("    maxSecureStorageBytes: %d"),
                                 appPtr->maxSecureStorageBytes.Get())
                   << std::endl;
@@ -1734,6 +1738,18 @@ void PrintSummary
         for (auto& capability : appPtr->capability)
         {
             std::cout << "    " << capability << std::endl;
+        }
+    }
+
+
+    // username
+    if (appPtr->isSandboxed && !appPtr->username.empty())
+    {
+        std::cout << LE_I18N("  username is defined for the sandbox apps")
+                  << std::endl;
+        for (auto& username : appPtr->username)
+        {
+            std::cout << "    " << username << std::endl;
         }
     }
 
@@ -2116,6 +2132,10 @@ model::App_t* GetApp
         else if (sectionName == "capability")
         {
             AddCapability(appPtr, ToTokenListSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "username")
+        {
+            appPtr->username = ToSimpleSectionPtr(sectionPtr)->Text();
         }
         else if (sectionName == "maxFileSystemBytes")
         {

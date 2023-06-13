@@ -106,7 +106,8 @@ static le_result_t MkDirTree
     while ((slashPtr = strchr (slashPtr + 1, '/')))
     {
         memset(dirPath, 0, PATH_MAX);
-        strncat(strncpy(dirPath, FsPrefixPtr, (PATH_MAX-1)), filePathPtr, slashPtr - filePathPtr);
+        le_utf8_Copy(dirPath, FsPrefixPtr, PATH_MAX, NULL);
+        le_utf8_Append(dirPath, filePathPtr, slashPtr - filePathPtr, NULL);
         if ((-1 == mkdir(dirPath, S_IRWXU)) && (EEXIST != errno))
         {
             if (EROFS == errno)

@@ -735,6 +735,11 @@ le_result_t file_CopyRecursive
 
     char* pathArrayPtr[] = { (char*)sourcePathPtr, NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return LE_FAULT;
+    }
 
     result = LE_OK;
 

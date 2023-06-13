@@ -194,6 +194,12 @@ COMPONENT_INIT
         const char* service = le_arg_GetArg(0);
         const char* command = le_arg_GetArg(1); // Note: could return NULL.
 
+        if (service == NULL)
+        {
+            LE_ERROR("service is NULL.");
+            exit(EXIT_FAILURE);
+        }
+
         if ( (0 == strcmp(service, "help")) ||
              (0 == strcmp(service, "--help")) ||
              (0 == strcmp(service, "-h")) )

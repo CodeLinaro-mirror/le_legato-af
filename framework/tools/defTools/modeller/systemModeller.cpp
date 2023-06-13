@@ -764,7 +764,7 @@ static void ModelBindingsSection
 
                 if (beVerbose)
                 {
-                    if (clientIfPtr->bindingPtr != NULL)
+                    if (clientIfPtr != nullptr && clientIfPtr->bindingPtr != NULL)
                     {
                         std::cout << mk::format(LE_I18N("Overriding binding of '%s.%s'."),
                                                 bindingPtr->clientAgentName,
@@ -774,7 +774,8 @@ static void ModelBindingsSection
                 }
 
                 // Record the binding in the client-side interface object.
-                clientIfPtr->bindingPtr = bindingPtr;
+                if (clientIfPtr != nullptr)
+                    clientIfPtr->bindingPtr = bindingPtr;
             }
         }
     }

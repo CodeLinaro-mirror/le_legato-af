@@ -192,6 +192,7 @@ static void GenerateBasicInfo
     GenerateValue(defStream, "maxQueuedSignals", appPtr->maxQueuedSignals);
     GenerateValue(defStream, "maxThreads", appPtr->maxThreads);
     GenerateValue(defStream, "maxSecureStorageBytes", appPtr->maxSecureStorageBytes);
+    GenerateValue(defStream, "username", appPtr->username);
 
     if (!appPtr->groups.empty())
     {

@@ -448,6 +448,11 @@ le_result_t unixSocket_SendMsg
     // If we are sending process credentials,
     if (sendCredentials)
     {
+        if (cmsgHeaderPtr == NULL)
+        {
+            LE_ERROR("Message header is NULL.");
+            return LE_FAULT;
+        }
         // Fill in the credentials' control message header.
         // (It's a "send credentials" control message, which is a socket-level message.)
         cmsgHeaderPtr->cmsg_level = SOL_SOCKET;

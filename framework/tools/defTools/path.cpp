@@ -896,6 +896,11 @@ std::string GetCurrentDir
 {
     char* dirPtr = get_current_dir_name();
 
+    if (dirPtr == NULL)
+    {
+        throw mk::Exception_t(LE_I18N("dirPtr is NULL."));
+    }
+
     std::string dirPath = dirPtr;
 
     free(dirPtr);
