@@ -557,7 +557,7 @@ static le_result_t StringToLowercase(char *input, char *output, size_t maxSize)
     inputSize = strlen(input);
     if (inputSize >= maxSize)
     {
-        LE_ERROR("inputSize(%d5) is invalid, maxSize is %d", inputSize, maxSize);
+        LE_ERROR("inputSize(%"PRIuS") is invalid, maxSize is %"PRIuS, inputSize, maxSize);
         return LE_BAD_PARAMETER;
     }
 
