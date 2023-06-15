@@ -7,6 +7,7 @@
  *  trees.  In the future, tree accessibility permissions will also be add to these objects.
  *
  *  Copyright (C) Sierra Wireless Inc.
+ *  Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 // -------------------------------------------------------------------------------------------------
@@ -31,10 +32,14 @@
 typedef struct User
 {
     uid_t userId;                              ///< OS id for the user.
+    pid_t processId;                           ///< OS process id.
     char userName[LIMIT_MAX_USER_NAME_BYTES];  ///< Human friendly name for the user.
     char treeName[LIMIT_MAX_USER_NAME_BYTES];  ///< Human friendly name for the user's default tree.
 }
 User_t;
+
+/// The max size of apps supported by configTree
+#define LE_CONFIG_CFGTREE_MAX_APPS_POOL_SIZE 100
 
 /// The collection of configuration trees managed by the system.
 le_hashmap_Ref_t UserCollectionRef = NULL;
@@ -47,10 +52,8 @@ LE_HASHMAP_DEFINE_STATIC(UserCollection, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE);
 /// Create static user pool
 LE_MEM_DEFINE_STATIC_POOL(UserPool, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE, sizeof(User_t));
 
-
 // Pool of user objects.
 le_mem_PoolRef_t UserPoolRef = NULL;
-
 
 // Unsandboxed app user.
 static uid_t UnsandboxedUserId = 1000;
@@ -63,6 +66,7 @@ static uid_t UnsandboxedUserId = 1000;
 static tu_UserRef_t CreateUserInfo
 (
     uid_t userId,          ///< [IN] The Linux Id of the user in question.
+    pid_t processId,       ///< [IN] The Linux process ID.
     const char* userName,  ///< [IN] The name of the user.
     const char* treeName   ///< [IN] The name of the default tree for this user.
 )
@@ -71,10 +75,11 @@ static tu_UserRef_t CreateUserInfo
     tu_UserRef_t userRef = le_mem_ForceAlloc(UserPoolRef);
 
     userRef->userId = userId;
+    userRef->processId = processId;
     LE_ASSERT(le_utf8_Copy(userRef->userName, userName, sizeof(userRef->userName), NULL) == LE_OK);
     LE_ASSERT(le_utf8_Copy(userRef->treeName, treeName, sizeof(userRef->treeName), NULL) == LE_OK);
 
-    LE_ASSERT(le_hashmap_Put(UserCollectionRef, &userRef->userId, userRef) == NULL);
+    LE_ASSERT(le_hashmap_Put(UserCollectionRef, userRef, userRef) == NULL);
 
     LE_DEBUG("** Allocated new user object <%p>: '%s', %u with default tree, '%s'.",
              userRef,
@@ -101,12 +106,203 @@ static void UserDestructor
 {
     tu_UserRef_t userRef = (tu_UserRef_t)objectPtr;
 
-    le_hashmap_Remove(UserCollectionRef, &userRef->userId);
+    le_hashmap_Remove(UserCollectionRef, userRef);
     memset(userRef, 0, sizeof(User_t));
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Check if the given process is a TelAF application.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsTelafApp
+(
+    pid_t processId  ///< [IN] Process ID.
+)
+{
+    char cmd[128];
+    FILE *fp;
+    char oneline[128];
+    pid_t processIdTmp;
 
+    // get the sub processes of supervisor
+    snprintf(cmd, sizeof(cmd), "pgrep -P $(pgrep '%s')", "supervisor");
 
+    fp = popen(cmd, "r");
+    if (!fp)
+    {
+        LE_INFO("Cannot run: %s, errno： %d (%m)", cmd, errno);
+        return false;
+    }
+
+    while (fgets(oneline, sizeof(oneline), fp))
+    {
+        processIdTmp = atoi(oneline);
+        if (processIdTmp == processId)
+        {
+            pclose(fp);
+            return true;
+        }
+    }
+
+    LE_WARN("Process[%u] is not a TelAF process", processId);
+    pclose(fp);
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the app name from process cgroup file.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetAppNameByPid
+(
+    pid_t pid,          ///< [IN] Process ID.
+    char* appName,      ///< [OUT] App name buffer.
+    size_t *nameBufSize  ///< [INOUT] App name buffer size.
+)
+{
+    const char *telafSubSys[] = {"freezer"};
+    int subSysNum = sizeof(telafSubSys) / sizeof(telafSubSys[0]);
+
+    // If this process is not a TelAF process, don't get app name
+    // from cgroup
+    if (IsTelafApp(pid) == false)
+    {
+        LE_WARN("The process[%d] is not a TelAF process", pid);
+        return LE_FAULT;
+    }
+
+    char procPath[LIMIT_MAX_PATH_BYTES] = {0};
+    (void)snprintf(procPath, sizeof(procPath), "/proc/%d/cgroup", pid);
+    FILE* procPathPtr = fopen(procPath, "r");
+    if (procPathPtr == NULL)
+    {
+        LE_ERROR("Failed to open file %s. %m.", procPath);
+        return LE_FAULT;
+    }
+
+    char onelinePtr[LIMIT_MAX_APP_NAME_LEN + 60] = {0};
+    bool isFounded = false;
+    const char delimit[] = ":";
+    char* tokens;
+    char *savePtr = NULL;
+    char *subSystemStr = NULL;
+
+    do
+    {
+        memset(onelinePtr, 0, sizeof(onelinePtr));
+        if (fgets(onelinePtr, sizeof(onelinePtr), procPathPtr) == NULL)
+        {
+            break;
+        }
+
+        size_t len = strlen(onelinePtr);
+        if (onelinePtr[len - 1] == '\n')
+        {
+            onelinePtr[len - 1] = '\0';
+        }
+
+        // example string: "5:memory:/tafApp"
+        strtok_r(onelinePtr, delimit, &savePtr);
+        // so the second strtok_r will get "memory"
+        subSystemStr = strtok_r(NULL, delimit, &savePtr);
+        if (subSystemStr == NULL)
+        {
+            continue;
+        }
+
+        for (int loop = 0; loop < subSysNum; loop++)
+        {
+            if (strncmp(subSystemStr, telafSubSys[loop], strlen(telafSubSys[loop])) == 0)
+            {
+                // finally get "tafApp"
+                tokens = strtok_r(NULL, delimit, &savePtr);
+                if ((tokens == NULL) || (strlen(tokens) <= 1))
+                {
+                    LE_DEBUG("Invalid buf[%s] for string[%s]", onelinePtr, telafSubSys[loop]);
+                    break;
+                }
+                isFounded = true;
+                break;
+            }
+        }
+        if (isFounded == true)
+        {
+            break;
+        }
+    }while (1);
+
+    fclose(procPathPtr);
+
+    if (isFounded == false)
+    {
+        LE_CRIT("Cannot found subsystem from '%s' for app[%s], pid: %d", onelinePtr, appName, pid);
+        return LE_NOT_FOUND;
+    }
+
+    // Value"nameBufSize" is the max side of TelAF application name. But for legacy application,
+    // "tokens" may be larger than "nameBufSize" as the max size of "tokens" depends on the path
+    // length in Linux. In this case appName will be truncated with nameBufSize.
+    size_t retBufSize = 0;
+    if (le_utf8_Copy(appName, (tokens + 1), *nameBufSize, &retBufSize) == LE_OVERFLOW)
+    {
+        *nameBufSize = retBufSize;
+        LE_WARN("Got truncated during copying process[%d] [%s] to [%s]",
+            pid, tokens, appName);
+    }
+
+    return LE_OK;
+}
+
+static le_result_t GetExeNameByPid
+(
+    pid_t pid,          ///< [IN] Process ID.
+    char* appName,      ///< [OUT] App name buffer.
+    size_t *nameBufSize  ///< [INOUT] App name buffer size.
+)
+{
+
+    char pathStr[LIMIT_MAX_USER_NAME_BYTES] = "";
+    char cmdBuf[LIMIT_MAX_PATH_BYTES] = "";
+
+    snprintf(pathStr, sizeof(pathStr), "/proc/%d/cmdline", pid);
+    FILE* fp = fopen(pathStr, "r");
+    if (!fp)
+    {
+        LE_ERROR("Open file %s is failed, errno： %d (%m)", pathStr, errno);
+        return LE_FAULT;
+    }
+
+    size_t n = fread(cmdBuf, 1, sizeof(cmdBuf), fp);
+    fclose(fp);
+
+    if (n <= 0)
+    {
+        LE_ERROR("Read file %s is failed, errno： %d (%m)", pathStr, errno);
+        return LE_FAULT;
+    }
+
+    char* nameStr = strrchr(cmdBuf, '/');
+    if (!nameStr)
+    {
+        nameStr = cmdBuf;
+    }
+    else
+    {
+        nameStr++;
+    }
+
+    size_t retBufSize = 0;
+    if (le_utf8_Copy(appName, nameStr, *nameBufSize, &retBufSize) == LE_OVERFLOW)
+    {
+        *nameBufSize = retBufSize;
+        LE_WARN("Got truncated during copying process[%d] [%s] to [%s]",
+            pid, nameStr, appName);
+    }
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -119,6 +315,7 @@ static void UserDestructor
 static tu_UserRef_t GetUser
 (
     uid_t userId,     ///< [IN]  The user id to look up.
+    pid_t processId,  ///< [IN]  The process ID.
     bool* wasCreated  ///< [OUT] Was the user info created for this request?  Pass NULL if you don't
                       ///<       need this.
 )
@@ -136,27 +333,36 @@ static tu_UserRef_t GetUser
         *wasCreated = false;
     }
 
+    // If userId == 0, we don't need to care about process Id. So force processId to 0.
+    if (userId == 0)
+    {
+        processId = 0;
+    }
     // Now try to look up this user in our hash table.  If not found, create it now.
-    tu_UserRef_t userRef = le_hashmap_Get(UserCollectionRef, &userId);
+    User_t userKey = { userId, processId, "", "" };
+    tu_UserRef_t userRef = le_hashmap_Get(UserCollectionRef, &userKey);
 
     if (userRef == NULL)
     {
         // At this point, grab the user's app name, which will succeed if it is an app, otherwise we get
         // the standard user name.
+        char namePtr[LIMIT_MAX_USER_NAME_BYTES] = "";
 
-        char userName[LIMIT_MAX_USER_NAME_BYTES] = "";
-
-        if (user_GetAppName(userId, userName, sizeof(userName)) != LE_OK)
+        size_t nameBufSize = sizeof(namePtr);
+        if (GetAppNameByPid(processId, namePtr, &nameBufSize) != LE_OK)
         {
-            LE_ASSERT(user_GetName(userId, userName, sizeof(userName)) == LE_OK);
+            nameBufSize = sizeof(namePtr);
+            LE_ASSERT(GetExeNameByPid(processId, namePtr, &nameBufSize) == LE_OK);
         }
 
-        userRef = CreateUserInfo(userId, userName, userName);
+        LE_DEBUG("Get app name[%s] from pid[%d] and uid[%d]", namePtr, processId, userId);
+        userRef = CreateUserInfo(userId, processId, namePtr, namePtr);
 
         if (wasCreated)
         {
             *wasCreated = true;
         }
+
     }
 
     return userRef;
@@ -174,7 +380,7 @@ static tu_UserRef_t GetUser
  *          this string, it's statically allocated.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* PermissionStr
+ const char* PermissionStr
 (
     tu_TreePermission_t permission  ///< [IN] The requested permission flag.
 )
@@ -227,24 +433,49 @@ static tu_UserRef_t GetUserInfo
 
     // Look up the user id of the requesting connection...
     uid_t userId;
+    pid_t processId;
 
-    LE_FATAL_IF(le_msg_GetClientUserId(currentSession, &userId) == LE_CLOSED,
-                "tu_GetUserInfo must be called within an active connection.");
+    //uid_t uid;
+    LE_FATAL_IF(le_msg_GetClientUserCreds(currentSession, &userId, &processId) == LE_CLOSED,
+        "Session %p is inactive.", currentSession);
 
     // Now that we have a user ID, let's see if we can look them up.
-    tu_UserRef_t userRef = GetUser(userId, wasCreated);
+    tu_UserRef_t userRef = GetUser(userId, processId, wasCreated);
     LE_ASSERT(userRef != NULL);
 
-    LE_DEBUG("** Found user <%p>: '%s', %u with default tree, '%s'.",
+    LE_DEBUG("** Found user <%p>: '%s', %u,%u with default tree, '%s'.",
              userRef,
              userRef->userName,
              userRef->userId,
+             userRef->processId,
              userRef->treeName);
 
     return userRef;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Compare the user reference from uid and pid.
+ */
+//--------------------------------------------------------------------------------------------------
+bool HashCompareUserInfo
+(
+    const void* firstKeyPtr,
+    const void* secondKeyPtr
+)
+{
+    LE_ASSERT((firstKeyPtr != NULL) && (secondKeyPtr != NULL));
 
+    tu_UserRef_t userRef = (tu_UserRef_t)firstKeyPtr;
+    tu_UserRef_t appInfoPtr = (tu_UserRef_t)secondKeyPtr;
+
+    if (userRef->userId == appInfoPtr->userId && userRef->processId == appInfoPtr->processId)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -271,21 +502,15 @@ void tu_Init
     UserCollectionRef = le_hashmap_InitStatic(UserCollection,
                                               LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE,
                                               le_hashmap_HashUInt32,
-                                              le_hashmap_EqualsUInt32);
+                                              HashCompareUserInfo);
 
     le_mem_SetDestructor(UserPoolRef, UserDestructor);
 
     // Create our default root user/tree association.
-    CreateUserInfo(0, "root", "system");
+    CreateUserInfo(0, 0, "root", "system");
 
-    // Create our unsandboxed app user/tree association. Both root user and unsandboxed
-    // app user use "system" tree as their default tree.
-    char userName[LIMIT_MAX_USER_NAME_BYTES] = {0};
     LE_FATAL_IF(user_GetDefaultIDs(false, &UnsandboxedUserId, NULL) != LE_OK,
                 "Failed to get the unsandboxed app user ID.");
-    LE_FATAL_IF(user_GetName(UnsandboxedUserId, userName, sizeof(userName)) != LE_OK,
-                "Failed to get the unsandboxed app user name.");
-    CreateUserInfo(UnsandboxedUserId, userName, "system");
 }
 
 
@@ -311,6 +536,7 @@ void tu_SessionConnected
     {
         le_mem_AddRef(userRef);
     }
+
 }
 
 
@@ -462,7 +688,8 @@ tdb_TreeRef_t tu_GetRequestedTree
     if (tp_PathHasTreeSpecifier(pathPtr) == true)
     {
         tp_GetTreeName(treeName, pathPtr);
-        LE_DEBUG("** Specific tree requested, '%s'.", treeName);
+        LE_DEBUG("** Specific tree requested, '%s', name, '%s', uid: %d, pid: %d.",
+            treeName, userRef->userName, userRef->userId, userRef->processId);
 
         // Make sure that this isn't the user's didn't just specify their own default tree.  If they
         // did and they're looking for read access, then just go ahead and grant it.
@@ -474,13 +701,15 @@ tdb_TreeRef_t tu_GetRequestedTree
     }
     else if (permission == TU_TREE_WRITE)
     {
-        LE_DEBUG("** Attempting write access on the default tree, '%s'.", userRef->treeName);
+        LE_DEBUG("** Attempting write on the default tree, '%s', name, '%s', uid: %d, pid: %d.",
+            userRef->treeName, userRef->userName, userRef->userId, userRef->processId);
         le_utf8_Copy(treeName, userRef->treeName, sizeof(treeName), NULL);
         treeName[MAX_TREE_NAME_BYTES - 1] = '\0';
     }
     else
     {
-        LE_DEBUG("** Opening the default tree, '%s' with read only access.", userRef->treeName);
+        LE_DEBUG("** Opening the default tree, '%s', name, '%s', uid: %d, pid: %d with read.",
+            userRef->treeName, userRef->userName, userRef->userId, userRef->processId);
         return tdb_GetTree(userRef->treeName);
     }
 
@@ -489,9 +718,10 @@ tdb_TreeRef_t tu_GetRequestedTree
     if ((ic_CheckTreePermission(permission, userRef->userName, treeName) == false)
         && (userRef->userId != 0) && (userRef->userId != UnsandboxedUserId))
     {
-        LE_ERROR("The user, '%s', id: %d, does not have %s permission on the tree '%s'.",
+        LE_ERROR("The user, '%s', uid: %d, pid: %d, does not have %s permission on the tree '%s'.",
                  userRef->userName,
                  userRef->userId,
+                 userRef->processId,
                  PermissionStr(permission),
                  treeName);
 
@@ -501,8 +731,6 @@ tdb_TreeRef_t tu_GetRequestedTree
     // Looks like the user has permission, so grab the tree.
     return tdb_GetTree(treeName);
 }
-
-
 
 
 //--------------------------------------------------------------------------------------------------
