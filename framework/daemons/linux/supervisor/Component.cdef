@@ -63,6 +63,8 @@ cflags:
         #else
             -DTARGET_IMPORTS_RASPI
         #endif
+    #elif ${LEGATO_TARGET} = sa525m
+        -DTARGET_IMPORTS_ARMV8
     #else
         -DTARGET_IMPORTS_ARMV7
     #endif
