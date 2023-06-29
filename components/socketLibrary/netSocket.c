@@ -479,7 +479,7 @@ le_result_t netSocket_Recvfrom
                                 ///<         Output: data size read
     uint32_t    timeout,        ///< [IN] Read timeout in milliseconds.
     char*       ipAddrBufPtr,   ///< [OUT] Peer ip address
-    uint32_t    ipAddrBufLen,   ///< [IN] Size of peer ip address buffer
+    size_t      ipAddrBufLen,   ///< [IN] Size of peer ip address buffer
     uint16_t*   portPtr         ///< [OUT] Peer port
 )
 {
