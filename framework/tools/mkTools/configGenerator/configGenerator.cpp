@@ -56,6 +56,8 @@ static void GenerateAppLimitsConfig
 
     cfgStream << "  \"maxThreads\" [" << appPtr->maxThreads.Get() << "]" << std::endl;
 
+    cfgStream << "  \"startGroup\" [" << appPtr->startGroup.Get() << "]" << std::endl;
+
     cfgStream << "  \"maxMQueueBytes\" [" << appPtr->maxMQueueBytes.Get() << "]"
               << std::endl;
 
