@@ -130,7 +130,7 @@ static le_result_t MkDirTree
             LE_ERROR("overflow");
             return LE_FAULT;
         }
-        LE_DEBUG("numBytes: %d", numBytes);
+        LE_DEBUG("numBytes: %" PRIuS, numBytes);
 
         // check if slashPtr reaches the end, if not, move to the rest of string
         if(numBytes != 0 && numBytes < strlen(slashPtr))

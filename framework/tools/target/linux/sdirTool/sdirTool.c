@@ -879,7 +879,7 @@ static void Get
     }
 
     printf("protocol ID = '%s'\n", resPayloadPtr->id);
-    printf("max message size = %d bytes\n", resPayloadPtr->maxPayloadSize);
+    printf("max message size = %" PRIuS" bytes\n", resPayloadPtr->maxPayloadSize);
 
     exit(EXIT_SUCCESS);
 }
