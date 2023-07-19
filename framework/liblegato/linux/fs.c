@@ -107,41 +107,40 @@ static le_result_t MkDirTree
     memset(dirPath, 0, PATH_MAX);
     le_utf8_Copy(dirPath, FsPrefixPtr, PATH_MAX, NULL);
 
+    size_t numBytes = 0;
+
     do {
+        // skip the first slash
+        if(slashPtr[0] == '/')
+        {
+            slashPtr++;
+        }
         LE_DEBUG("slashPtr: %s", slashPtr);
-        size_t dirPathLen = strlen(dirPath);
-        size_t numBytes = 0;
 
-        // create tmp string to store substring before the next slash
-        char tmpPath[PATH_MAX] = "";
-
-        // detect if there is next slash, if not, stop here
-        if((strchr(slashPtr + 1, '/')))
-        {
-            // Skip slash char
-            if(slashPtr[0] == '/')
-            {
-                slashPtr++;
-            }
-            // copy substring before the next slash
-            if(le_utf8_CopyUpToSubStr(tmpPath, slashPtr, "/", PATH_MAX, &numBytes) != LE_OK)
-            {
-                LE_ERROR("overflow");
-                return LE_FAULT;
-            }
-        }
-        else
-        {
-            return LE_OK;
-        }
-
-        LE_DEBUG("tmpPath: %s", tmpPath);
-
-        // Combine path string with upper level folders
-        if (le_path_Concat("/", dirPath, PATH_MAX - dirPathLen, tmpPath, NULL) != LE_OK)
+        // add slash to the end of dirPath
+        if (le_path_Concat("/", dirPath + strlen(dirPath), PATH_MAX - strlen(dirPath), "/", NULL) != LE_OK)
         {
             LE_ERROR("overflow");
             return LE_FAULT;
+        }
+
+        // copy substring before the next slash
+        if(le_utf8_CopyUpToSubStr(dirPath + strlen(dirPath), slashPtr, "/", PATH_MAX - strlen(dirPath), &numBytes) != LE_OK)
+        {
+            LE_ERROR("overflow");
+            return LE_FAULT;
+        }
+        LE_DEBUG("numBytes: %" PRIuS, numBytes);
+
+        // check if slashPtr reaches the end, if not, move to the rest of string
+        if(numBytes != 0 && numBytes < strlen(slashPtr))
+        {
+            slashPtr = slashPtr + numBytes;
+        }
+        else
+        {
+            // break when no string is copied or slashPtr doesn't contain slash;
+            return LE_OK;
         }
 
         LE_DEBUG("mkdir for dirPath: %s", dirPath);
@@ -160,10 +159,10 @@ static le_result_t MkDirTree
                 return LE_FAULT;
             }
         }
-
-    } while (((slashPtr = strchr(slashPtr + 1, '/'))));
+    } while (1);
 
     return LE_OK;
+
 }
 
 //--------------------------------------------------------------------------------------------------
