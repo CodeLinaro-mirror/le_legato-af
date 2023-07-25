@@ -175,6 +175,15 @@ ifeq ($(TARGET),sa515m)
   MKSYS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
 endif
 
+ifeq ($(TARGET),sa525m)
+  MKEXE_FLAGS += -C -march=armv8-a
+  MKEXE_FLAGS += -X -march=armv8-a -X -std=c++11 -X -lstdc++
+  MKAPP_FLAGS += -C -march=armv8-a
+  MKAPP_FLAGS += -X -march=armv8-a -X -std=c++11 -X -lstdc++
+  MKSYS_FLAGS += -C -march=armv8-a
+  MKSYS_FLAGS += -X -march=armv8-a -X -std=c++11 -X -lstdc++
+endif
+
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
   SYSTOIMG_FLAGS += -s
