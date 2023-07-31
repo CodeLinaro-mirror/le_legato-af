@@ -16,6 +16,7 @@
 
 #if LE_CONFIG_LINUX
 #include <netdb.h>
+#include <netinet/tcp.h>
 #endif
 #include <arpa/inet.h>
 
@@ -678,15 +679,44 @@ le_result_t netSocket_Bind
  * Accept a connection from remote client and return the description file.
  *
  * @return
- *  - The connetion file description
+ *  - LE_OK            Function success.
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_UNAVAILABLE   Unable to accept a peer client socket.
+ *  - LE_FAULT         Set socket option error.
  */
 //--------------------------------------------------------------------------------------------------
-int netSocket_Accept
+le_result_t netSocket_Accept
 (
     int                 serverFd,       ///< [IN] Local server file description
     struct sockaddr*    clientAddrPtr,  ///< [OUT] Client address pointer
-    socklen_t*          clientAddrLen   ///< [INOUT] Socket address length
+    socklen_t*          clientAddrLen,  ///< [INOUT] Socket address length
+    int*                clientFdPtr     ///< [OUT] Accepted client socket file descriptor pointer
 )
 {
-    return accept(serverFd, clientAddrPtr, clientAddrLen);
+    int nodelay = 1;
+    int clientFd = -1;
+
+    if ((clientAddrPtr == NULL) || (clientAddrLen == NULL) || (clientFdPtr == NULL))
+    {
+        LE_ERROR("Wrong parameter provided");
+        return LE_BAD_PARAMETER;
+    }
+
+    clientFd = accept(serverFd, clientAddrPtr, clientAddrLen);
+    if(-1 == clientFd)
+    {
+        LE_ERROR("ERROR accepting the socket (%d)", errno);
+        return LE_UNAVAILABLE;
+    }
+
+    if(0 != setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, (char *)&nodelay, sizeof(nodelay)))
+    {
+        close(clientFd);
+        LE_ERROR("ERROR setting the socket option(%d)", errno);
+        return LE_FAULT;
+    }
+
+    *clientFdPtr = clientFd;
+
+    return LE_OK;
 }
