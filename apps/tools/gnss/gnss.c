@@ -56,6 +56,7 @@
 #define CONSTELLATION_GALILEO       0x8
 #define CONSTELLATION_SBAS          0x10  //TelSDK supported this constellation
 #define CONSTELLATION_QZSS          0x20
+#define CONSTELLATION_NAVIC         0x40
 // @}
 
 //-------------------------------------------------------------------------------------------------
@@ -113,6 +114,46 @@ void PrintGnssHelp
          "\t\t\t\t- Enable/disable gnss device\n\n"
          "\t\t\tgnss <start/stop>\n"
          "\t\t\t\t- Start/stop gnss device\n\n"
+         "\t\t\tgnss startType <EngineType>\n"
+         "\t\t\t\t- Set GNSS device with the specified engine type. Type can be as follows:\n"
+         "\t\t\t\t\t- 0 ---> FUSED\n"
+         "\t\t\t\t\t- 1 ---> SPE\n"
+         "\t\t\t\t\t- 2 ---> PPE\n"
+         "\t\t\t\t\t- 3 ---> VPE\n\n"
+         "\t\t\tgnss ConfigLevArm <forwardOffset(double)> <sidewaysOffset(double)> <upOffset(double)> <levArmType>\n"
+         "\t\t\t\t- Configure Lever Arm Parameters to support QDR.levArmType can be as follows:\n"
+         "\t\t\t\t\t- GNSS_TO_VRP->1\n"
+         "\t\t\t\t\t- DR_IMU_TO_GNSS->2\n"
+         "\t\t\t\t\t- VPE_IMU_TO_GNSS->3\n\n"
+         "\t\t\tgnss ConfigDR <rollOffset(double)> <yawOffset(double)> <pitchOffset(double)> <offsetUnc(double)>\n"
+         "\t\t\t\t     <speedFactor(double)> <speedFactorUnc(double)> <gyroFactor(double)> <gyroFactorUnc(double>\n"
+         "\t\t\t\t- Configure Dead Reckoning Engine Parameters to support QDR.\n\n"
+         "\t\t\tgnss set configEng <EngineType> <EngineState>\n"
+         "\t\t\t\t  Engine type be as follows:\n"
+         "\t\t\t\t\t- 0 ---> UNKNOWN\n"
+         "\t\t\t\t\t- 1 ---> SPE(Currently not supported)\n"
+         "\t\t\t\t\t- 2 ---> PPE(Currently not supported)\n"
+         "\t\t\t\t\t- 3 ---> DRE(supported only)\n"
+         "\t\t\t\t\t- 4 ---> VPE(Currently not supported)\n"
+         "\t\t\t\t  Engine state be as follows:\n"
+         "\t\t\t\t\t- 0 ---> UNKNOWN\n"
+         "\t\t\t\t\t- 1 ---> SUSPEND\n"
+         "\t\t\t\t\t- 2 ---> RUNNING\n"
+         "\t\t\tgnss set robustloc <enable> <enabled911>\n"
+         "\t\t\t\t- Configuring robust location information be as follows:\n"
+         "\t\t\t\t\t-  enable->1 for enabling  enable->0 for disabling\n"
+         "\t\t\t\t\t-  enable911->1 for enabling enable911->0 for disabling\n"
+         "\t\t\tgnss set secondBandConst <constellation type>"
+         "\t\t\t\t  constellation type be as follows:\n"
+         "\t\t\t\t\t- -1 ---> UNKNOWN\n"
+         "\t\t\t\t\t-  1 ---> GPS\n"
+         "\t\t\t\t\t-  2 ---> GALILEO\n"
+         "\t\t\t\t\t-  4 ---> SBAS\n"
+         "\t\t\t\t\t-  8 ---> COMPAS(Not supported)\n"
+         "\t\t\t\t\t-  16 ---> GLONASS\n"
+         "\t\t\t\t\t-  32 ---> BDS\n"
+         "\t\t\t\t\t-  64 ---> QZSS\n"
+         "\t\t\t\t\t-  128 ---> NAVIC\n"
          "\t\t\tgnss restart <RestartType>\n"
          "\t\t\t\t- Restart gnss device. Allowed when device in 'active' state. Restart type can\n"
          "\t\t\t\t  be as follows:\n"
@@ -127,6 +168,7 @@ void PrintGnssHelp
          "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
          "\t\t\tgnss supportedNmeaSentences --> Supported NMEA sentences (bit mask)\n\n"
          "\t\t\tgnss supportedConstellations --> Supported Constellations (bit mask)\n\n"
+         "\t\t\tgnss configDefSecBand --> Configure default secondary band constellations\n\n"
          "\t\t\tgnss get <parameter>\n"
          "\t\t\t\t- Used to get different gnss parameter.\n"
          "\t\t\t\t  Follows parameters and their descriptions :\n"
@@ -136,6 +178,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
+         "\t\t\t\t\t- secondBandConst --> Secondary band Constellations\n"
+         "\t\t\t\t\t- robustloc     --> Robust location information\n"
          "\t\t\t\t\t- magDev        --> Magnitude deviation\n"
          "\t\t\t\t\t- elliUnc       --> Elliptical Uncertainity\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
@@ -164,17 +208,18 @@ void PrintGnssHelp
          "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
-         "\t\t\t\t- Used to set constellation. Allowed when device in 'ready' state. May require\n"
+         "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
          "\t\t\t\t  ConstellationType can be as follows:\n"
-         "\t\t\t\t\t- 1 ---> GPS\n"
+         "\t\t\t\t\t- 1 ---> GPS(Not Supported)\n"
          "\t\t\t\t\t- 2 ---> GLONASS\n"
          "\t\t\t\t\t- 4 ---> BEIDOU\n"
          "\t\t\t\t\t- 8 ---> GALILEO\n"
          "\t\t\t\t\t- 16 --> SBAS\n"
          "\t\t\t\t\t- 32 --> QZSS\n"
+         "\t\t\t\t\t- 64 --> NAVIC\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
-         "\t\t\t\t3 for GPS+GLONASS, 47 for GPS+GLONASS+BEIDOU+GALILEO+QZSS\n\n"
+         "\t\t\t\t10 for GLONASS+GALILEO, 46 for GLONASS+BEIDOU+GALILEO+QZSS\n\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
          "\t\t\t\t\t- alone -----> Standalone agps mode\n"
@@ -340,6 +385,126 @@ static int Start
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+/**
+ * This function starts the GNSS device in the specified engine type.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int StartEngineType
+(
+    const char* startTypePtr           ///< [IN] Start type
+)
+{
+    char *end;
+    uint32_t type = strtoul(startTypePtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad type : %s\n", startTypePtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetEngineType(type);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to start the specified Engine type\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter to set SetEngineType\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("The GNSS device is not ready state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+/**
+ * This function configures Lever Arm Parameters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ConfigureLevArm
+(
+    taf_gnss_LeverArmParams_t* LeverArmParams         ///< [IN] Lever Arm Parameters
+)
+{
+
+    le_result_t result = le_gnss_SetLeverArmConfig(LeverArmParams);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure Lever Arm parameters\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter to configure Lever Arm parameters\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+    //free the LeverArmParams memory
+    le_mem_Release(LeverArmParams);
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+/**
+ * This function configures Dead Reckoning Engine Parameters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ConfigureDeadReckoning
+(
+    taf_gnss_DrParams_t* DrParams         ///< [IN] Lever Arm Parameters
+)
+{
+
+    le_result_t result = le_gnss_SetDRConfig(DrParams);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure Dead Reckoning Engine parameters\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+    //free the DrParams memory
+    le_mem_Release(DrParams);
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -599,6 +764,212 @@ static int StartMode
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function configure Engine state for the specified engine type.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ConfigureEngineState
+(
+    const char* engineTypePtr,           ///< [IN] Engine type
+    const char* engineStatePtr           ///< [IN] Engine state
+)
+{
+    char *end;
+    uint32_t engineType = strtoul(engineTypePtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad engine type : %s\n", engineTypePtr);
+        return EXIT_FAILURE;
+    }
+
+    uint32_t engineState = strtoul(engineStatePtr, &end, BASE10);
+    if ('\0' != end[0])
+    {
+        printf("Bad engine state : %s\n", engineStatePtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_ConfigureEngineState(engineType,engineState);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set engine state for the specified engine type\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready/Active State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function configure Robust Location finromation.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ConfigureRobustLocation
+(
+    const char* enablePtr,           ///< [IN] Enable
+    const char* enable911Ptr         ///< [IN] Enable911
+)
+{
+    char *end;
+    uint32_t enable = strtoul(enablePtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad enable : %s\n", enablePtr);
+        return EXIT_FAILURE;
+    }
+
+    uint32_t enable911 = strtoul(enable911Ptr, &end, BASE10);
+    if ('\0' != end[0])
+    {
+        printf("Bad enable911 : %s\n", enable911Ptr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_ConfigureRobustLocation(enable,enable911);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure Robust location information\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready/Active State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function configure secondary band constellations.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ConfigureSecondaryBandConstellations
+(
+    const char* secondBandConstPtr        ///< [IN] secondary band constellation
+)
+{
+    uint32_t constellationMask = 0;
+
+    char *endPtr;
+    errno = 0;
+    int constellationSum = strtoul(secondBandConstPtr, &endPtr, 10);
+
+    if (endPtr[0] != '\0' || errno != 0 || constellationSum == 0)
+    {
+        fprintf(stderr, "Bad constellation parameter: %s\n", secondBandConstPtr);
+        exit(EXIT_FAILURE);
+    }
+
+    char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
+
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_GPS-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_GPS-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_GPS-1));
+        le_utf8_Append(constellationStr, "GPS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_GALILEO-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_GALILEO-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_GALILEO-1));
+        le_utf8_Append(constellationStr, "GALILEO ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_SBAS-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_SBAS-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_SBAS-1));
+        le_utf8_Append(constellationStr, "SBAS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_GLONASS-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_GLONASS-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_GLONASS-1));
+        le_utf8_Append(constellationStr, "GLONASS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_BDS-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_BDS-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_BDS-1));
+        le_utf8_Append(constellationStr, "BDS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_QZSS-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_QZSS-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_QZSS-1));
+        le_utf8_Append(constellationStr, "QZSS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & (1<<(LE_GNSS_SB_CONSTELLATION_NAVIC-1)))
+    {
+        constellationMask |= (uint32_t)(1<<(LE_GNSS_SB_CONSTELLATION_NAVIC-1));
+        constellationSum -= (1<<(LE_GNSS_SB_CONSTELLATION_NAVIC-1));
+        le_utf8_Append(constellationStr, "NAVIC ", sizeof(constellationStr), NULL);
+    }
+    le_utf8_Append(constellationStr, "]", sizeof(constellationStr), NULL);
+
+    LE_INFO("Configuring secondary constellation %s",constellationStr);
+
+    // Right now all constellation sum should be zero
+    if (constellationSum != 0)
+    {
+        fprintf(stderr, "Bad constellation parameter: %s\n", secondBandConstPtr);
+        exit(EXIT_FAILURE);
+    }
+
+    le_result_t result = le_gnss_ConfigureSecondaryBandConstellations(constellationMask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure secondary band constellations\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function sets constellation of gnss device.
  *
  * @return
@@ -660,6 +1031,12 @@ static int SetConstellation
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
         constellationSum -= CONSTELLATION_QZSS;
         le_utf8_Append(constellationStr, "QZSS ", sizeof(constellationStr), NULL);
+    }
+    if (constellationSum & CONSTELLATION_NAVIC)
+    {
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_NAVIC;
+        constellationSum -= CONSTELLATION_NAVIC;
+        le_utf8_Append(constellationStr, "NAVIC ", sizeof(constellationStr), NULL);
     }
     le_utf8_Append(constellationStr, "]", sizeof(constellationStr), NULL);
 
@@ -970,22 +1347,24 @@ static int GetConstellation
     {
         printf("ConstellationType %d\n", constellationMask);
 
-        (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("GPS activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("***GPS activated***\n") :
                                                               printf("GPS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("GLONASS activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("***GLONASS activated***\n") :
                                                               printf("GLONASS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)  ? printf("BEIDOU activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)  ? printf("***BEIDOU activated***\n") :
                                                               printf("BEIDOU not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("GALILEO activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("***GALILEO activated***\n") :
                                                               printf("GALILEO not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("SBAS activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("***SBAS activated***\n") :
                                                               printf("SBAS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("QZSS activated\n") :
+        (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("***QZSS activated***\n") :
                                                               printf("QZSS not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_NAVIC)   ? printf("***NAVIC activated***\n") :
+                                                              printf("NAVIC not activated\n");
     }
     else if(result == LE_NOT_PERMITTED)
     {
-        printf("GNSS is not in active state!\n");
+        printf("GNSS is not in ready or active state!\n");
     }
     else
     {
@@ -995,6 +1374,106 @@ static int GetConstellation
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets secondary band constellations.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int RequestSecondaryBandConstellations
+(
+    void
+)
+{
+    uint32_t secondaryBandMask = 0;
+    le_result_t result = le_gnss_RequestSecondaryBandConstellations(&secondaryBandMask);
+
+    if (result == LE_OK)
+    {
+        printf("secondary band constellation %d\n", secondaryBandMask);
+        if(secondaryBandMask & (1<<(LE_GNSS_SB_CONSTELLATION_GPS-1)))
+        {
+            printf("GPS constellation is disabled \n");
+        }
+        if(secondaryBandMask & (1<<(LE_GNSS_SB_CONSTELLATION_GALILEO-1)))
+        {
+            printf("GALILEO constellation is disabled \n");
+        }
+        if(secondaryBandMask & (1<<(LE_GNSS_SB_CONSTELLATION_SBAS-1)))
+        {
+            printf("SBAS constellation is disabled \n");
+        }
+        if(secondaryBandMask & (1<<(LE_GNSS_SB_CONSTELLATION_GLONASS-1)))
+        {
+            printf("GLONASS constellation is disabled \n");
+        }
+        if(secondaryBandMask &(1<<(LE_GNSS_SB_CONSTELLATION_BDS-1)))
+        {
+            printf("BDS constellation is disabled \n");
+        }
+        if(secondaryBandMask & (1<<(LE_GNSS_SB_CONSTELLATION_QZSS-1)))
+        {
+            printf("QZAS constellation is disabled \n");
+        }
+        if(secondaryBandMask &(1<<(LE_GNSS_SB_CONSTELLATION_NAVIC-1)))
+        {
+            printf("NAVIC constellation is disabled \n");
+        }
+    }
+    else if(result == LE_NOT_PERMITTED)
+    {
+        printf("GNSS is not in ready state!\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets Robust Location Information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int RobustLocationInformation
+(
+    void
+)
+{
+    uint8_t enable;
+    uint8_t enabled911;
+    uint8_t majorVersion;
+    uint8_t minorVersion;
+    le_result_t result = le_gnss_RobustLocationInformation(&enable,&enabled911,
+                             &majorVersion,&minorVersion);
+
+    if (result == LE_OK)
+    {
+        printf("Robust Location Information Enable: %d\n", enable);
+        printf("Robust Location Information enabled911: %d\n", enabled911);
+        printf("Robust Location Information majorVersion number: %d\n", majorVersion);
+        printf("Robust Location Information minorVersion number: %d\n", minorVersion);
+    }
+    else if(result == LE_NOT_PERMITTED)
+    {
+        printf("GNSS is not in ready/active state!\n");
+    }
+    else
+    {
+        printf("Failed to get robust location information\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 #if 0
 //-------------------------------------------------------------------------------------------------
@@ -1415,6 +1894,42 @@ static int GetSupportedConstellations
             break;
         default:
             printf("Failed to get Supported Constellations, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function configures default second band constellations
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int DefaultSecondaryBandConstellations
+(
+    void
+)
+{
+    le_result_t result = le_gnss_DefaultSecondaryBandConstellations();
+
+    switch (result)
+    {
+        case LE_OK:
+                printf("Succesfully configured default second band constellations");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure secondary band constellations\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS is not in ready state!\n");
+            break;
+        default:
+            printf("Failure error %d (%s)\n",
                     result, LE_RESULT_TXT(result));
             break;
     }
@@ -2644,6 +3159,14 @@ static void GetGnssParams
     {
         exit(GetConstellation());
     }
+    else if (0 == strcmp(params, "secondBandConst"))
+    {
+        exit(RequestSecondaryBandConstellations());
+    }
+    else if (0 == strcmp(params, "robustloc"))
+    {
+        exit(RobustLocationInformation());
+    }
     #if 0
     else if (0 == strcmp(params, "constArea"))
     {
@@ -2755,6 +3278,28 @@ static int SetGnssParams
     {
        status = StartMode(argValPtr);
     }
+    else if (0 == strcmp(argNamePtr, "configEng"))
+    {
+        if (NULL == arg2ValPtr)
+        {
+            printf("arg2ValPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        status = ConfigureEngineState(argValPtr, arg2ValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "robustloc"))
+    {
+        if (NULL == arg2ValPtr)
+        {
+            printf("arg2ValPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        status = ConfigureRobustLocation(argValPtr,arg2ValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "secondBandConst"))
+    {
+        status = ConfigureSecondaryBandConstellations(argValPtr);
+    }
     else
     {
         printf("Bad parameter request: %s\n", argNamePtr);
@@ -2820,6 +3365,222 @@ COMPONENT_INIT
     {
         exit(Start());
     }
+    else if (0 == strcmp(commandPtr, "startType"))
+    {
+        const char* startTypePtr = le_arg_GetArg(1);
+        if (startTypePtr == NULL)
+        {
+            printf("start type is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        exit(StartEngineType(startTypePtr));
+    }
+    else if (0 == strcmp(commandPtr, "ConfigLevArm"))
+    {
+        const char* forwOffsetPtr = le_arg_GetArg(1);
+        if (forwOffsetPtr == NULL)
+        {
+            printf("forwOffsetPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* sideOffsetPtr = le_arg_GetArg(2);
+        if (sideOffsetPtr == NULL)
+        {
+            printf("sideOffsetPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* upOffsePtr = le_arg_GetArg(3);
+        if (upOffsePtr == NULL)
+        {
+            printf("upOffsePtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* levArmTypePtr = le_arg_GetArg(4);
+        if (levArmTypePtr == NULL)
+        {
+            printf("levArmTypePtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        taf_gnss_LeverArmParams_t *leverArmParamsPtr;
+        char* endPtr;
+        double forwardOffsetMeters;
+        double sidewaysOffsetMeters;
+        double upOffsetMeters;
+        uint32_t levArmType;
+        forwardOffsetMeters = strtod(forwOffsetPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad forwOffsetPtr: %s\n", forwOffsetPtr);
+            exit(EXIT_FAILURE);
+        }
+        sidewaysOffsetMeters = strtod(sideOffsetPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad sideOffsetPtr: %s\n", sideOffsetPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        upOffsetMeters = strtod(upOffsePtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad upOffsePtr: %s\n", upOffsePtr);
+            exit(EXIT_FAILURE);
+        }
+
+        levArmType = strtod(levArmTypePtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad levArmTypePtr: %s\n", levArmTypePtr);
+            exit(EXIT_FAILURE);
+        }
+
+        le_mem_PoolRef_t LevArmFramePool = NULL;
+        LevArmFramePool = le_mem_CreatePool("LevArmFramePool", sizeof(taf_gnss_LeverArmParams_t));
+        leverArmParamsPtr = (taf_gnss_LeverArmParams_t*) le_mem_ForceAlloc(LevArmFramePool);
+        leverArmParamsPtr->forwardOffsetMeters = forwardOffsetMeters;
+        leverArmParamsPtr->sidewaysOffsetMeters = sidewaysOffsetMeters;
+        leverArmParamsPtr->upOffsetMeters = upOffsetMeters;
+        leverArmParamsPtr->levArmType = levArmType;
+        exit(ConfigureLevArm(leverArmParamsPtr));
+    }
+
+    else if (0 == strcmp(commandPtr, "ConfigDR"))
+    {
+        const char* rollOffsetPtr = le_arg_GetArg(1);
+        if (rollOffsetPtr == NULL)
+        {
+            printf("rollOffsetPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* yawOffsetPtr = le_arg_GetArg(2);
+        if (yawOffsetPtr == NULL)
+        {
+            printf("yawOffsetPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* pitchOffsetPtr = le_arg_GetArg(3);
+        if (pitchOffsetPtr == NULL)
+        {
+            printf("pitchOffsetPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* offsetUncPtr = le_arg_GetArg(4);
+        if (offsetUncPtr == NULL)
+        {
+            printf("offsetUncPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* speedFactorPtr = le_arg_GetArg(5);
+        if (speedFactorPtr == NULL)
+        {
+            printf("speedFactorPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* speedFactorUncPtr = le_arg_GetArg(6);
+        if (speedFactorUncPtr == NULL)
+        {
+            printf("speedFactorUncPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* gyroFactorPtr = le_arg_GetArg(7);
+        if (gyroFactorPtr == NULL)
+        {
+            printf("gyroFactorPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* gyroFactorUncPtr = le_arg_GetArg(8);
+        if (gyroFactorUncPtr == NULL)
+        {
+            printf("gyroFactorUncPtr is NULL.\n");
+            exit(EXIT_FAILURE);
+        }
+        taf_gnss_DrParams_t *DrParamsPtr;
+        char* endPtr;
+        double rollOffset;
+        double yawOffset;
+        double pitchOffset;
+        double offsetUnc;
+        double speedFactor;
+        double speedFactorUnc;
+        double gyroFactor;
+        double gyroFactorUnc;
+        rollOffset = strtod(rollOffsetPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad rollOffsetPtr: %s\n", rollOffsetPtr);
+            exit(EXIT_FAILURE);
+        }
+        yawOffset = strtod(yawOffsetPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad yawOffsetPtr: %s\n", yawOffsetPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        pitchOffset = strtod(pitchOffsetPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad pitchOffsetPtr: %s\n", pitchOffsetPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        offsetUnc = strtod(offsetUncPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad offsetUncPtr: %s\n", offsetUncPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        speedFactor = strtod(speedFactorPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad speedFactorPtr: %s\n", speedFactorPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        speedFactorUnc = strtod(speedFactorUncPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad speedFactorUncPtr: %s\n", speedFactorUncPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        gyroFactor = strtod(gyroFactorPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad gyroFactorPtr: %s\n", gyroFactorPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        gyroFactorUnc = strtod(gyroFactorUncPtr,&endPtr);
+        if(endPtr[0]!='\0')
+        {
+            printf("Bad gyroFactorUncPtr: %s\n", gyroFactorUncPtr);
+            exit(EXIT_FAILURE);
+        }
+
+        le_mem_PoolRef_t DrFramePool = NULL;
+        DrFramePool = le_mem_CreatePool("DrFramePool", sizeof(taf_gnss_LeverArmParams_t));
+        DrParamsPtr = (taf_gnss_DrParams_t*) le_mem_ForceAlloc(DrFramePool);
+        if(DrParamsPtr != NULL)
+        {
+            DrParamsPtr->rollOffset = rollOffset;
+            DrParamsPtr->yawOffset = yawOffset;
+            DrParamsPtr->pitchOffset = pitchOffset;
+            DrParamsPtr->offsetUnc = offsetUnc;
+            DrParamsPtr->speedFactor = speedFactor;
+            DrParamsPtr->speedFactorUnc = speedFactorUnc;
+            DrParamsPtr->gyroFactor = gyroFactor;
+            DrParamsPtr->gyroFactorUnc = gyroFactorUnc;
+            exit(ConfigureDeadReckoning(DrParamsPtr));
+        }
+        else
+        {
+            exit(EXIT_FAILURE);
+        }
+    }
+
     else if (strcmp(commandPtr, "stop") == 0)
     {
         exit(Stop());
@@ -2874,6 +3635,12 @@ COMPONENT_INIT
     {
         exit(GetSupportedConstellations());
     }
+
+    else if (strcmp(commandPtr, "configDefSecBand") == 0)
+    {
+        exit(DefaultSecondaryBandConstellations());
+    }
+
     else if (strcmp(commandPtr, "get") == 0)
     {
         const char* paramsPtr = le_arg_GetArg(1);
@@ -2895,11 +3662,13 @@ COMPONENT_INIT
         if (NULL == argNamePtr)
         {
             LE_ERROR("argNamePtr is NULL");
+            printf("argNamePtr is NULL");
             exit(EXIT_FAILURE);
         }
         if (NULL == argValPtr)
         {
             LE_ERROR("argValPtr is NULL");
+            printf("argValPtr is NULL");
             exit(EXIT_FAILURE);
         }
         CheckEnoughParams( 2,
