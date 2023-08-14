@@ -57,6 +57,8 @@ COMMON_SRC_DIR := $(LEGATO_ROOT)/framework/daemons
 LINUX_SRC_DIR := $(COMMON_SRC_DIR)/linux
 RTOS_SRC_DIR := $(COMMON_SRC_DIR)/rtos
 
+TELAF_LINUX_SRC_DIR := $(TELAF_ROOT)/framework/daemons/linux
+
 export HOST_ARCH ?= $(shell uname -m)
 export TOOLS_ARCH ?= $(HOST_ARCH)
 
@@ -121,6 +123,7 @@ DAEMON_SVCDIR      := $(LE_CONFIG_POSIX)
 DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
 DAEMON_USUPERVISOR := $(subst 0,y,$(call k2b,$(LE_CONFIG_POSIX)))
 DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
+DAEMON_DEVMANAGER  := $(LE_CONFIG_POSIX)
 
 DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
 DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
@@ -130,6 +133,7 @@ DAEMONS_$(DAEMON_LOGCTL)        += $(BIN_DIR)/logCtrlDaemon
 DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
 DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
 DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
+DAEMONS_$(DAEMON_DEVMANAGER)    += $(BIN_DIR)/deviceManager
 
 ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
@@ -436,3 +440,8 @@ $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
 		-s $(LINUX_SRC_DIR)/updateDaemon \
 		--ldflags=-L$(LIB_DIR) \
 		$(IMA_MKEXE_FLAGS)
+
+$(BIN_DIR)/deviceManager: liblegato $(BIN_DIR)
+	$(L) MKEXE $@
+	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
+		$(TELAF_LINUX_SRC_DIR)/deviceManager
