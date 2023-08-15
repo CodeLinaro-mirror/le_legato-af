@@ -180,7 +180,7 @@
  * The default timeout to use if no timeout is configured (in milliseconds)
  **/
 //--------------------------------------------------------------------------------------------------
-#define TIMEOUT_DEFAULT 30000
+#define TIMEOUT_DEFAULT 60000
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -188,6 +188,16 @@
  **/
 //--------------------------------------------------------------------------------------------------
 #define UPDATEDAEMON_TIMEOUT_DEFAULT 600000
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Kick interval for each core service (in milliseconds)
+ **/
+//--------------------------------------------------------------------------------------------------
+#define CONFIGTREE_KICK_INTERVAL 29000
+#define LOGDAEMON_KICK_INTERVAL 17000
+#define SUPERVISOR_KICK_INTERVAL 23000
+#define UPDATEDAEMON_KICK_INTERVAL 151000
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1414,32 +1424,27 @@ void HandleAppUninstall
 //--------------------------------------------------------------------------------------------------
 void InitFrameworkWdog
 (
-    uint64_t frameworkKickTimeout
+    void
 )
 {
-    // Kick at 4x the timeout so small jitter will not cause a spurious reset
-    uint64_t frameworkKickInterval = frameworkKickTimeout/4;
-
     supervisorWdog_ConnectService();
-    supervisorWdog_AddKickEventHandler(frameworkKickInterval,
+    supervisorWdog_AddKickEventHandler(SUPERVISOR_KICK_INTERVAL,
                                        ResetFrameworkWatchdog,
                                        CreateFrameworkWatchdog("supervisor",
-                                                               frameworkKickTimeout));
+                                                               TIMEOUT_DEFAULT));
 
 
-    configTreeWdog_AddKickEventHandler(frameworkKickInterval,
+    configTreeWdog_AddKickEventHandler(CONFIGTREE_KICK_INTERVAL,
                                        ResetFrameworkWatchdog,
                                        CreateFrameworkWatchdog("configTree",
-                                                               frameworkKickTimeout));
+                                                               TIMEOUT_DEFAULT));
 
-    logDaemonWdog_AddKickEventHandler(frameworkKickInterval,
+    logDaemonWdog_AddKickEventHandler(LOGDAEMON_KICK_INTERVAL,
                                       ResetFrameworkWatchdog,
                                       CreateFrameworkWatchdog("logDaemon",
-                                                              frameworkKickTimeout));
+                                                              TIMEOUT_DEFAULT));
 
-    // Allow a 10 minute timeout period for UD to manage large application updates from flash.
-    uint64_t updateDaemonKickInterval = UPDATEDAEMON_TIMEOUT_DEFAULT/4;
-    updateDaemonWdog_AddKickEventHandler(updateDaemonKickInterval,
+    updateDaemonWdog_AddKickEventHandler(UPDATEDAEMON_KICK_INTERVAL,
                                          ResetFrameworkWatchdog,
                                          CreateFrameworkWatchdog("updateDaemon",
                                                                  UPDATEDAEMON_TIMEOUT_DEFAULT));
@@ -1503,7 +1508,7 @@ COMPONENT_INIT
 
     // Read the system defined external watchdog timeout from configtree
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(SYSTEM_FRAMEWORK_CFG);
-    int timeout = le_cfg_GetInt(iterRef, "externalWatchdogKick", 30000);
+    int timeout = le_cfg_GetInt(iterRef, "externalWatchdogKick", 29000);
     LE_DEBUG("External watchdog kick: %d", timeout);
     le_cfg_CancelTxn(iterRef);
 
@@ -1511,7 +1516,7 @@ COMPONENT_INIT
     // No requirement so far for how often these need to kick the watchdog, so use
     // default timing for now.
     #if LE_CONFIG_WDOG_FRAMEWORK
-        InitFrameworkWdog(TIMEOUT_DEFAULT);
+        InitFrameworkWdog();
     #endif
 
     // Init mandatory watchdog.
