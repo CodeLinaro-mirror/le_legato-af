@@ -41,7 +41,9 @@
 #include "sysPaths.h"
 #include "fileSystem.h"
 #include "ima.h"
+#ifdef LE_CONFIG_ENABLE_SELINUX
 #include <semanage/modules.h>
+#endif // LE_CONFIG_ENABLE_SELINUX
 #include <regex.h>
 #include <sys/mman.h>
 
@@ -56,6 +58,7 @@ static const char* PreInstallPath = "/legato/apps/%s/read-only/script/pre-instal
 
 static const char* PostInstallPath = "/legato/apps/%s/read-only/script/post-install";
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  *  Domain fixed macro to check before loading the policy
@@ -72,7 +75,7 @@ static const char* PostInstallPath = "/legato/apps/%s/read-only/script/post-inst
  */
 //--------------------------------------------------------------------------------------------------
 #define SELINUX_PUBLIC_PATH "/data/var_selinux/"
-
+#endif // LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Import an applications configuration into the system config tree, allowing the supervisor to be
@@ -721,6 +724,7 @@ bool app_IsAppNameValid
     return true;
 }
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  *  Overlayfs path for dynamic loading policy
@@ -1128,6 +1132,7 @@ void semodule_Remove
 
     return;
 }
+#endif // LE_CONFIG_ENABLE_SELINUX
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1246,9 +1251,11 @@ le_result_t app_InstallIndividual
 
     instStat_ReportAppInstall(appNamePtr);
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
     char sePathPtr[PATH_MAX];
     snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appMd5Ptr, appNamePtr);
     semodule_TryInstall(appNamePtr, sePathPtr);
+#endif // LE_CONFIG_ENABLE_SELINUX
 
     supCtrl_StartApp(appNamePtr);
 
@@ -1326,9 +1333,11 @@ le_result_t app_RemoveIndividual
 
     sysStatus_MarkTried();
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
     char sePathPtr[PATH_MAX];
     snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appHash, appNamePtr);
     semodule_Remove(appNamePtr, sePathPtr);
+#endif // LE_CONFIG_ENABLE_SELINUX
 
     instStat_ReportAppUninstall(appNamePtr);
 

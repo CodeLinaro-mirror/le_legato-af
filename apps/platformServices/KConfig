@@ -10,6 +10,7 @@ config AVC_ENABLE_AV_MODEL
   bool
   depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM
   depends on !TARGET_LOCALHOST
+  depends on !TARGET_SIMULATION
   depends on !TARGET_RASPI
   default n if TARGET_CUSTOM
   default y

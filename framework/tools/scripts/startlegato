@@ -54,7 +54,7 @@ if ! [ $TARGET ]
 then
     TARGET=localhost
 else
-    if [ "$TARGET" != "localhost" ]
+    if [ "$TARGET" != "localhost" -a "$TARGET" != "simulation" ]
     then
         echo "***ERROR: Sorry, target '$TARGET' is not supported yet." 1>&2
         exit 2

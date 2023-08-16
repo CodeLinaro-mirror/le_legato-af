@@ -24,7 +24,11 @@ requires:
 
     component:
     {
+    #if ${LE_CONFIG_TARGET_SIMULATION} = y
+        $TELAF_ROOT/simulation/pa/taf_pa_simula_wdog
+    #else
         $TELAF_ROOT/components/tafWatchdog/taf_pa_wdog
+    #endif
     }
 }
 
