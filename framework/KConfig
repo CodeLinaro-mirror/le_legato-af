@@ -163,7 +163,8 @@ menu "Security Features"
 config ENABLE_SELINUX
   bool "Enable the SELinux feature in framework"
   depends on LINUX
-  depends on !TARGET_SIMULATION
+  default y if TARGET_SA515M
+  default $(b2k,$(def,$(ENABLE_SELINUX),n))
   ---help---
   Enable SELinux for security
 
