@@ -95,7 +95,6 @@ void PrintGnssHelp
          "\t\t\tgnss get <parameter>\n"
          "\t\t\tgnss get posInfo\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
-         "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
@@ -174,7 +173,6 @@ void PrintGnssHelp
          "\t\t\t\t  Follows parameters and their descriptions :\n"
          "\t\t\t\t\t- ttff          --> Time to First Fix (milliseconds)\n"
          "\t\t\t\t\t- acqRate       --> Acquisition Rate (unit milliseconds)\n"
-         "\t\t\t\t\t- agpsMode      --> Agps Mode\n"
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
@@ -185,7 +183,6 @@ void PrintGnssHelp
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
-         "\t\t\t\t\t- altOnWgs84    --> Altitude with respect to the WGS-84 ellipsoid\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
@@ -206,6 +203,11 @@ void PrintGnssHelp
          "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position. Displayed\n"
          "\t\t\t\t\t-               in all resolutions: (0 to 3 digits after the decimal point) \n"
          "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
+         "\t\t\t\t\t- conformIndex  --> Get the comformity index for robust location\n"
+         "\t\t\t\t\t- 0.0 ---> Least comforming\n"
+         "\t\t\t\t\t- 1.0 ---> Most comforming\n"
+         "\t\t\t\t\t- calibData  --> Get the sensor calibration status and confidence percent\n"
+         "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
@@ -220,11 +222,6 @@ void PrintGnssHelp
          "\t\t\t\t\t- 64 --> NAVIC\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t10 for GLONASS+GALILEO, 46 for GLONASS+BEIDOU+GALILEO+QZSS\n\n"
-         "\t\t\tgnss set agpsMode <ModeType>\n"
-         "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
-         "\t\t\t\t\t- alone -----> Standalone agps mode\n"
-         "\t\t\t\t\t- msBase ----> MS-based agps mode\n"
-         "\t\t\t\t\t- msAssist --> MS-assisted agps mode\n\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\t\t- Used to set acquisition rate.\n"
          "\t\t\t\t  Please note that it is available when the device is 'ready' state.\n\n"
@@ -2453,6 +2450,99 @@ static int GetEllipticalUncertainty
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets conformity index for robust location.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetComformingIndex
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double indexPtr;
+    le_result_t result = le_gnss_GetConformityIndex(positionSampleRef,&indexPtr);
+    if (result == LE_OK)
+    {
+        printf("ComformingIndex: %.2f\n" "(0.0->Least conforming 1.0->Most conforming)\n"
+                  ,(float)indexPtr);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("GetComformingIndex is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets sensor calibration status and confidence percent.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetCablibrationConfData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t calibPtr;
+    uint8_t percentPtr;
+    le_result_t result = le_gnss_GetCalibrationData(positionSampleRef,
+                                                &calibPtr,&percentPtr);
+    if (result == LE_OK)
+    {
+        if(calibPtr & (1<<TAF_GNSS_DR_ROLL_CALIBRATION_NEEDED))
+        {
+            printf("Roll calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_PITCH_CALIBRATION_NEEDED))
+        {
+            printf("Pitch calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_YAW_CALIBRATION_NEEDED))
+        {
+            printf("Yaw calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_ODO_CALIBRATION_NEEDED))
+        {
+            printf("Odo calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_GYRO_CALIBRATION_NEEDED))
+        {
+            printf("Gyro calibration is needed\n");
+        }
+        if(calibPtr == 0)
+        {
+            printf("Calibration status not found\n");
+        }
+        printf("Sensor calibration confidence percent: %u%%\n"
+                  ,percentPtr);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("Calibration data is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the date of updated location.
@@ -2812,6 +2902,139 @@ static int GetSatelliteStatus
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets Kinematics information related to body parameters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetKinematicsData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    taf_gnss_KinematicsData_t *bodyFrameData;
+    le_mem_PoolRef_t bodyFramePool = NULL;
+    bodyFramePool = le_mem_CreatePool("bodyFramePool", sizeof(taf_gnss_KinematicsData_t));
+    bodyFrameData = (taf_gnss_KinematicsData_t*) le_mem_ForceAlloc(bodyFramePool);
+
+    le_result_t result = le_gnss_GetBodyFrameData( positionSampleRef,
+                                              bodyFrameData);
+
+    if (result == LE_OK)
+    {
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL))
+       {
+           printf("**Kinematics data has Forward Accelaration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL))
+       {
+           printf("**Kinematics data has has Sideward Acceleration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL))
+       {
+           printf("**Kinematics data has Vertical Acceleration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE))
+       {
+           printf("**Kinematics has data has Heading Rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH))
+       {
+           printf("**Kinematics has body pitch**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL_UNC))
+       {
+           printf("**Kinematics data has has Forward Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL_UNC))
+       {
+           printf("**Kinematics data has has Sideward Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL_UNC))
+       {
+           printf("**Kinematics data has Vertical Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE_UNC))
+       {
+           printf("**Kinematics data Heading rate uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_UNC))
+       {
+           printf("**Kinematics has body pitch Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_BIT))
+       {
+           printf("**Kinematics data has pitch rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_UNC_BIT))
+       {
+           printf("**Kinematics has pitch rate Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_BIT))
+       {
+           printf("**Kinematics data has roll**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_UNC_BIT))
+       {
+           printf("**Kinematics data has roll Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_BIT))
+       {
+           printf("**Kinematics data has roll rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_UNC_BIT))
+       {
+           printf("**Kinematics data has roll rate Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_BIT))
+       {
+           printf("**Kinematics data has yaw**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_UNC_BIT))
+       {
+           printf("**Kinematics data has yaw uncertainity**\n");
+       }
+       printf("\nForward Acceleration in body frame(m/s2):%lf\n",(float)bodyFrameData->longAccel);
+       printf("Sideward Acceleration in body frame (m/s2):%lf\n",(float) bodyFrameData->latAccel);
+       printf("Vertical Acceleration in body frame (m/s2):%lf\n",(float) bodyFrameData->vertAccel);
+       printf("Heading Rate (Radians/second):%lf\n",(float) bodyFrameData->yawRate);
+       printf("Body pitch (Radians)::%lf\n",(float) bodyFrameData->pitch);
+       printf("Uncertainty of Forward Acceleration in body frame:%lf\n",
+                                            (float) bodyFrameData->longAccelUnc);
+       printf("Uncertainty of Side-ward Acceleration in body frame:%lf\n",
+                                            (float) bodyFrameData->latAccelUnc);
+       printf("Uncertainty of Vertical Acceleration in body frame:%lf\n",
+                                            (float)bodyFrameData->vertAccelUnc);
+       printf("Uncertainty of Heading Rate:%lf\n",(float) bodyFrameData->yawRateUnc);
+       printf("Uncertainty of Body pitch:%lf\n",(float) bodyFrameData->pitchUnc);
+       printf("Body pitch rate:%lf\n",(float) bodyFrameData->pitchRate);
+       printf("Uncertainty of pitch rate:%lf\n",(float) bodyFrameData->pitchRateUnc);
+       printf("Roll of body frame, clockwise is positive:%lf\n",(float)bodyFrameData->roll);
+       printf("Uncertainty of roll, 68%% confidence level:%lf\n",(float)bodyFrameData->rollUnc);
+       printf("Roll rate of body frame,clockwise is positive:%lf\n",(float)bodyFrameData->rollRate);
+       printf("Uncertainty of roll rate, 68%% confidence level:%lf\n",
+                                            (float)bodyFrameData->rollRateUnc);
+       printf("Yaw of body frame, clockwise is positive:%lf\n",(float)bodyFrameData->yaw);
+       printf("Uncertainty of yaw, 68%% confidence level:%lf\n",(float)bodyFrameData->yawUnc);
+
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("Kinematics data is not found");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    le_mem_Release(bodyFrameData);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -3030,6 +3253,18 @@ static void PositionHandlerFunction
         {
             status = GetEllipticalUncertainty(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "conformIndex") == 0)
+        {
+            status = GetComformingIndex(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "calibData") == 0)
+        {
+            status = GetCablibrationConfData(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "bodyFrameData") == 0)
+        {
+            status = GetKinematicsData(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
     }
@@ -3184,7 +3419,6 @@ static void GetGnssParams
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
              (0 == strcmp(params, "alt"))         ||
-             (0 == strcmp(params, "altOnWgs84"))  ||
              (0 == strcmp(params, "loc3d"))       ||
              (0 == strcmp(params, "gpsTime"))     ||
              (0 == strcmp(params, "time"))        ||
@@ -3202,7 +3436,10 @@ static void GetGnssParams
              (0 == strcmp(params, "magDev"))      ||
              (0 == strcmp(params, "elliUnc"))     ||
              (0 == strcmp(params,"GpsLeapSeconds"))||
-             (0 == strcmp(params, "posInfo")))
+             (0 == strcmp(params, "posInfo"))     ||
+             (0 == strcmp(params, "conformIndex"))||
+             (0 == strcmp(params, "calibData"))||
+             (0 == strcmp(params, "bodyFrameData")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -3624,6 +3861,12 @@ COMPONENT_INIT
                 fprintf(stderr, "Bad fix period value: %s\n", fixPeriodPtr);
                 exit(EXIT_FAILURE);
             }
+        }
+        le_gnss_State_t state = le_gnss_GetState();
+        if (LE_GNSS_STATE_ACTIVE != state)
+        {
+            printf("GNSS is not in active state!\n");
+            exit(EXIT_FAILURE);
         }
         exit(DoPosFix(fixPeriod));
     }
