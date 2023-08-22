@@ -930,6 +930,7 @@ le_socket_Ref_t le_socket_Accept
     int*              clientPort        ///< [OUT] Client's port number.
 )
 {
+    le_result_t ret;
     SocketCtx_t *serverContextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, serverRef);
     SocketCtx_t* clientContextPtr = NULL;
     struct sockaddr_storage clientSockAddr;
@@ -955,10 +956,13 @@ le_socket_Ref_t le_socket_Accept
         return NULL;
     }
 
-    clientFd = netSocket_Accept(serverContextPtr->fd, (struct sockaddr*)&clientSockAddr, &addrLen);
-    if(-1 == clientFd)
+    ret = netSocket_Accept(serverContextPtr->fd,
+                          (struct sockaddr*)&clientSockAddr,
+                          &addrLen,
+                          &clientFd);
+    if(ret != LE_OK)
     {
-        LE_ERROR("Failed to accept a client socket(%d)", errno);
+        LE_ERROR("Failed to accept a client socket(%d)", ret);
         return NULL;
     }
 

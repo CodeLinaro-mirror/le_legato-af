@@ -185,17 +185,21 @@ le_result_t netSocket_Bind
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Accept a connection from remote client and return the description file.
+ * Accept a connection from peer client and output the description file.
  *
  * @return
- *  - The connetion file description
+ *  - LE_OK            Function success.
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_UNAVAILABLE   Unable to accept a peer client socket.
+ *  - LE_FAULT         Set socket option error.
  */
 //--------------------------------------------------------------------------------------------------
-int netSocket_Accept
+le_result_t netSocket_Accept
 (
     int                 serverFd,       ///< [IN] Local server file description
     struct sockaddr*    clientAddrPtr,  ///< [OUT] Client address pointer
-    socklen_t*          clientAddrLen   ///< [INOUT] Socket address length
+    socklen_t*          clientAddrLen,  ///< [INOUT] Socket address length
+    int*                clientFdPtr     ///< [OUT] Accepted client socket file descriptor pointer
 );
 
 #endif /* LE_NET_SOCKET_LIB_H */
