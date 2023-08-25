@@ -38,16 +38,22 @@ case "$1" in
 
         # Configure the maximum messages size up to 260 Kbytes as some APIs may require big chunck
         # of data to pass.
-        sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
-            echo "Failed to set net.unix.max_dgram_qlen"
-        sysctl -w net.core.wmem_max=266240 >/dev/null || \
-            echo "Failed to set net.core.wmem_max"
-        sysctl -w net.core.wmem_default=266240 >/dev/null || \
-            echo "Failed to set net.core.wmem_default"
-        sysctl -w net.core.rmem_max=266240 >/dev/null || \
-            echo "Failed to set net.core.rmem_max"
-        sysctl -w net.core.rmem_default=266240 >/dev/null || \
-            echo "Failed to set net.core.rmem_default"
+        #
+        # When we're in docker container, '/proc/sys/net/core/wmem_max' should be mounted to container,
+        # just like: -v /proc/sys/net/core/wmem_max:/proc/sys/net/core/wmem_max
+        # but presently, we don't want to do this to impact the host, just ignore them
+        if [ -z ${ON_TELAF_SIMULATION_DOCKER} ]; then
+            sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
+                echo "Failed to set net.unix.max_dgram_qlen"
+            sysctl -w net.core.wmem_max=266240 >/dev/null || \
+                echo "Failed to set net.core.wmem_max"
+            sysctl -w net.core.wmem_default=266240 >/dev/null || \
+                echo "Failed to set net.core.wmem_default"
+            sysctl -w net.core.rmem_max=266240 >/dev/null || \
+                echo "Failed to set net.core.rmem_max"
+            sysctl -w net.core.rmem_default=266240 >/dev/null || \
+                echo "Failed to set net.core.rmem_default"
+        fi
 
         # Add LEGATO_SYSTEM_PATH to /etc/profile if it is not added there.
         grep -F $LEGATO_SYSTEM_PATH /etc/profile >/dev/null

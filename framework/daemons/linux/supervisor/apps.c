@@ -1355,8 +1355,10 @@ void apps_Init
 
     // Specify the program to be run when the last process exits a freezer sub-group. This program
     // notifies the Supervisor which app has stopped.
+#ifndef LE_CONFIG_TARGET_SIMULATION
     file_WriteStr("/sys/fs/cgroup/freezer/release_agent",
                   "/legato/systems/current/bin/_appStopClient", 0);
+#endif
 
     appNameListPool = le_mem_CreatePool("appNameList", sizeof(appName_t));
 

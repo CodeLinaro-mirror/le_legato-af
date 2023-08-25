@@ -36,7 +36,7 @@
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m sa525m
+TARGETS := localhost simulation ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m sa525m
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
@@ -184,6 +184,12 @@ ifeq ($(TARGET),sa525m)
   MKSYS_FLAGS += -X -march=armv8-a -X -std=c++11 -X -lstdc++
 endif
 
+ifeq ($(TARGET),simulation)
+export MKSYS_FLAGS += $(MKSYS_FLAGS_SIMULATION_EX)
+export MKAPP_FLAGS += $(MKAPP_FLAGS_SIMULATION_EX)
+export MKEXE_FLAGS += $(MKEXE_FLAGS_SIMULATION_EX)
+endif
+
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
   SYSTOIMG_FLAGS += -s
@@ -202,6 +208,8 @@ endif
 
 # Target architecture for tests
 ifeq ($(TARGET),localhost)
+  export LEGATO_TARGET_ARCH := $(shell uname -m)
+else ifeq ($(TARGET),simulation)
   export LEGATO_TARGET_ARCH := $(shell uname -m)
 endif
 
@@ -250,6 +258,11 @@ endif
 
 ifneq ($(TARGET),nothing)
   ifeq ($(TARGET),localhost)
+    export LEGATO_KERNELROOT    :=
+    export LEGATO_SYSROOT       :=
+    export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))
+    export TOOLCHAIN_PREFIX     :=
+  else ifeq ($(TARGET),simulation)
     export LEGATO_KERNELROOT    :=
     export LEGATO_SYSROOT       :=
     export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))

@@ -160,10 +160,19 @@ config MEM_HIBERNATION
 
 menu "Security Features"
 
+config ENABLE_SELINUX
+  bool "Enable the SELinux feature in framework"
+  depends on LINUX
+  default y if TARGET_SA515M
+  default $(b2k,$(def,$(ENABLE_SELINUX),n))
+  ---help---
+  Enable SELinux for security
+
 config ENABLE_SMACK
   bool "Enable SMACK for access controls"
   depends on LINUX
   depends on !TARGET_LOCALHOST
+  depends on !TARGET_SIMULATION
   depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM
   depends on !TARGET_RASPI
   default !$(b2k,$(DISABLE_SMACK))
@@ -200,6 +209,7 @@ config SMACK_ATTR_VALUE
 config ENABLE_IMA
   bool "Enable IMA for file integrity checking"
   depends on LINUX && !TARGET_LOCALHOST
+  depends on LINUX && !TARGET_SIMULATION
   default $(b2k,$(ENABLE_IMA))
   ---help---
   Enable the Integrity Measurement Architecture (IMA) on Linux to prevent

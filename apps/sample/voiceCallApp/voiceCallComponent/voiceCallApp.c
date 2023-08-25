@@ -242,6 +242,24 @@ static le_result_t OpenAudioMic
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
+#if LE_CONFIG_TARGET_SA525M
+    MdmTxAudioRef =  le_audio_OpenModemVoiceTx(1);
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "le_audio_OpenModemVoiceTx returns NULL!");
+    LE_DEBUG("OpenAudio MdmTxAudioRef %p", MdmTxAudioRef);
+
+    FeInRef = le_audio_OpenMic();
+    LE_ERROR_IF((FeInRef==NULL), "le_audio_OpenMic returns NULL!");
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+
+    if (MdmTxAudioRef && FeInRef && AudioInputConnectorRef)
+    {
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect RX on Input connector!");
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
+    }
+#endif
     if (MdmRxAudioRef && FeOutRef  && AudioOutputConnectorRef)
     {
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);

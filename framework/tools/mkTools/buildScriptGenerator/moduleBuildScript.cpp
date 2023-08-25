@@ -375,7 +375,7 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
         }
     }
 
-    if (buildParams.target != "localhost")
+    if (buildParams.target != "localhost" && buildParams.target != "simulation")
     {
         // Specify the CROSS_COMPILE and ARCH environment variables
         // Note: compiler path may contain dashes in directory names
