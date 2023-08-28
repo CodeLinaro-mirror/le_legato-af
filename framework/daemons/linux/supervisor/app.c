@@ -70,6 +70,7 @@
 #include <regex.h>
 #include <sys/mman.h>
 #include <sys/capability.h>
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that specifies whether the app should be in a sandbox.
@@ -4254,6 +4255,13 @@ le_result_t app_Start
 
         snprintf(installPath, LIMIT_M_PATH_BYTES, "%s%s%s", appRef->installDirPath, "/", "read-only/");
         semodule_Restore(installPath);
+
+        char realPath[LIMIT_M_PATH_BYTES];
+        if (realpath(installPath, realPath) != NULL)
+        {
+            LE_INFO("Real path for this app: %s", realPath);
+            semodule_Restore(realPath);
+        }
 
         snprintf(workPath, LIMIT_M_PATH_BYTES, "%s%s",appRef->workingDir, "/");
         semodule_Restore(workPath);
