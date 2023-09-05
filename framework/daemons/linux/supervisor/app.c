@@ -4903,7 +4903,16 @@ void app_SigChildHandler
                     }
                 }
 #ifdef LE_CONFIG_TARGET_SIMULATION
-                notifyAppStopServer(appRef->name);
+                // Because we don't use the release_agent mechanism in simulation,
+                // here we only deal with data structures maintained by legato
+                // and reap subprocesses. As for the cgroup node, currently
+                // we do not poll here to determine if the cgroup node is empty.
+                // So we should call 'app_HasConfRunningProc', not 'HasRunningProc'.
+                if (! app_HasConfRunningProc(appRef))
+                {
+                    LE_INFO("App (%s) -- N --> [AppStopServer]", appRef->name);
+                    notifyAppStopServer(appRef->name);
+                }
 #endif
                 break;
 

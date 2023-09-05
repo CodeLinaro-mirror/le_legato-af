@@ -1227,6 +1227,24 @@ static void AppStopHandler
             {
                 app_Ref_t appRef = appContainerPtr->appRef;
 
+#ifdef LE_CONFIG_TARGET_SIMULATION
+                // In simulation, we don't have release_agent notifications.
+                // Although the processes in userspace has been reaped, work may
+                // still be going on in kernelspace.(Usually userspace is faster).
+                // So, we need to poll to wait for the cgroup node to be empty,
+                // which is harmless because we have already reaped the processes,
+                // we are just waiting for them to be removed from the cgroup node.
+                LE_INFO("Waiting for cgroup node (%s) to be emptied...", app_GetName(appRef));
+                while (1)
+                {
+                    if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
+                    {
+                        LE_INFO("Already emptied for cgroup node (%s), go ahead",
+                                app_GetName(appRef));
+                        break;
+                    }
+                }
+#endif
                 MarkAppAsStopped(appRef, appContainerPtr);
             }
         }
