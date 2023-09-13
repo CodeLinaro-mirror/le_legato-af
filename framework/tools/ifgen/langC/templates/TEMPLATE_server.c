@@ -252,12 +252,12 @@ __attribute__((unused)) static void CleanupClientData
     {
         serverDataPtr =  le_ref_GetValue(iterRef);
 
-        if ( sessionRef != serverDataPtr->clientSessionRef )
+        if ( serverDataPtr != NULL && sessionRef != serverDataPtr->clientSessionRef )
         {
             LE_DEBUG("Found session ref %p; does not match",
                      serverDataPtr->clientSessionRef);
         }
-        else
+        else if ( serverDataPtr != NULL )
         {
             LE_DEBUG("Found session ref %p; match found, so needs cleanup",
                      serverDataPtr->clientSessionRef);
