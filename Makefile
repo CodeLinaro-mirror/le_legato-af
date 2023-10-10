@@ -163,21 +163,22 @@ ifeq ($(TARGET),sa525m)
     export ARCH_CFLAGS := -march=armv8-a
     export LEGATO_TARGET_ARCH := armv8
   endif
+
+else ifeq ($(TARGET),simulation)
+  MKTOOLS_FLAGS += $(MKTOOLS_FLAGS_SIMULATION_EX)
+
+else ifeq ($(TARGET),localhost)
+# nothing to do for localhost
+
 else # sa415m, sa515m
-    MKTOOLS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-    MKTOOLS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-    export ARCH_CFLAGS := -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard
+  MKTOOLS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKTOOLS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  export ARCH_CFLAGS := -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard
 endif
 
 export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
 export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
 export MKEXE_FLAGS=$(MKTOOLS_FLAGS)
-
-ifeq ($(TARGET),simulation)
-export MKSYS_FLAGS += $(MKSYS_FLAGS_SIMULATION_EX)
-export MKAPP_FLAGS += $(MKAPP_FLAGS_SIMULATION_EX)
-export MKEXE_FLAGS += $(MKEXE_FLAGS_SIMULATION_EX)
-endif
 
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
