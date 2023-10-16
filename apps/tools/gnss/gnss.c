@@ -195,6 +195,10 @@ void PrintGnssHelp
          "\t\t\t\t\t- azimuthDevInfo -->Gets the elliptical horizontal uncertainty azimuth of\n"
          "\t\t\t\t\t-                   orientation,east and north standard deviations.\n"
          "\t\t\t\t\t- realTimeInfo  -->Gets the elapsed real time and its uncertainity in nano sec\n"
+         "\t\t\t\t\t- measInfo      -->Gets the measurement usages information\n"
+         "\t\t\t\t\t- reportStatus  -->Gets status of report in terms of how optimally the report was calculated by the engine\n"
+         "\t\t\t\t\t- altMSeaLevel  -->Gets the altitude with respect to mean sea level in meters\n"
+         "\t\t\t\t\t- svIds         -->Gets the GNSS Satellite Vehicles used in position data.\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
@@ -3824,6 +3828,243 @@ static int GetRealTimeInfo
 
 }
 
+void PrintGnssSignalType(uint32_t signalTypeMask) {
+   printf("Gnss Signal Type:\n");
+   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
+     printf("GPS L1CA signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
+     printf("GPS L1C signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L2) {
+     printf("GPS L2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L5) {
+     printf("GPS L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
+     printf("Glonass G1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
+     printf("Glonass G2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
+     printf("Galileo E1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
+     printf("Galileo E5A signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
+     printf("Galileo E5B signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
+     printf("Beidou B1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
+     printf("Beidou B2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
+     printf("QZSS L1CA signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
+     printf("QZSS L1S signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
+     printf("QZSS L2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
+     printf("QZSS L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
+     printf("SBAS L1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
+     printf("Beidou B1I signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
+     printf("Beidou B1C signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
+     printf("Beidou B2I signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
+     printf("Beidou B2AI signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
+     printf("Navic L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
+     printf("Beidou B2AQ signal is present\n");
+   }
+   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
+     printf("No signal present\n");
+   }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets gnss meaurement usage info.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGnssMeasurementInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    taf_gnss_GnssMeasurementInfo_t measInfo[TAF_GNSS_MEASUREMENT_INFO_MAX];
+    size_t gnssMeasLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    le_result_t result = le_gnss_GetMeasurementUsageInfo(positionSampleRef, measInfo, &gnssMeasLen);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get gnss measurement info.\n");
+      return EXIT_FAILURE;
+    }
+
+   for(uint16_t i = 0; i < gnssMeasLen; i++) {
+      uint32_t signalType = measInfo[i].gnssSignalType;
+      PrintGnssSignalType(signalType);
+
+      taf_gnss_GnssSystem_t system = measInfo[i].gnssConstellation;
+      if(system == TAF_GNSS_LOC_SV_SYSTEM_GPS) {
+         printf("GPS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GALILEO) {
+         printf("GALILEO satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_SBAS) {
+         printf("SBAS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GLONASS) {
+         printf("GLONASS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_BDS) {
+         printf("BDS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_QZSS) {
+         printf("QZSS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_NAVIC) {
+         printf("NAVIC satellite\n");
+      }
+      else {
+         printf("UNKNOWN satellite\n");
+      }
+
+      printf("Gnss sv id : %d\n", measInfo[i].gnssSvId);
+   }
+   return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+void printReportStatus(taf_gnss_ReportStatus_t status) {
+  printf("Report Status is: ");
+  if (status == TAF_GNSS_REPORT_STATUS_UNKNOWN) {
+    printf("UNKNOWN\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_SUCCESS) {
+    printf("SUCCESS\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_INTERMEDIATE) {
+    printf("INTERMEDIATE\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_FAILURE) {
+    printf("FAILURE\n");
+  }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets status of report in terms of how optimally the report was calculated by engine.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetReportStatus
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    int32_t reportStatus = -1;
+    le_result_t result = le_gnss_GetReportStatus(positionSampleRef, &reportStatus);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get report status\n");
+      return EXIT_FAILURE;
+    }
+
+    printReportStatus((taf_gnss_ReportStatus_t) reportStatus);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the altitude with respect to mean sea level in meters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetAltitudeMeanSeaLevel
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double altMSeaLevel;
+    le_result_t result = le_gnss_GetAltitudeMeanSeaLevel(positionSampleRef, &altMSeaLevel);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get AltitudeMeanSeaLevel\n");
+      return EXIT_FAILURE;
+    }
+
+    printf("Altitude with respect to mean sea level: %lfm\n",(float)altMSeaLevel);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets GNSS Satellite Vehicles used in position data.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSVIds
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint16_t svIds[TAF_GNSS_MEASUREMENT_INFO_MAX];
+    size_t svIdsLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    le_result_t result = le_gnss_GetSVIds(positionSampleRef, svIds, &svIdsLen);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get sv Ids.\n");
+      return EXIT_FAILURE;
+    }
+
+    if (svIdsLen > 0) printf("Ids of used SVs:");
+    for(uint16_t i = 0; i < svIdsLen; i++) {
+        printf(" %d", svIds[i]);
+    }
+    if (svIdsLen > 0) printf("\n");
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Function to get all positional information of last updated sample.
@@ -4093,6 +4334,22 @@ static void PositionHandlerFunction
         {
             status = GetKinematicsData(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "measInfo") == 0)
+        {
+            status = GetGnssMeasurementInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "reportStatus") == 0)
+        {
+            status = GetReportStatus(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "altMSeaLevel") == 0)
+        {
+            status = GetAltitudeMeanSeaLevel(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "svIds") == 0)
+        {
+            status = GetSVIds(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
     }
@@ -4277,7 +4534,11 @@ static void GetGnssParams
              (0 == strcmp(params, "engParams"))||
              (0 == strcmp(params, "reliablityInfo"))||
              (0 == strcmp(params, "azimuthDevInfo"))||
-             (0 == strcmp(params, "realTimeInfo")))
+             (0 == strcmp(params, "realTimeInfo"))||
+             (0 == strcmp(params, "measInfo"))||
+             (0 == strcmp(params, "altMSeaLevel"))||
+             (0 == strcmp(params, "svIds"))||
+             (0 == strcmp(params, "reportStatus")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
