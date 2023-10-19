@@ -220,19 +220,19 @@ AppendTelAfToolchain() {
     local target="$1"
     local gcc_prefix="${2:-"aarch64-oe-linux"}"
 
+    if [ ! -e "${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}" ]; then
+        return 1
+    fi
+
     if [ "$target" = "sa525m" ]; then
         local gcc_prefix="${2:-"aarch64-oe-linux"}"
-        local toolchain_prop="/opt/qct/${target}/sysroots/${HOST_ARCH}-qtisdk-linux/usr/bin/${gcc_prefix}"
+        local toolchain_prop="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${HOST_ARCH}-qtisdk-linux/usr/bin/${gcc_prefix}"
     else
         local gcc_prefix="${2:-"arm-oe-linux-gnueabi"}"
-        local toolchain_prop="/opt/qct/${target}/sysroots/${HOST_ARCH}-oesdk-linux/usr/bin/${gcc_prefix}"
+        local toolchain_prop="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${HOST_ARCH}-oesdk-linux/usr/bin/${gcc_prefix}"
     fi
     toolchain_prop+="::"
 
-
-    if [ ! -e "/opt/qct/${target}" ]; then
-        return 1
-    fi
 
     GetSysrootDefs "${target}" false
     if [ $? -ne 0 ]; then
@@ -240,7 +240,7 @@ AppendTelAfToolchain() {
     fi
 
     for sysroot_def in "${SYSROOT_DEFS[@]}"; do
-        local sysroot_dir="/opt/qct/${target}/sysroots/${sysroot_def}"
+        local sysroot_dir="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${sysroot_def}"
         if [ -z "${sysroot_dir}" ]; then
             continue
         fi
@@ -625,4 +625,3 @@ for info in "${TOOLCHAIN_INFO[@]}"; do
 done
 
 exit 1
-
