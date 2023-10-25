@@ -85,6 +85,9 @@ struct App_t : public HasTargetInfo_t
     /// Set the username string.
     std::string  username;
 
+    /// Set start group order range
+    NonNegativeIntLimit_t   startGroup;
+
 
     // Per-user limits:
     PositiveIntLimit_t      cpuShare;           ///< Relative share value
