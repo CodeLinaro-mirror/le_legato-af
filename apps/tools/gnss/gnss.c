@@ -3829,75 +3829,75 @@ static int GetRealTimeInfo
 }
 
 void PrintGnssSignalType(uint32_t signalTypeMask) {
-   printf("Gnss Signal Type:\n");
+   printf("Signals: ");
    if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
-     printf("GPS L1CA signal is present\n");
+     printf("GPS L1CA, ");
    }
    if (signalTypeMask & TAF_GNSS_GPS_L1C) {
-     printf("GPS L1C signal is present\n");
+     printf("GPS L1C, ");
    }
    if (signalTypeMask & TAF_GNSS_GPS_L2) {
-     printf("GPS L2 signal is present\n");
+     printf("GPS L2, ");
    }
    if (signalTypeMask & TAF_GNSS_GPS_L5) {
-     printf("GPS L5 signal is present\n");
+     printf("GPS L5, ");
    }
    if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
-     printf("Glonass G1 signal is present\n");
+     printf("Glonass G1, ");
    }
    if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
-     printf("Glonass G2 signal is present\n");
+     printf("Glonass G2, ");
    }
    if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
-     printf("Galileo E1 signal is present\n");
+     printf("Galileo E1, ");
    }
    if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
-     printf("Galileo E5A signal is present\n");
+     printf("Galileo E5A, ");
    }
    if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
-     printf("Galileo E5B signal is present\n");
+     printf("Galileo E5B, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
-     printf("Beidou B1 signal is present\n");
+     printf("Beidou B1, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
-     printf("Beidou B2 signal is present\n");
+     printf("Beidou B2, ");
    }
    if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
-     printf("QZSS L1CA signal is present\n");
+     printf("QZSS L1CA, ");
    }
    if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
-     printf("QZSS L1S signal is present\n");
+     printf("QZSS L1S, ");
    }
    if (signalTypeMask & TAF_GNSS_QZSS_L2) {
-     printf("QZSS L2 signal is present\n");
+     printf("QZSS L2, ");
    }
    if (signalTypeMask & TAF_GNSS_QZSS_L5) {
-     printf("QZSS L5 signal is present\n");
+     printf("QZSS L5, ");
    }
    if (signalTypeMask & TAF_GNSS_SBAS_L1) {
-     printf("SBAS L1 signal is present\n");
+     printf("SBAS L1, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
-     printf("Beidou B1I signal is present\n");
+     printf("Beidou B1I, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
-     printf("Beidou B1C signal is present\n");
+     printf("Beidou B1C, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
-     printf("Beidou B2I signal is present\n");
+     printf("Beidou B2I, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
-     printf("Beidou B2AI signal is present\n");
+     printf("Beidou B2AI, ");
    }
    if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
-     printf("Navic L5 signal is present\n");
+     printf("Navic L5, ");
    }
    if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
-     printf("Beidou B2AQ signal is present\n");
+     printf("Beidou B2AQ, ");
    }
    if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
-     printf("No signal present\n");
+     printf("No signal, ");
    }
 }
 
@@ -3926,36 +3926,38 @@ static int GetGnssMeasurementInfo
     }
 
    for(uint16_t i = 0; i < gnssMeasLen; i++) {
-      uint32_t signalType = measInfo[i].gnssSignalType;
-      PrintGnssSignalType(signalType);
-
       taf_gnss_GnssSystem_t system = measInfo[i].gnssConstellation;
+      printf("System: ");
       if(system == TAF_GNSS_LOC_SV_SYSTEM_GPS) {
-         printf("GPS satellite\n");
+         printf("GPS, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_GALILEO) {
-         printf("GALILEO satellite\n");
+         printf("GALILEO, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_SBAS) {
-         printf("SBAS satellite\n");
+         printf("SBAS, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_GLONASS) {
-         printf("GLONASS satellite\n");
+         printf("GLONASS, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_BDS) {
-         printf("BDS satellite\n");
+         printf("BDS, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_QZSS) {
-         printf("QZSS satellite\n");
+         printf("QZSS, ");
       }
       else if(system == TAF_GNSS_LOC_SV_SYSTEM_NAVIC) {
-         printf("NAVIC satellite\n");
+         printf("NAVIC, ");
       }
       else {
-         printf("UNKNOWN satellite\n");
+         printf("UNKNOWN, ");
       }
 
-      printf("Gnss sv id : %d\n", measInfo[i].gnssSvId);
+      uint32_t signalType = measInfo[i].gnssSignalType;
+
+      PrintGnssSignalType(signalType);
+
+      printf("GNSS SV ID: %d\n", measInfo[i].gnssSvId);
    }
    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
