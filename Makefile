@@ -45,6 +45,12 @@ export TELAF_ROOT := $(TELAF_ROOT_SET)
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
+# If BUILD_FLAVOR environment variable is not defined, set it to default
+ifndef BUILD_FLAVOR
+  export BUILD_FLAVOR=default
+endif
+$(info BUILD_FLAVOR: $(BUILD_FLAVOR))
+
 # ========== TARGET DETERMINATION ============
 
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
