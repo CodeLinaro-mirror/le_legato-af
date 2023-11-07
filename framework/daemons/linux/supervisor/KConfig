@@ -27,6 +27,7 @@ config SUPERV_CGRP_NO_RELEASE_AGENT
   bool "Disable CGROUP release_agent or not"
   depends on LINUX
   default y if TARGET_SIMULATION
+  default y if ("lxc"=$(BUILD_FLAVOR))
   default n
   ---help---
   Disable the CGROUP release_agent mechanism for some virtual environments, such as:
