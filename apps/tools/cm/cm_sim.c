@@ -53,12 +53,14 @@ void cm_sim_PrintSimHelp
             "\tcm sim unlock <PIN1 | FDN> <pin>\n\n"
             "To unblock sim:\n"
             "\tcm sim unblock <PUK1 | PUK2> <puk> <newpin>\n\n"
-            "To store pin:\n"
-            "\tcm sim storepin <pin>\n\n"
+            //Not supported
+            //"To store pin:\n"
+            //"\tcm sim storepin <pin>\n\n"
             "To select SIM:\n"
-            "\tcm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE>\n\n"
-            "To use auto SIM selection:\n"
-            "\tcm sim mode <AUTO | MANUAL> \n\n"
+            "\tcm sim select <EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2>\n\n"
+            //Not supported
+            //"To use auto SIM selection:\n"
+            //"\tcm sim mode <AUTO | MANUAL> \n\n"
             "Enter PIN: Enters the PIN code that is required before any Mobile equipment "
             "functionality can be used.\n"
             "Change PIN: Change the PIN code of the SIM card.\n"
@@ -1051,13 +1053,14 @@ void cm_sim_ProcessSimCommand
             exitStatus = cm_sim_UnblockSim(lockPtr, pinPtr, newPinPtr);
         }
     }
+    /* Not supported
     else if (strcmp(command, "storepin") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim storepin <pin>"))
         {
             exit(cm_sim_StorePin(pinPtr));
         }
-    }
+    }*/
     else if (strcmp(command, "count") == 0)
     {
         exit(cm_sim_GetSlotCount());
@@ -1089,6 +1092,7 @@ void cm_sim_ProcessSimCommand
             exit(cm_sim_Select(lockPtr));
         }
     }
+    /* Not supported
     else if (strcmp(command, "mode") == 0)
     {
         if (numArgs == 3)
@@ -1099,7 +1103,7 @@ void cm_sim_ProcessSimCommand
         {
             exit(cm_sim_GetMode());
         }
-    }
+    }*/
     else
     {
         printf("Invalid command for SIM service.\n");

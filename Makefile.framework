@@ -57,6 +57,8 @@ COMMON_SRC_DIR := $(LEGATO_ROOT)/framework/daemons
 LINUX_SRC_DIR := $(COMMON_SRC_DIR)/linux
 RTOS_SRC_DIR := $(COMMON_SRC_DIR)/rtos
 
+TELAF_LINUX_SRC_DIR := $(TELAF_ROOT)/framework/daemons/linux
+
 export HOST_ARCH ?= $(shell uname -m)
 export TOOLS_ARCH ?= $(HOST_ARCH)
 
@@ -121,6 +123,7 @@ DAEMON_SVCDIR      := $(LE_CONFIG_POSIX)
 DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
 DAEMON_USUPERVISOR := $(subst 0,y,$(call k2b,$(LE_CONFIG_POSIX)))
 DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
+DAEMON_DEVMANAGER  := $(LE_CONFIG_POSIX)
 
 DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
 DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
@@ -130,6 +133,7 @@ DAEMONS_$(DAEMON_LOGCTL)        += $(BIN_DIR)/logCtrlDaemon
 DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
 DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
 DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
+DAEMONS_$(DAEMON_DEVMANAGER)    += $(BIN_DIR)/deviceManager
 
 ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
@@ -155,18 +159,9 @@ LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 # Common CFlags
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 
-#To support hard float, fix  me later
 ifneq ($(filter %gcc %clang %gcc% %clang%,$(TARGET_CC)),)
-  ifneq ($(findstring $(TARGET),localhost simulation),)
-    CFLAGS += -Wall -Werror # Localhost & Simulation are not arm architecture
-  else
-    ifneq ($(findstring $(TARGET),sa415m sa515m),)
-      CFLAGS += -Wall -Werror -march=armv7-a -mthumb
-      CFLAGS += -mfpu=neon -mfloat-abi=hard
-    else ifneq ($(findstring $(TARGET),sa525m),)
-      CFLAGS += -Wall -Werror -march=armv8-a
-    endif
-  endif
+  CFLAGS += -Wall -Werror
+  CFLAGS += $(ARCH_CFLAGS)
 else ifneq ($(filter %armcc%,$(TARGET_CC)),)
   CFLAGS += --diag_error=warning
 endif
@@ -445,3 +440,8 @@ $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
 		-s $(LINUX_SRC_DIR)/updateDaemon \
 		--ldflags=-L$(LIB_DIR) \
 		$(IMA_MKEXE_FLAGS)
+
+$(BIN_DIR)/deviceManager: liblegato $(BIN_DIR)
+	$(L) MKEXE $@
+	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
+		$(TELAF_LINUX_SRC_DIR)/deviceManager

@@ -95,7 +95,6 @@ void PrintGnssHelp
          "\t\t\tgnss get <parameter>\n"
          "\t\t\tgnss get posInfo\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
-         "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
@@ -174,7 +173,6 @@ void PrintGnssHelp
          "\t\t\t\t  Follows parameters and their descriptions :\n"
          "\t\t\t\t\t- ttff          --> Time to First Fix (milliseconds)\n"
          "\t\t\t\t\t- acqRate       --> Acquisition Rate (unit milliseconds)\n"
-         "\t\t\t\t\t- agpsMode      --> Agps Mode\n"
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
@@ -184,8 +182,24 @@ void PrintGnssHelp
          "\t\t\t\t\t- elliUnc       --> Elliptical Uncertainity\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
+         "\t\t\t\t\t- vrpLLA        --> VRP based latitude, longitude, altitude\n"
+         "\t\t\t\t\t- vrpVel        --> VRP based east,north & up velocity information\n"
+         "\t\t\t\t\t- svData        --> The satellite vehicles that are used to calculate position\n"
+         "\t\t\t\t\t- sbasType      --> Navigation solution mask used to indicate SBAS corrections\n"
+         "\t\t\t\t\t- techInfo      --> Position technology to indicate which technology is used.\n"
+         "\t\t\t\t\t-                   The technology used in computing the fix\n"
+         "\t\t\t\t\t- validityInfo  --> Validity of the Location basic Info.\n"
+         "\t\t\t\t\t- engParams     --> The position engines & location engine type used in\n"
+         "\t\t\t\t\t                    calculating the position report.\n"
+         "\t\t\t\t\t- reliablityInfo -->Gets the reliability of the horizontal & vertical positions.\n"
+         "\t\t\t\t\t- azimuthDevInfo -->Gets the elliptical horizontal uncertainty azimuth of\n"
+         "\t\t\t\t\t-                   orientation,east and north standard deviations.\n"
+         "\t\t\t\t\t- realTimeInfo  -->Gets the elapsed real time and its uncertainity in nano sec\n"
+         "\t\t\t\t\t- measInfo      -->Gets the measurement usages information\n"
+         "\t\t\t\t\t- reportStatus  -->Gets status of report in terms of how optimally the report was calculated by the engine\n"
+         "\t\t\t\t\t- altMSeaLevel  -->Gets the altitude with respect to mean sea level in meters\n"
+         "\t\t\t\t\t- svIds         -->Gets the GNSS Satellite Vehicles used in position data.\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
-         "\t\t\t\t\t- altOnWgs84    --> Altitude with respect to the WGS-84 ellipsoid\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
@@ -206,6 +220,11 @@ void PrintGnssHelp
          "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position. Displayed\n"
          "\t\t\t\t\t-               in all resolutions: (0 to 3 digits after the decimal point) \n"
          "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
+         "\t\t\t\t\t- conformIndex  --> Get the comformity index for robust location\n"
+         "\t\t\t\t\t- 0.0 ---> Least comforming\n"
+         "\t\t\t\t\t- 1.0 ---> Most comforming\n"
+         "\t\t\t\t\t- calibData  --> Get the sensor calibration status and confidence percent\n"
+         "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
@@ -220,11 +239,6 @@ void PrintGnssHelp
          "\t\t\t\t\t- 64 --> NAVIC\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t10 for GLONASS+GALILEO, 46 for GLONASS+BEIDOU+GALILEO+QZSS\n\n"
-         "\t\t\tgnss set agpsMode <ModeType>\n"
-         "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
-         "\t\t\t\t\t- alone -----> Standalone agps mode\n"
-         "\t\t\t\t\t- msBase ----> MS-based agps mode\n"
-         "\t\t\t\t\t- msAssist --> MS-assisted agps mode\n\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\t\t- Used to set acquisition rate.\n"
          "\t\t\t\t  Please note that it is available when the device is 'ready' state.\n\n"
@@ -2453,6 +2467,99 @@ static int GetEllipticalUncertainty
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets conformity index for robust location.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetComformingIndex
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double indexPtr;
+    le_result_t result = le_gnss_GetConformityIndex(positionSampleRef,&indexPtr);
+    if (result == LE_OK)
+    {
+        printf("ComformingIndex: %.2f\n" "(0.0->Least conforming 1.0->Most conforming)\n"
+                  ,(float)indexPtr);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("GetComformingIndex is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets sensor calibration status and confidence percent.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetCablibrationConfData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t calibPtr;
+    uint8_t percentPtr;
+    le_result_t result = le_gnss_GetCalibrationData(positionSampleRef,
+                                                &calibPtr,&percentPtr);
+    if (result == LE_OK)
+    {
+        if(calibPtr & (1<<TAF_GNSS_DR_ROLL_CALIBRATION_NEEDED))
+        {
+            printf("Roll calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_PITCH_CALIBRATION_NEEDED))
+        {
+            printf("Pitch calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_YAW_CALIBRATION_NEEDED))
+        {
+            printf("Yaw calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_ODO_CALIBRATION_NEEDED))
+        {
+            printf("Odo calibration is needed\n");
+        }
+        if(calibPtr & (1<<TAF_GNSS_DR_GYRO_CALIBRATION_NEEDED))
+        {
+            printf("Gyro calibration is needed\n");
+        }
+        if(calibPtr == 0)
+        {
+            printf("Calibration status not found\n");
+        }
+        printf("Sensor calibration confidence percent: %u%%\n"
+                  ,percentPtr);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("Calibration data is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the date of updated location.
@@ -2812,6 +2919,1151 @@ static int GetSatelliteStatus
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets Kinematics information related to body parameters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetKinematicsData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    taf_gnss_KinematicsData_t *bodyFrameData;
+    le_mem_PoolRef_t bodyFramePool = NULL;
+    bodyFramePool = le_mem_CreatePool("bodyFramePool", sizeof(taf_gnss_KinematicsData_t));
+    bodyFrameData = (taf_gnss_KinematicsData_t*) le_mem_ForceAlloc(bodyFramePool);
+
+    le_result_t result = le_gnss_GetBodyFrameData( positionSampleRef,
+                                              bodyFrameData);
+
+    if (result == LE_OK)
+    {
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL))
+       {
+           printf("**Kinematics data has Forward Accelaration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL))
+       {
+           printf("**Kinematics data has has Sideward Acceleration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL))
+       {
+           printf("**Kinematics data has Vertical Acceleration**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE))
+       {
+           printf("**Kinematics has data has Heading Rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH))
+       {
+           printf("**Kinematics has body pitch**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL_UNC))
+       {
+           printf("**Kinematics data has has Forward Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL_UNC))
+       {
+           printf("**Kinematics data has has Sideward Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL_UNC))
+       {
+           printf("**Kinematics data has Vertical Acceleration Uncertainty**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE_UNC))
+       {
+           printf("**Kinematics data Heading rate uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_UNC))
+       {
+           printf("**Kinematics has body pitch Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_BIT))
+       {
+           printf("**Kinematics data has pitch rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_UNC_BIT))
+       {
+           printf("**Kinematics has pitch rate Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_BIT))
+       {
+           printf("**Kinematics data has roll**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_UNC_BIT))
+       {
+           printf("**Kinematics data has roll Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_BIT))
+       {
+           printf("**Kinematics data has roll rate**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_UNC_BIT))
+       {
+           printf("**Kinematics data has roll rate Uncertainity**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_BIT))
+       {
+           printf("**Kinematics data has yaw**\n");
+       }
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_UNC_BIT))
+       {
+           printf("**Kinematics data has yaw uncertainity**\n");
+       }
+       printf("\nForward Acceleration in body frame(m/s2):%lf\n",(float)bodyFrameData->longAccel);
+       printf("Sideward Acceleration in body frame (m/s2):%lf\n",(float) bodyFrameData->latAccel);
+       printf("Vertical Acceleration in body frame (m/s2):%lf\n",(float) bodyFrameData->vertAccel);
+       printf("Heading Rate (Radians/second):%lf\n",(float) bodyFrameData->yawRate);
+       printf("Body pitch (Radians)::%lf\n",(float) bodyFrameData->pitch);
+       printf("Uncertainty of Forward Acceleration in body frame:%lf\n",
+                                            (float) bodyFrameData->longAccelUnc);
+       printf("Uncertainty of Side-ward Acceleration in body frame:%lf\n",
+                                            (float) bodyFrameData->latAccelUnc);
+       printf("Uncertainty of Vertical Acceleration in body frame:%lf\n",
+                                            (float)bodyFrameData->vertAccelUnc);
+       printf("Uncertainty of Heading Rate:%lf\n",(float) bodyFrameData->yawRateUnc);
+       printf("Uncertainty of Body pitch:%lf\n",(float) bodyFrameData->pitchUnc);
+       printf("Body pitch rate:%lf\n",(float) bodyFrameData->pitchRate);
+       printf("Uncertainty of pitch rate:%lf\n",(float) bodyFrameData->pitchRateUnc);
+       printf("Roll of body frame, clockwise is positive:%lf\n",(float)bodyFrameData->roll);
+       printf("Uncertainty of roll, 68%% confidence level:%lf\n",(float)bodyFrameData->rollUnc);
+       printf("Roll rate of body frame,clockwise is positive:%lf\n",(float)bodyFrameData->rollRate);
+       printf("Uncertainty of roll rate, 68%% confidence level:%lf\n",
+                                            (float)bodyFrameData->rollRateUnc);
+       printf("Yaw of body frame, clockwise is positive:%lf\n",(float)bodyFrameData->yaw);
+       printf("Uncertainty of yaw, 68%% confidence level:%lf\n",(float)bodyFrameData->yawUnc);
+
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("Kinematics data is not found");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    le_mem_Release(bodyFrameData);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get VRP based latitude, longitude & altitude information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetVRPBasedLocation
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double latitude;
+    double longitude;
+    double altitude;
+
+    le_result_t result = le_gnss_GetVRPBasedLLA( positionSampleRef,
+                                              &latitude,
+                                              &longitude,
+                                              &altitude);
+
+    if (result == LE_OK)
+    {
+        printf("VRP based Latitude(positive->north) : %lf degrees\n"
+               "VRP based Longitude(positive->east) : %lf degress\n"
+               "VRP based altitude                 : %lfm\n",
+                latitude,
+                longitude,
+                (float)altitude);
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetVRPBasedLocation invalid [%lf, %lf, %lf]\n",
+               latitude,
+               longitude,
+               altitude);
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get VRP based east, north & up velocity information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetVRPBasedVelocityInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double eastVel;
+    double northVel;
+    double upVel;
+
+    le_result_t result = le_gnss_GetVRPBasedVelocity( positionSampleRef,
+                                              &eastVel,
+                                              &northVel,
+                                              &upVel);
+
+    if (result == LE_OK)
+    {
+        printf("VRP based east velocity  : %lf\n"
+               "VRP based north velocity : %lf\n"
+               "VRP based up velocity    : %lf\n",
+                (float)eastVel,
+                (float)northVel,
+                (float)upVel);
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetVRPBasedVelocity invalid [%lf, %lf, %lf]\n",
+               eastVel,
+               northVel,
+               upVel);
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the set of satellite vehicles that are used to calculate position.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSvData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    taf_gnss_SvUsedInPosition_t *svData;
+    le_mem_PoolRef_t svFramePool = NULL;
+    svFramePool = le_mem_CreatePool("svFramePool", sizeof(taf_gnss_SvUsedInPosition_t));
+    svData = (taf_gnss_SvUsedInPosition_t*) le_mem_ForceAlloc(svFramePool);
+
+    le_result_t result = le_gnss_GetSvUsedInPosition( positionSampleRef,
+                                                     svData);
+
+    if (result == LE_OK)
+    {
+        printf("SVs from GPS constellation  : %lu\n",svData->gps);
+        printf("SVs from GLONASS constellation  : %lu\n",svData->glo);
+        printf("SVs from GALILEO constellation   : %lu\n",svData->gal);
+        printf("SVs from BEIDOU constellation  : %lu\n",svData->bds);
+        printf("SVs from QZSS constellation  : %lu\n",svData->qzss);
+        printf("SVs from NAVIC constellation  : %lu\n",svData->navic);
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetSvData is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    le_mem_Release(svData);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get navigation solution mask used to indicate SBAS corrections.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSbasType
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t sbasMask = 0;
+
+    le_result_t result = le_gnss_GetSbasCorrection( positionSampleRef,
+                                                     &sbasMask);
+    if (result == LE_OK)
+    {
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_IONO)
+        {
+            printf("SBAS ionospheric correction is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_FAST)
+        {
+            printf("SBAS fast correction is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_LONG)
+        {
+            printf("SBAS long correction is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_INTEGRITY)
+        {
+            printf("SBAS integrity information is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_DGNSS)
+        {
+            printf("SBAS DGNSS correction information is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_RTK)
+        {
+            printf("SBAS RTK correction information is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_PPP)
+        {
+            printf("SBAS PPP correction information is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTION_RTK_FIXED)
+        {
+            printf("SBAS RTK fixed correction information is used\n");
+        }
+        if(sbasMask & LE_GNSS_SBAS_CORRECTED_SV_USED)
+        {
+            printf("SBAS correction SV is used\n");
+        }
+        if(sbasMask == 0)
+        {
+            printf("no SBAS corrections data\n");
+        }
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetSbasType is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get position technology mask to indicate which technology is used.
+ * The technology used in computing the fix.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetTechInformation
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t techMask;
+
+    le_result_t result = le_gnss_GetPositionTechnology( positionSampleRef,
+                                                         &techMask);
+    if (result == LE_OK)
+    {
+        printf("\nTechnology used in computing the fix:\n");
+        if(techMask & LE_GNSS_LOC_GNSS)
+        {
+            printf("location calculated using GNSS\n");
+        }
+        if(techMask & LE_GNSS_LOC_CELL)
+        {
+            printf("location calculated using CELL\n");
+        }
+        if(techMask & LE_GNSS_LOC_WIFI)
+        {
+            printf("location calculated using WIFI\n");
+        }
+        if(techMask & LE_GNSS_LOC_SENSORS)
+        {
+            printf("location calculated using SENSORS\n");
+        }
+        if(techMask & LE_GNSS_LOC_REFERENCE_LOCATION)
+        {
+            printf("location calculated using reference location\n");
+        }
+        if(techMask & LE_GNSS_LOC_INJECTED_COARSE_POSITION)
+        {
+            printf("location calculated using Coarse position injected\n");
+        }
+        if(techMask & LE_GNSS_LOC_AFLT)
+        {
+            printf("location calculated using AFLT\n");
+        }
+        if(techMask & LE_GNSS_LOC_HYBRID)
+        {
+            printf("location calculated using GNSS and network-provided measurements\n");
+        }
+        if(techMask & LE_GNSS_LOC_PPE)
+        {
+            printf("location calculated using Precise position engine\n");
+        }
+        if(techMask & LE_GNSS_LOC_VEH)
+        {
+            printf("location calculated using Vehicular data\n");
+        }
+        if(techMask & LE_GNSS_LOC_VIS)
+        {
+            printf("location calculated using Visual data\n");
+        }
+        if(techMask & LE_GNSS_LOC_PROPAGATED)
+        {
+            printf("location calculated using propagation logic\n");
+        }
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetTechInformation is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the validity of the Location basic Info.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetValidityInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t validityMask = 0;
+    uint64_t validityExMask = 0;
+
+    le_result_t result = le_gnss_GetLocationInfoValidity( positionSampleRef,
+                                                        &validityMask,&validityExMask);
+    if (result == LE_OK)
+    {
+        printf("\n** Location Info Validity Information ***\n");
+        if(validityMask & LE_GNSS_HAS_LAT_LONG_BIT)
+        {
+            printf("valid latitude longitude\n");
+        }
+        if(validityMask & LE_GNSS_HAS_ALTITUDE_BIT)
+        {
+            printf("valid altitude\n");
+        }
+        if(validityMask & LE_GNSS_HAS_SPEED_BIT)
+        {
+            printf("valid speed\n");
+        }
+        if(validityMask & LE_GNSS_HAS_HEADING_BIT)
+        {
+            printf("valid heading\n");
+        }
+        if(validityMask & LE_GNSS_HAS_HORIZONTAL_ACCURACY_BIT)
+        {
+            printf("valid horizontal accuracy\n");
+        }
+        if(validityMask & LE_GNSS_HAS_VERTICAL_ACCURACY_BIT)
+        {
+            printf("valid vertical accuracy\n");
+        }
+        if(validityMask & LE_GNSS_HAS_SPEED_ACCURACY_BIT)
+        {
+            printf("valid speed accuracy \n");
+        }
+        if(validityMask & LE_GNSS_HAS_HEADING_ACCURACY_BIT)
+        {
+            printf("valid heading accuracy\n");
+        }
+        if(validityMask & LE_GNSS_HAS_TIMESTAMP_BIT)
+        {
+            printf("valid timestamp\n");
+        }
+        if(validityMask & LE_GNSS_HAS_ELAPSED_REAL_TIME_BIT)
+        {
+            printf("valid elapsed real time\n");
+        }
+        if(validityMask & LE_GNSS_HAS_ELAPSED_REAL_TIME_UNC_BIT)
+        {
+            printf("valid elapsed real time Uncertainity\n");
+        }
+        if(validityMask == 0)
+        {
+            printf("no Valid Mask\n");
+        }
+        printf("\n** Location Info Ex Validity Information ***\n");
+
+        if(validityExMask & (1ULL << LE_GNSS_HAS_ALTITUDE_MEAN_SEA_LEVEL))
+        {
+            printf("valid altitude mean sea level\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_DOP))
+        {
+            printf("valid pdop, hdop, vdop\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_MAGNETIC_DEVIATION))
+        {
+            printf("valid magnetic deviation\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_HOR_RELIABILITY))
+        {
+            printf("valid horizontal reliability\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_VER_RELIABILITY))
+        {
+            printf("valid vertical reliability\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_HOR_ACCURACY_ELIP_SEMI_MAJOR))
+        {
+            printf("valid elipsode semi major\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_HOR_ACCURACY_ELIP_SEMI_MINOR))
+        {
+            printf("valid elipsode semi minor\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_HOR_ACCURACY_ELIP_AZIMUTH))
+        {
+            printf("valid accuracy elipsode azimuth\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_GNSS_SV_USED_DATA))
+        {
+            printf("valid gnss sv used in pos data\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_NAV_SOLUTION_MASK))
+        {
+            printf("valid navSolutionMask\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_POS_TECH_MASK))
+        {
+            printf("valid LocPosTechMask\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_SV_SOURCE_INFO))
+        {
+            printf("valid LocSvInfoSource\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_POS_DYNAMICS_DATA))
+        {
+            printf("valid position dynamics data\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_EXT_DOP))
+        {
+            printf("valid gdop, tdop\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_NORTH_STD_DEV))
+        {
+            printf("valid North standard deviation\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_EAST_STD_DEV))
+        {
+            printf("valid East standard deviation\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_NORTH_VEL))
+        {
+            printf("valid North Velocity\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_EAST_VEL))
+        {
+            printf("valid East Velocity""\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_UP_VEL))
+        {
+            printf("valid Up Velocity\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_NORTH_VEL_UNC))
+        {
+            printf("valid North Velocity Uncertainty\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_EAST_VEL_UNC))
+        {
+            printf("valid East Velocity Uncertainty\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_UP_VEL_UNC))
+        {
+            printf("valid Up Velocity Uncertainty\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_LEAP_SECONDS))
+        {
+            printf("valid leap_seconds\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_TIME_UNC))
+        {
+            printf("valid timeUncMs\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_NUM_SV_USED_IN_POSITION))
+        {
+            printf("valid number of sv used\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_CALIBRATION_CONFIDENCE_PERCENT))
+        {
+            printf("valid sensor calibrationConfidencePercent\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_CALIBRATION_STATUS))
+        {
+            printf("valid sensor calibrationConfidence\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_OUTPUT_ENG_TYPE))
+        {
+            printf("valid output engine type\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_OUTPUT_ENG_MASK))
+        {
+            printf("valid output engine mask\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_CONFORMITY_INDEX_FIX))
+        {
+            printf("valid conformity index\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_LLA_VRP_BASED))
+        {
+            printf("valid lla vrp based\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_ENU_VELOCITY_VRP_BASED))
+        {
+            printf("valid enu velocity vrp based\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_ALTITUDE_TYPE))
+        {
+            printf("valid altitude type\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_REPORT_STATUS))
+        {
+            printf("valid report status\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_INTEGRITY_RISK_USED))
+        {
+            printf("valid integrity risk\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_PROTECT_LEVEL_ALONG_TRACK))
+        {
+            printf("valid protect along track\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_PROTECT_LEVEL_CROSS_TRACK))
+        {
+            printf("valid protect cross track\n");
+        }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_PROTECT_LEVEL_VERTICAL))
+        {
+            printf("valid protect vertical\n");
+        }
+        if(validityExMask == 0)
+        {
+            printf("no ValidEx Mask\n");
+        }
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetValidityInfo is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the combination of position engines and location engine type
+ * used in calculating the position report.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetEngineOutputParams
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint16_t engMask = 0;
+    uint16_t locationEngType = 0;
+
+    le_result_t result = le_gnss_GetLocationOutputEngParams(positionSampleRef,
+                                                        &engMask,&locationEngType);
+    if (result == LE_OK)
+    {
+        if(locationEngType == LE_GNSS_LOC_OUTPUT_ENGINE_FUSED)
+        {
+            printf("This is FUSED engine reports\n");
+        }
+        if(locationEngType == LE_GNSS_LOC_OUTPUT_ENGINE_SPE)
+        {
+            printf("This is SPE engine reports\n");
+        }
+        if(locationEngType == LE_GNSS_LOC_OUTPUT_ENGINE_PPE)
+        {
+            printf("This is PPE engine reports\n");
+        }
+        if(locationEngType == LE_GNSS_LOC_OUTPUT_ENGINE_VPE)
+        {
+            printf("This is VPE engine reports\n");
+        }
+        if(engMask & LE_GNSS_STANDARD_POSITIONING_ENGINE)
+        {
+            printf("SPE used in the reports\n");
+        }
+        if(engMask & LE_GNSS_DEAD_RECKONING_ENGINE)
+        {
+            printf("DRE used in the reports\n");
+        }
+        if(engMask & LE_GNSS_PRECISE_POSITIONING_ENGINE)
+        {
+            printf("PPE used in the reports\n");
+        }
+        if(engMask & LE_GNSS_VP_POSITIONING_ENGINE)
+        {
+            printf("VPE used in the reports\n");
+        }
+        if(engMask == 0)
+        {
+            printf("no output engine Mask Mask\n");
+        }
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetEngineOutputParams is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the reliability of the horizontal & vertical positions.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetReliabilityInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint16_t horiReliablity = 0;
+    uint16_t vertReliablity = 0;
+
+    le_result_t result = le_gnss_GetReliabilityInformation(positionSampleRef,
+                                                        &horiReliablity,&vertReliablity);
+    if (result == LE_OK)
+    {
+        if(horiReliablity & LE_GNSS_RELIABILITY_NOT_SET)
+        {
+            printf("Horizontal reliability: NOT_SET\n");
+        }
+        else if(horiReliablity & LE_GNSS_RELIABILITY_VERY_LOW)
+        {
+            printf("Horizontal reliability: VERY_LOW\n");
+        }
+        else if(horiReliablity & LE_GNSS_RELIABILITY_LOW)
+        {
+            printf("Horizontal reliability: LOW\n");
+        }
+        else if(horiReliablity & LE_GNSS_RELIABILITY_MEDIUM)
+        {
+            printf("Horizontal reliability: MEDIUM\n");
+        }
+        else if(horiReliablity & LE_GNSS_RELIABILITY_HIGH)
+        {
+            printf("Horizontal reliability: HIGH\n");
+        }
+        else
+        {
+            printf("Horizontal reliability: UNKNOWN\n");
+        }
+        if(vertReliablity & LE_GNSS_RELIABILITY_NOT_SET)
+        {
+            printf("Vertical reliability: NOT_SET\n");
+        }
+        else if(vertReliablity & LE_GNSS_RELIABILITY_VERY_LOW)
+        {
+            printf("Vertical reliability: VERY_LOW\n");
+        }
+        else if(vertReliablity & LE_GNSS_RELIABILITY_LOW)
+        {
+            printf("Vertical reliability: LOW\n");
+        }
+        else if(vertReliablity & LE_GNSS_RELIABILITY_MEDIUM)
+        {
+            printf("Vertical reliability: MEDIUM\n");
+        }
+        else if(vertReliablity & LE_GNSS_RELIABILITY_HIGH)
+        {
+            printf("Vertical reliability: HIGH\n");
+        }
+        else
+        {
+            printf("Vertical reliability: UNKNOWN\n");
+        }
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetReliabilityInfo is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the elliptical horizontal uncertainty azimuth of orientation,
+ * east and north standard deviations.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetAzimuthDevInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double azimuth;
+    double eastDev;
+    double northDev;
+
+    le_result_t result = le_gnss_GetStdDeviationAzimuthInfo(positionSampleRef,
+                                                        &azimuth,&eastDev,&northDev);
+    if (result == LE_OK)
+    {
+        printf("Azimuth: %lf degrees\n",(float)azimuth);
+        printf("East standard deviation: %lfm\n",(float)eastDev);
+        printf("North standard deviation: %lfm\n",(float)northDev);
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetAzimuthDevInfo is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Function to get the elliptical horizontal uncertainty azimuth of orientation,
+ * east and north standard deviations.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetRealTimeInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint64_t realTime;
+    uint64_t realTimeUnc;
+
+    le_result_t result = le_gnss_GetRealTimeInformation(positionSampleRef,
+                                                        &realTime,&realTimeUnc);
+    if (result == LE_OK)
+    {
+        printf("Elapsed real time: %lu ns\n",realTime);
+        printf("Elapsed real time uncertainity: %lu ns\n",realTimeUnc);
+    }
+    else if(result == LE_OUT_OF_RANGE)
+    {
+        printf("GetRealTimeInfo is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+}
+
+void PrintGnssSignalType(uint32_t signalTypeMask) {
+   printf("Gnss Signal Type:\n");
+   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
+     printf("GPS L1CA signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
+     printf("GPS L1C signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L2) {
+     printf("GPS L2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L5) {
+     printf("GPS L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
+     printf("Glonass G1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
+     printf("Glonass G2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
+     printf("Galileo E1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
+     printf("Galileo E5A signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
+     printf("Galileo E5B signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
+     printf("Beidou B1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
+     printf("Beidou B2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
+     printf("QZSS L1CA signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
+     printf("QZSS L1S signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
+     printf("QZSS L2 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
+     printf("QZSS L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
+     printf("SBAS L1 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
+     printf("Beidou B1I signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
+     printf("Beidou B1C signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
+     printf("Beidou B2I signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
+     printf("Beidou B2AI signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
+     printf("Navic L5 signal is present\n");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
+     printf("Beidou B2AQ signal is present\n");
+   }
+   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
+     printf("No signal present\n");
+   }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets gnss meaurement usage info.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGnssMeasurementInfo
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    taf_gnss_GnssMeasurementInfo_t measInfo[TAF_GNSS_MEASUREMENT_INFO_MAX];
+    size_t gnssMeasLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    le_result_t result = le_gnss_GetMeasurementUsageInfo(positionSampleRef, measInfo, &gnssMeasLen);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get gnss measurement info.\n");
+      return EXIT_FAILURE;
+    }
+
+   for(uint16_t i = 0; i < gnssMeasLen; i++) {
+      uint32_t signalType = measInfo[i].gnssSignalType;
+      PrintGnssSignalType(signalType);
+
+      taf_gnss_GnssSystem_t system = measInfo[i].gnssConstellation;
+      if(system == TAF_GNSS_LOC_SV_SYSTEM_GPS) {
+         printf("GPS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GALILEO) {
+         printf("GALILEO satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_SBAS) {
+         printf("SBAS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GLONASS) {
+         printf("GLONASS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_BDS) {
+         printf("BDS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_QZSS) {
+         printf("QZSS satellite\n");
+      }
+      else if(system == TAF_GNSS_LOC_SV_SYSTEM_NAVIC) {
+         printf("NAVIC satellite\n");
+      }
+      else {
+         printf("UNKNOWN satellite\n");
+      }
+
+      printf("Gnss sv id : %d\n", measInfo[i].gnssSvId);
+   }
+   return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+void printReportStatus(taf_gnss_ReportStatus_t status) {
+  printf("Report Status is: ");
+  if (status == TAF_GNSS_REPORT_STATUS_UNKNOWN) {
+    printf("UNKNOWN\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_SUCCESS) {
+    printf("SUCCESS\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_INTERMEDIATE) {
+    printf("INTERMEDIATE\n");
+  }
+  if (status == TAF_GNSS_REPORT_STATUS_FAILURE) {
+    printf("FAILURE\n");
+  }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets status of report in terms of how optimally the report was calculated by engine.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetReportStatus
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    int32_t reportStatus = -1;
+    le_result_t result = le_gnss_GetReportStatus(positionSampleRef, &reportStatus);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get report status\n");
+      return EXIT_FAILURE;
+    }
+
+    printReportStatus((taf_gnss_ReportStatus_t) reportStatus);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the altitude with respect to mean sea level in meters.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetAltitudeMeanSeaLevel
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double altMSeaLevel;
+    le_result_t result = le_gnss_GetAltitudeMeanSeaLevel(positionSampleRef, &altMSeaLevel);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get AltitudeMeanSeaLevel\n");
+      return EXIT_FAILURE;
+    }
+
+    printf("Altitude with respect to mean sea level: %lfm\n",(float)altMSeaLevel);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets GNSS Satellite Vehicles used in position data.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSVIds
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint16_t svIds[TAF_GNSS_MEASUREMENT_INFO_MAX];
+    size_t svIdsLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    le_result_t result = le_gnss_GetSVIds(positionSampleRef, svIds, &svIdsLen);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get sv Ids.\n");
+      return EXIT_FAILURE;
+    }
+
+    if (svIdsLen > 0) printf("Ids of used SVs:");
+    for(uint16_t i = 0; i < svIdsLen; i++) {
+        printf(" %d", svIds[i]);
+    }
+    if (svIdsLen > 0) printf("\n");
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2948,6 +4200,46 @@ static void PositionHandlerFunction
         {
             status = Get2Dlocation(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "vrpLLA") == 0)
+        {
+            status = GetVRPBasedLocation(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "vrpVel") == 0)
+        {
+            status = GetVRPBasedVelocityInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "svData") == 0)
+        {
+            status = GetSvData(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "sbasType") == 0)
+        {
+            status = GetSbasType(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "techInfo") == 0)
+        {
+            status = GetTechInformation(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "validityInfo") == 0)
+        {
+            status = GetValidityInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "engParams") == 0)
+        {
+            status = GetEngineOutputParams(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "reliablityInfo") == 0)
+        {
+            status = GetReliabilityInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "azimuthDevInfo") == 0)
+        {
+            status = GetAzimuthDevInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "realTimeInfo") == 0)
+        {
+            status = GetRealTimeInfo(positionSampleRef);
+        }
         else if (strcmp(ParamsName, "alt") == 0)
         {
             status = GetAltitude(positionSampleRef);
@@ -3029,6 +4321,34 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "elliUnc") == 0)
         {
             status = GetEllipticalUncertainty(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "conformIndex") == 0)
+        {
+            status = GetComformingIndex(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "calibData") == 0)
+        {
+            status = GetCablibrationConfData(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "bodyFrameData") == 0)
+        {
+            status = GetKinematicsData(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "measInfo") == 0)
+        {
+            status = GetGnssMeasurementInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "reportStatus") == 0)
+        {
+            status = GetReportStatus(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "altMSeaLevel") == 0)
+        {
+            status = GetAltitudeMeanSeaLevel(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "svIds") == 0)
+        {
+            status = GetSVIds(positionSampleRef);
         }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
@@ -3184,7 +4504,6 @@ static void GetGnssParams
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
              (0 == strcmp(params, "alt"))         ||
-             (0 == strcmp(params, "altOnWgs84"))  ||
              (0 == strcmp(params, "loc3d"))       ||
              (0 == strcmp(params, "gpsTime"))     ||
              (0 == strcmp(params, "time"))        ||
@@ -3202,7 +4521,24 @@ static void GetGnssParams
              (0 == strcmp(params, "magDev"))      ||
              (0 == strcmp(params, "elliUnc"))     ||
              (0 == strcmp(params,"GpsLeapSeconds"))||
-             (0 == strcmp(params, "posInfo")))
+             (0 == strcmp(params, "posInfo"))     ||
+             (0 == strcmp(params, "conformIndex"))||
+             (0 == strcmp(params, "calibData"))||
+             (0 == strcmp(params, "bodyFrameData"))||
+             (0 == strcmp(params, "vrpLLA"))||
+             (0 == strcmp(params, "vrpVel"))||
+             (0 == strcmp(params, "svData"))||
+             (0 == strcmp(params, "sbasType"))||
+             (0 == strcmp(params, "techInfo"))||
+             (0 == strcmp(params, "validityInfo"))||
+             (0 == strcmp(params, "engParams"))||
+             (0 == strcmp(params, "reliablityInfo"))||
+             (0 == strcmp(params, "azimuthDevInfo"))||
+             (0 == strcmp(params, "realTimeInfo"))||
+             (0 == strcmp(params, "measInfo"))||
+             (0 == strcmp(params, "altMSeaLevel"))||
+             (0 == strcmp(params, "svIds"))||
+             (0 == strcmp(params, "reportStatus")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -3624,6 +4960,12 @@ COMPONENT_INIT
                 fprintf(stderr, "Bad fix period value: %s\n", fixPeriodPtr);
                 exit(EXIT_FAILURE);
             }
+        }
+        le_gnss_State_t state = le_gnss_GetState();
+        if (LE_GNSS_STATE_ACTIVE != state)
+        {
+            printf("GNSS is not in active state!\n");
+            exit(EXIT_FAILURE);
         }
         exit(DoPosFix(fixPeriod));
     }

@@ -775,6 +775,7 @@ static data::Value_t ModelApp
                     { "maxMQueueBytes", (int)appPtr->maxMQueueBytes.Get() },
                     { "maxQueuedSignals", (int)appPtr->maxQueuedSignals.Get() },
                     { "maxThreads", (int)appPtr->maxThreads.Get() },
+                    { "startGroup", (int)appPtr->startGroup.Get() },
                     { "maxSecureStorageBytes", (int)appPtr->maxSecureStorageBytes.Get() },
                     { "username", appPtr->username }
                 }

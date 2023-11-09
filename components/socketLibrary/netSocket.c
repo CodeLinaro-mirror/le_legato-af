@@ -486,7 +486,7 @@ le_result_t netSocket_Recvfrom
 {
     fd_set set;
     int rv, cnt;
-    struct sockaddr_storage addr;
+    struct sockaddr_storage addr = {0};
     socklen_t addrLen = sizeof(addr);
     struct timeval tv = {.tv_sec = timeout / 1000, .tv_usec = (timeout % 1000) * 1000};
 

@@ -1540,6 +1540,8 @@ void PrintSummary
         std::cout << mk::format(LE_I18N("    maxFileSystemBytes: %d"),
                                 appPtr->maxFileSystemBytes.Get())
                   << std::endl;
+        std::cout << mk::format(LE_I18N("    startGroup: %d"), appPtr->startGroup.Get())
+                  << std::endl;
 
         // Config Tree access.
         std::cout << LE_I18N("  Has access to the following configuration trees:") << std::endl;
@@ -2176,6 +2178,10 @@ model::App_t* GetApp
         else if (sectionName == "start")
         {
             SetStart(appPtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "startGroup")
+        {
+            appPtr->startGroup = GetNonNegativeInt(ToSimpleSectionPtr(sectionPtr));
         }
         else if (sectionName == "version")
         {

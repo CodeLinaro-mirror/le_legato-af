@@ -612,6 +612,7 @@ static parseTree::CompoundItem_t* ParseSection
         || (sectionName == "maxMQueueBytes")
         || (sectionName == "maxQueuedSignals")
         || (sectionName == "maxThreads")
+        || (sectionName == "startGroup")
         || (sectionName == "maxSecureStorageBytes") )
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);

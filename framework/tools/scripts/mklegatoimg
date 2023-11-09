@@ -259,7 +259,7 @@ CreateImgFs() {
     echo "$TARGET: Generating the framework image ($img_suffix)"
 
     if [ -z "$TOOLCHAIN_DIR" ]; then
-        echo "Unable to find toolchain"
+        echo "mklegatoimg: Error - Unable to find toolchain"
         exit 1
     fi
 

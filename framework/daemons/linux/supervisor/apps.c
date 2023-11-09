@@ -152,6 +152,7 @@ static le_mem_PoolRef_t appNameListPool;
 typedef struct
 {
     char            appName[LIMIT_MAX_APP_NAME_BYTES];
+    int             startGroup;
     le_dls_Link_t   link;
 } appName_t;
 
@@ -1227,6 +1228,24 @@ static void AppStopHandler
             {
                 app_Ref_t appRef = appContainerPtr->appRef;
 
+#ifdef LE_CONFIG_TARGET_SIMULATION
+                // In simulation, we don't have release_agent notifications.
+                // Although the processes in userspace has been reaped, work may
+                // still be going on in kernelspace.(Usually userspace is faster).
+                // So, we need to poll to wait for the cgroup node to be empty,
+                // which is harmless because we have already reaped the processes,
+                // we are just waiting for them to be removed from the cgroup node.
+                LE_INFO("Waiting for cgroup node (%s) to be emptied...", app_GetName(appRef));
+                while (1)
+                {
+                    if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
+                    {
+                        LE_INFO("Already emptied for cgroup node (%s), go ahead",
+                                app_GetName(appRef));
+                        break;
+                    }
+                }
+#endif
                 MarkAppAsStopped(appRef, appContainerPtr);
             }
         }
@@ -1429,6 +1448,57 @@ void apps_SetShutdownHandler
 }
 
 
+static int GetappStartGroupOrder
+(
+    le_cfg_IteratorRef_t appstartCfg,  // The iterator to use to read the configured start order.  T
+    const char* nodeName,           // The name of the node in the config tree that holds the value.
+    int defaultValue                // The default value to use if the config value is invalid.
+)
+{
+    // No open config -- just use default value
+    if (!appstartCfg)
+    {
+        return defaultValue;
+    }
+
+    if (!le_cfg_NodeExists(appstartCfg, nodeName))
+    {
+        LE_INFO("Configured app start order  %s is not available.  Using the default value %d.",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    if (le_cfg_IsEmpty(appstartCfg, nodeName))
+    {
+        LE_WARN("Configured app start order %s is empty.  Using the default value %d.",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    int startorderValue = le_cfg_GetInt(appstartCfg, nodeName, defaultValue);
+
+    if (startorderValue < 0 || startorderValue > 31)
+    {
+        LE_ERROR("Configured app start order %s is invalid.  Using the default value %d.",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    return startorderValue;
+}
+
+
+bool RecordGreaterThan(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
+{
+    appName_t  *aPtr = CONTAINER_OF(aLinkPtr, appName_t , link);
+    appName_t  *bPtr = CONTAINER_OF(bLinkPtr, appName_t , link);
+
+    return (aPtr->startGroup < bPtr->startGroup);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Start all applications marked as 'auto' start.
@@ -1461,6 +1531,9 @@ void apps_AutoStart
             // Get the app name.
             char appName[LIMIT_MAX_APP_NAME_BYTES];
 
+            int appStartOrder = GetappStartGroupOrder(appCfg, "startGroup", 31);
+            LE_INFO("App start order is: %d", appStartOrder);
+
             if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
             {
                 LE_ERROR("AppName buffer was too small, name truncated to '%s'.  "
@@ -1474,9 +1547,12 @@ void apps_AutoStart
                 appNameLink = (appName_t *)le_mem_ForceAlloc(appNameListPool);
                 appNameLink->link = LE_DLS_LINK_INIT;
                 le_utf8_Copy(appNameLink->appName, appName, LIMIT_MAX_APP_NAME_BYTES, NULL);
+                appNameLink->startGroup = appStartOrder;
                 le_dls_Queue(&appNameList, &(appNameLink->link));
             }
         }
+        // Sort the list descending
+        le_dls_Sort(&appNameList, RecordGreaterThan);
     }
     while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
     le_cfg_CancelTxn(appCfg);
@@ -1489,6 +1565,7 @@ void apps_AutoStart
         // Launch the application now. No need to check the return code because there is
         // nothing we can do about errors.
         LaunchApp(appNameLink->appName);
+        LE_INFO("Application '%s' has launched....", appNameLink->appName);
         le_mem_Release(appNameLink);
     }
 }
