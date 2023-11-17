@@ -144,6 +144,13 @@ config ENABLE_ECALL
   ---help---
   Enable PAN European eCall or Russian ERA GLONASS emergency calling support.
 
+config ENABLE_ECALL_MSD_V3
+  bool "Enable eCall msd v3 support"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable eCall msd version three support.
+
 config MDM_HAS_SMSC_INFORMATION
   bool "Has SMSC information"
   default y
