@@ -276,3 +276,17 @@ config SMS_SERVICE_ENABLED
   default y
   ---help---
     Enable SMS Service, which is not supported on RTOS systems.
+
+config FEATURE_ENHANCED_IMS
+  bool "Enable enhanced IMS feature"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Enable enhanced IMS feature.
+
+config RADIO_SIGNAL_INDICATION_CONFIG
+  bool "Threshold and delta configuration for radio siganl indication"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Enable Configuration of radio siganl indication.
