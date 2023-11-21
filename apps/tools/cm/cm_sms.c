@@ -1047,7 +1047,7 @@ void cm_sms_SwitchPreferredStorage
             break;
         default:
             printf("\n Current storage is UNKNOWN\n");
-            return;
+            break;
     }
 
     switch(storage)
