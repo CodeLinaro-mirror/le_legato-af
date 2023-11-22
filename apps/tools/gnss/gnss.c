@@ -3173,12 +3173,12 @@ static int GetSvData
 
     if (result == LE_OK)
     {
-        printf("SVs from GPS constellation  : %lu\n",svData->gps);
-        printf("SVs from GLONASS constellation  : %lu\n",svData->glo);
-        printf("SVs from GALILEO constellation   : %lu\n",svData->gal);
-        printf("SVs from BEIDOU constellation  : %lu\n",svData->bds);
-        printf("SVs from QZSS constellation  : %lu\n",svData->qzss);
-        printf("SVs from NAVIC constellation  : %lu\n",svData->navic);
+        printf("SVs from GPS constellation  : %"PRIu64"\n",svData->gps);
+        printf("SVs from GLONASS constellation  : %"PRIu64"\n",svData->glo);
+        printf("SVs from GALILEO constellation   : %"PRIu64"\n",svData->gal);
+        printf("SVs from BEIDOU constellation  : %"PRIu64"\n",svData->bds);
+        printf("SVs from QZSS constellation  : %"PRIu64"\n",svData->qzss);
+        printf("SVs from NAVIC constellation  : %"PRIu64"\n",svData->navic);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -3812,8 +3812,8 @@ static int GetRealTimeInfo
                                                         &realTime,&realTimeUnc);
     if (result == LE_OK)
     {
-        printf("Elapsed real time: %lu ns\n",realTime);
-        printf("Elapsed real time uncertainity: %lu ns\n",realTimeUnc);
+        printf("Elapsed real time: %"PRIu64" ns\n",realTime);
+        printf("Elapsed real time uncertainity: %"PRIu64" ns\n",realTimeUnc);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
