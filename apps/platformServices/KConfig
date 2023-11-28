@@ -144,6 +144,27 @@ config ENABLE_ECALL
   ---help---
   Enable PAN European eCall or Russian ERA GLONASS emergency calling support.
 
+config ENABLE_ECALL_MSD_V3
+  bool "Enable eCall msd v3 support"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable eCall msd version three support.
+
+config ENABLE_THERMAL_GET_TRIP_ID
+  bool "Enable getting trip ID"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable getting trip ID.
+
+config ENABLE_THERMAL_GET_ZONE_ID
+  bool "Enable getting thermal zone ID"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable getting thermal zone ID.
+
 config MDM_HAS_SMSC_INFORMATION
   bool "Has SMSC information"
   default y
