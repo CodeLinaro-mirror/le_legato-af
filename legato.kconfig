@@ -301,13 +301,15 @@ config READ_ONLY
 
 config STRIP_STAGING_TREE
   bool "Strip staging tree"
+  default "$(b2k,$(STRIP_STAGING_TREE))" if !$(empty,$(STRIP_STAGING_TREE))
   default y
   ---help---
   Strip files staged for the target image.
 
 config DEBUG
   bool "Debug build"
-  default "$(b2k,$(DEBUG))"
+  default "$(b2k,$(DEBUG))" if !$(empty,$(DEBUG))
+  default n
   ---help---
   Build with debug compiler flags turned on, and debugging code features
   enabled.
