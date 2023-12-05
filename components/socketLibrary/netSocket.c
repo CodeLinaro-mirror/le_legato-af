@@ -229,7 +229,7 @@ le_result_t netSocket_Write
         }
     }
 
-    LE_INFO("Write done successfully on fd: %d", fd);
+    LE_DEBUG("Write done successfully on fd: %d", fd);
     return LE_OK;
 }
 
@@ -298,7 +298,7 @@ le_result_t netSocket_Read
         return LE_FAULT;
     }
 
-    LE_INFO("Read size: %"PRIuS, *bufLenPtr);
+    LE_DEBUG("Read size: %"PRIuS, *bufLenPtr);
     return LE_OK;
 }
 
