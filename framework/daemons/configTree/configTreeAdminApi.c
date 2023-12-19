@@ -18,7 +18,7 @@
 
 
 
-
+#define CFG_SUBFIX_LEN   4
 // -------------------------------------------------------------------------------------------------
 /**
  *  Get an iterator pointer from an iterator refereLIMIT_MAX_USER_NAME_LENnce.
@@ -41,8 +41,75 @@ static ni_IteratorRef_t GetIteratorFromRef
     return iteratorRef;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check whether the given file is a .cfg file.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool IsCfgFile
+(
+    const char *filePathPtr  ///< [IN] File path.
+)
+{
+    int pathLen = strlen(filePathPtr);
+    if ((pathLen >= CFG_SUBFIX_LEN) && (strncmp((filePathPtr + pathLen - (int)CFG_SUBFIX_LEN), ".cfg", CFG_SUBFIX_LEN) == 0))
+        return true;
+    return false;
+}
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Import the config tree from a json file.
+ */
+// -------------------------------------------------------------------------------------------------
+static void ProcessJsonImport
+(
+    const char* filePathPtr,
+    le_cfgAdmin_ServerCmdRef_t commandRef,
+    tdb_NodeRef_t nodeRef
+)
+{
+    // Open the requested file.
+    LE_DEBUG("Opening file '%s'.", filePathPtr);
 
+    json_error_t error;
+    json_t* jsonRootPtr = json_load_file(filePathPtr, 0, &error);
+
+    if (jsonRootPtr == NULL)
+    {
+        LE_ERROR(
+        "File '%s' could not be loaded with error: line: %d, column: %d, position: %d,\
+         source: '%s', error: %s.",
+                filePathPtr,
+                error.line,
+                error.column,
+                error.position,
+                error.source,
+                error.text);
+        le_cfgAdmin_ImportTreeRespond(commandRef, LE_FAULT);
+
+        return;
+    }
+
+    LE_DEBUG("Importing config data from json.");
+
+    le_result_t result;
+
+    if (tdb_ReadTreeNodeFromJsonNode(nodeRef, jsonRootPtr))
+    {
+        result = LE_OK;
+    }
+    else
+    {
+        result = LE_FORMAT_ERROR;
+    }
+
+    // Let the caller know we're done.
+    le_cfgAdmin_ImportTreeRespond(commandRef, result);
+
+    // Close up the file and we're done.
+    json_decref(jsonRootPtr);
+}
 
 // -------------------------------------------------------------------------------------------------
 //  Import and export of the tree data.
@@ -99,7 +166,7 @@ void le_cfgAdmin_ImportTree
     {
         le_cfgAdmin_ImportTreeRespond(commandRef, LE_NOT_FOUND);
     }
-    else
+    else if (IsCfgFile(filePathPtr))
     {
         // Open the requested file.
         LE_DEBUG("Opening file '%s'.", filePathPtr);
@@ -136,10 +203,11 @@ void le_cfgAdmin_ImportTree
         // Close up the file and we're done.
         fclose(filePtr);
     }
+    else
+    {
+        ProcessJsonImport(filePathPtr, commandRef, nodeRef);
+    }
 }
-
-
-
 
 // -------------------------------------------------------------------------------------------------
 /**

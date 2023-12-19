@@ -238,6 +238,12 @@ START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
 START_OBJ_DIR := $(BUILD_DIR)/startSystem
 START_OBJS := $(patsubst %.c,$(START_OBJ_DIR)/%.o,$(notdir $(START_SRCS)))
 
+# 3rd-party libraries
+
+LIBJANSSON = $(LIB_DIR)/libjansson.so
+JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
+
+
 # ========== MAIN RECIPES ============
 
 .PHONY: all
@@ -262,6 +268,23 @@ all: $(ALL_PARTS_y)
 targetTools: liblegato
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.targetTools
+
+.PHONY: $(LIBJANSSON)
+$(LIBJANSSON): $(LIB_DIR)
+	$(Q)mkdir -p $(BUILD_DIR)/libjansson
+	$(L) CMAKE $@
+	$(Q)cd $(BUILD_DIR)/libjansson && \
+		cmake $(LEGATO_ROOT)/../3rdParty/jansson \
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
+			-DBUILD_SHARED_LIBS=ON \
+			-DJANSSON_BUILD_SHARED_LIBS=ON \
+			-DJANSSON_WITHOUT_TESTS=ON \
+			-DJANSSON_EXAMPLES=OFF \
+			-DJANSSON_BUILD_DOCS=OFF $(VOUTPUT) 2>&1
+	$(L) MAKE $@
+	$(Q)make -C $(BUILD_DIR)/libjansson $(VOUTPUT)
+	$(Q)cp -d $(BUILD_DIR)/libjansson/lib/libjansson.so* $(LIB_DIR)
 
 
 .PHONY: liblegato
@@ -418,10 +441,13 @@ $(BIN_DIR)/logCtrlDaemon: liblegato $(BIN_DIR)
 		--cflags=-DNO_LOG_CONTROL \
 		-i $(LEGATO_ROOT)/interfaces/supervisor
 
-$(BIN_DIR)/configTree: liblegato $(BIN_DIR)
+$(BIN_DIR)/configTree: $(LIBJANSSON) liblegato $(BIN_DIR)
 	$(L) MKEXE $@
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS)   \
 		$(COMMON_SRC_DIR)/configTree \
+		-i $(JANSSON_INC_DIR) \
+		--ldflags=-L$(LIB_DIR) \
+		--ldflags=-ljansson \
 		--cflags=-std=c99
 
 $(BIN_DIR)/watchdog: liblegato $(BIN_DIR)
