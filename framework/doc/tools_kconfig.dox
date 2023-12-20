@@ -68,6 +68,7 @@ Environment Variable            | KConfig Option
 @c SMACK_ATTR_VALUE             | @ref SMACK_ATTR_VALUE
 @c TEST_COVERAGE                | @ref TEST_COVERAGE
 @c TEST_COVERAGE_DIR            | @ref TEST_COVERAGE_DIR
+@c BUILD_FLAVOR                 | @ref BUILD_FLAVOR
 
 An alternate configuration file can be specified by setting the
 `LEGATO_KCONFIG` environment variable to point at the configuration file to

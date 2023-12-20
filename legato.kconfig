@@ -270,6 +270,14 @@ config SDEF
   along with the framework.  Users may also later create other systems later
   using their own .sdef files.
 
+config FLAVOR_LXC
+  bool "Target build flavor."
+  depends on TARGET_SA525M
+  default y if ("lxc"=$(BUILD_FLAVOR))
+  default n
+  ---help---
+  Enable LXC flavor.FLAVOR_LXC customizes the framework with selected features.
+
 ### Build and Toolchain Options ###
 
 config USE_CLANG
