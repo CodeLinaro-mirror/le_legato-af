@@ -216,6 +216,7 @@ void PrintGnssHelp
          "\t\t\t\t\t                    Vertical Speed, Vertical Speed accuracy)\n"
          "\t\t\t\t\t- direction     --> Direction indication\n"
          "\t\t\t\t\t- satInfo       --> Satellites Vehicle information\n"
+         "\t\t\t\t\t- satInfoEx     --> Extended Satellites Vehicle information\n"
          "\t\t\t\t\t- satStat       --> Satellites Vehicle status\n"
          "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position. Displayed\n"
          "\t\t\t\t\t-               in all resolutions: (0 to 3 digits after the decimal point) \n"
@@ -2803,6 +2804,79 @@ static int GetDop
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
+void PrintGnssSignalType(uint32_t signalTypeMask) {
+   printf("Signals: ");
+   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
+     printf("GPS L1CA, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
+     printf("GPS L1C, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L2) {
+     printf("GPS L2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L5) {
+     printf("GPS L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
+     printf("Glonass G1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
+     printf("Glonass G2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
+     printf("Galileo E1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
+     printf("Galileo E5A, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
+     printf("Galileo E5B, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
+     printf("Beidou B1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
+     printf("Beidou B2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
+     printf("QZSS L1CA, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
+     printf("QZSS L1S, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
+     printf("QZSS L2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
+     printf("QZSS L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
+     printf("SBAS L1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
+     printf("Beidou B1I, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
+     printf("Beidou B1C, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
+     printf("Beidou B2I, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
+     printf("Beidou B2AI, ");
+   }
+   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
+     printf("Navic L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
+     printf("Beidou B2AQ, ");
+   }
+   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
+     printf("No signal, ");
+   }
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets the Satellites Vehicle information.
@@ -2879,6 +2953,65 @@ static int GetSatelliteInfo
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Satellites Vehicle information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSatelliteInfoEx
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    // Satellites information
+    int i;
+    int index = 0;
+    le_result_t result;
+
+    for (int constellation = 1; constellation < TAF_GNSS_SV_CONSTELLATION_MAX; constellation++) {
+
+      taf_gnss_SvInfo_t svInfo[TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS];
+      size_t svInfoLen = TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS;
+
+      result = le_gnss_GetSatellitesInfoEx(positionSampleRef, constellation, svInfo, &svInfoLen);
+
+      if((result == LE_OK)||(result == LE_OUT_OF_RANGE)||(result == LE_OVERFLOW))
+      {
+        LE_INFO("gnss tool: result %d, constellation: %d, numOfSvInfo: %d", (int)result, (int) constellation, (int) svInfoLen);
+        // Satellite Vehicle information
+        for(i=0; i<(int) svInfoLen; i++)
+        {
+            if((svInfo[i].satId != 0)&&(svInfo[i].satId != UINT8_MAX))
+            {
+                printf("[%02d] SVid %03d - C%01d - U%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
+                        , index++
+                        , svInfo[i].satId
+                        , svInfo[i].satConst
+                        , svInfo[i].satUsed
+                        , svInfo[i].satTracked
+                        , svInfo[i].satSnr
+                        , svInfo[i].satAzim
+                        , svInfo[i].satElev);
+
+                PrintGnssSignalType(svInfo[i].signalType);
+                printf("\n");
+                printf("Glonass FCN: %d\n", svInfo[i].glonassFcn);
+                printf("Baseband Carrier To Noise Ratio: %lfdB-Hz\n", svInfo[i].baseBandCnr);
+            }
+        }
+      }
+      else
+      {
+        printf("Failed for constellation %d, See log for details!\n", (int) constellation);
+      }
+    }
+
+    return ((result == LE_OK)||(result == LE_OUT_OF_RANGE)||(result == LE_OVERFLOW)) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -3828,79 +3961,6 @@ static int GetRealTimeInfo
 
 }
 
-void PrintGnssSignalType(uint32_t signalTypeMask) {
-   printf("Signals: ");
-   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
-     printf("GPS L1CA, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
-     printf("GPS L1C, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L2) {
-     printf("GPS L2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L5) {
-     printf("GPS L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
-     printf("Glonass G1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
-     printf("Glonass G2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
-     printf("Galileo E1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
-     printf("Galileo E5A, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
-     printf("Galileo E5B, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
-     printf("Beidou B1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
-     printf("Beidou B2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
-     printf("QZSS L1CA, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
-     printf("QZSS L1S, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
-     printf("QZSS L2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
-     printf("QZSS L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
-     printf("SBAS L1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
-     printf("Beidou B1I, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
-     printf("Beidou B1C, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
-     printf("Beidou B2I, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
-     printf("Beidou B2AI, ");
-   }
-   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
-     printf("Navic L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
-     printf("Beidou B2AQ, ");
-   }
-   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
-     printf("No signal, ");
-   }
-}
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets gnss meaurement usage info.
@@ -4186,7 +4246,7 @@ static void PositionHandlerFunction
     {
         GetPosInfo(positionSampleRef);
         GetSatelliteStatus(positionSampleRef);
-        GetSatelliteInfo(positionSampleRef);
+        GetSatelliteInfoEx(positionSampleRef);
         // Release provided Position sample reference
         le_gnss_ReleaseSampleRef(positionSampleRef);
     }
@@ -4298,6 +4358,10 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "satInfo") == 0)
         {
             status = GetSatelliteInfo(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "satInfoEx") == 0)
+        {
+            status = GetSatelliteInfoEx(positionSampleRef);
         }
         else if (strcmp(ParamsName, "satStat") == 0)
         {
@@ -4518,6 +4582,7 @@ static void GetGnssParams
              (0 == strcmp(params, "motion"))      ||
              (0 == strcmp(params, "direction"))   ||
              (0 == strcmp(params, "satInfo"))     ||
+             (0 == strcmp(params, "satInfoEx"))   ||
              (0 == strcmp(params, "satStat"))     ||
              (0 == strcmp(params, "dop"))         ||
              (0 == strcmp(params, "magDev"))      ||
