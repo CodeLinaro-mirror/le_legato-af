@@ -344,15 +344,19 @@ static tu_UserRef_t GetUser
 
     if (userRef == NULL)
     {
-        // At this point, grab the user's app name, which will succeed if it is an app, otherwise we get
-        // the standard user name.
+        // At this point, grab the user's app name, which will succeed if it is an app, otherwise
+        // we get the standard user name.
         char namePtr[LIMIT_MAX_USER_NAME_BYTES] = "";
 
         size_t nameBufSize = sizeof(namePtr);
         if (GetAppNameByPid(processId, namePtr, &nameBufSize) != LE_OK)
         {
             nameBufSize = sizeof(namePtr);
-            LE_ASSERT(GetExeNameByPid(processId, namePtr, &nameBufSize) == LE_OK);
+            if (GetExeNameByPid(processId, namePtr, &nameBufSize) != LE_OK)
+            {
+                LE_WARN("Cannot find app from pid[%d] and uid[%d]", processId, userId);
+                return NULL;
+            }
         }
 
         LE_DEBUG("Get app name[%s] from pid[%d] and uid[%d]", namePtr, processId, userId);
@@ -441,7 +445,11 @@ static tu_UserRef_t GetUserInfo
 
     // Now that we have a user ID, let's see if we can look them up.
     tu_UserRef_t userRef = GetUser(userId, processId, wasCreated);
-    LE_ASSERT(userRef != NULL);
+    if (userRef == NULL)
+    {
+        LE_WARN("Cannot found user from userId[%d], processId[%d]", userId, processId);
+        return NULL;
+    }
 
     LE_DEBUG("** Found user <%p>: '%s', %u,%u with default tree, '%s'.",
              userRef,
@@ -530,8 +538,13 @@ void tu_SessionConnected
 {
     bool wasCreated;
     tu_UserRef_t userRef = GetUserInfo(sessionRef, &wasCreated);
+    if (userRef == NULL)
+    {
+        LE_WARN("Cannot get userRef for session %p", sessionRef);
+        return;
+    }
 
-    if (   (wasCreated == false)
+    if ((wasCreated == false)
         && (tu_GetUserId(userRef) != 0))
     {
         le_mem_AddRef(userRef);
@@ -554,6 +567,12 @@ void tu_SessionDisconnected
 //--------------------------------------------------------------------------------------------------
 {
     tu_UserRef_t userRef = GetUserInfo(sessionRef, NULL);
+    if (userRef == NULL)
+    {
+        LE_WARN("Cannot get userRef for session %p", sessionRef);
+        return;
+    }
+
     uid_t userId = tu_GetUserId(userRef);
 
     // If this isn't the root user, de-ref the user info.  (We don't free the root user.)
