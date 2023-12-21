@@ -7,6 +7,7 @@
 mainmenu "Legato Configuration"
 
 rsource "legato.kconfig"
+rsource "$(TELAF_ROOT)/telaf.kconfig"
 
 menu "Framework Adaptor"
 depends on CUSTOM_FA
