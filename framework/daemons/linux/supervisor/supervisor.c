@@ -1431,10 +1431,10 @@ COMPONENT_INIT
 
     // Register a signal event handler for SIGCHLD so we know when processes die.
     le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
+    le_sig_Block(SIGCHLD);
 
     StartFramework();
 
-    le_sig_Block(SIGCHLD);
 
     // All the framework daemons are active now. Now set the reboot expiry timer if it is not a
     // RO system.
