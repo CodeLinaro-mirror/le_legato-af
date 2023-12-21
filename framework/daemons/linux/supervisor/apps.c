@@ -1228,7 +1228,7 @@ static void AppStopHandler
             {
                 app_Ref_t appRef = appContainerPtr->appRef;
 
-#ifdef LE_CONFIG_TARGET_SIMULATION
+#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
                 // In simulation, we don't have release_agent notifications.
                 // Although the processes in userspace has been reaped, work may
                 // still be going on in kernelspace.(Usually userspace is faster).
@@ -1374,7 +1374,7 @@ void apps_Init
 
     // Specify the program to be run when the last process exits a freezer sub-group. This program
     // notifies the Supervisor which app has stopped.
-#ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
     file_WriteStr("/sys/fs/cgroup/freezer/release_agent",
                   "/legato/systems/current/bin/_appStopClient", 0);
 #endif

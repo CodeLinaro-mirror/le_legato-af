@@ -3666,7 +3666,7 @@ app_Ref_t app_Create
         goto failed;
     }
 
-#ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
     // Enable "notify_on_release" for this app, so the Supervisor will be notified when this app
     // stops.
     // Need to account for the characters other than app name in the path of notify_on_release.
@@ -4814,7 +4814,7 @@ application '%s'. Restarting app by default.", proc_GetName(procRef), appRef->na
     return LE_OK;
 }
 
-#ifdef LE_CONFIG_TARGET_SIMULATION
+#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
 //--------------------------------------------------------------------------------------------------
 /**
  * In simulation environment (docker container), the cgroup's release_agent strategy is unuseful.
@@ -4825,7 +4825,7 @@ application '%s'. Restarting app by default.", proc_GetName(procRef), appRef->na
  * and legato is working on its own data structures.
  */
 //--------------------------------------------------------------------------------------------------
-static void notifyAppStopServer(const char *appName)
+static void NotifyAppStopServer(const char *appName)
 {
     int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (fd == -1) {
@@ -4848,6 +4848,20 @@ static void notifyAppStopServer(const char *appName)
     while ((numBytesSent == -1) && (errno == EINTR));
 
     close(fd);
+}
+
+static void CheckAndNotifyToServer(app_Ref_t appRef, const char *label)
+{
+    // Because we don't use the release_agent mechanism in simulation,
+    // here we only deal with data structures maintained by legato
+    // and reap subprocesses. As for the cgroup node, currently
+    // we do not poll here to determine if the cgroup node is empty.
+    // So we should call 'app_HasConfRunningProc', not 'HasRunningProc'.
+    if (! app_HasConfRunningProc(appRef))
+    {
+        LE_INFO("App (%s) -- N --> [AppStopServer] (%s)", appRef->name, label);
+        NotifyAppStopServer(appRef->name);
+    }
 }
 #endif
 
@@ -4902,17 +4916,8 @@ void app_SigChildHandler
                         *faultActionPtr = FAULT_ACTION_STOP_APP;
                     }
                 }
-#ifdef LE_CONFIG_TARGET_SIMULATION
-                // Because we don't use the release_agent mechanism in simulation,
-                // here we only deal with data structures maintained by legato
-                // and reap subprocesses. As for the cgroup node, currently
-                // we do not poll here to determine if the cgroup node is empty.
-                // So we should call 'app_HasConfRunningProc', not 'HasRunningProc'.
-                if (! app_HasConfRunningProc(appRef))
-                {
-                    LE_INFO("App (%s) -- N --> [AppStopServer]", appRef->name);
-                    notifyAppStopServer(appRef->name);
-                }
+#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
+                CheckAndNotifyToServer(appRef, "cmd-action");
 #endif
                 break;
 
@@ -4920,6 +4925,12 @@ void app_SigChildHandler
                 LE_WARN("Process '%s' in app '%s' faulted: Ignored.",
                         proc_GetName(procRef),
                         appRef->name);
+#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
+                // Without CGROUP release_agent, the framework don't know the application already
+                // exited. For applications with the 'Ignore Fault' action, we should notify the
+                // AppStopServer to mark the application as 'STOP'
+                CheckAndNotifyToServer(appRef, "ign-action");
+#endif
                 break;
 
             case FAULT_ACTION_RESTART_PROC:

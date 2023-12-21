@@ -23,4 +23,13 @@ config SUPERV_APP_TMPFS_SIZE
   ---help---
   The size in bytes of the tmpfs partition created for each sandboxed App.
 
+config SUPERV_CGRP_NO_RELEASE_AGENT
+  bool "Disable CGROUP release_agent or not"
+  depends on LINUX
+  default y if TARGET_SIMULATION
+  default n
+  ---help---
+  Disable the CGROUP release_agent mechanism for some virtual environments, such as:
+  containers of Docker and LXC.
+
 endmenu # end "Supervisor"
