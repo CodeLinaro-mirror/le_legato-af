@@ -2313,12 +2313,12 @@ le_result_t le_appRemove_Remove
     system_RemoveUnneeded();
     system_RemoveUnusedApps();
 
-    // If the removal was successful, kick off the probation timer.
+    // If the removal was successful, RO system is always "good", to be fixed later.
     le_result_t result = app_RemoveIndividual(appName);
 
     if (result == LE_OK)
     {
-        StartProbation();
+        updateDaemon_MarkGood();
     }
 
     return result;
