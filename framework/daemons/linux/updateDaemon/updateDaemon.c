@@ -955,8 +955,8 @@ static void ApplyAppUpdate
     {
        LE_INFO("App '%s<%s>' installed properly.", appName, md5);
        ReportUpdateDone();
-       // App is installed, now start probation
-       StartProbation();
+       // App is installed, RO system is always "good", to be fixed later.
+       updateDaemon_MarkGood();
     }
     else if (LE_DUPLICATE == result)
     {
@@ -991,8 +991,8 @@ static void ApplyAppRemove
     {
         LE_INFO("App '%s' removed properly.", appName);
         ReportUpdateDone();
-        // App is installed, now start probation
-        StartProbation();
+        // App is installed, RO system is always "good", to be fixed later.
+        updateDaemon_MarkGood();
     }
     else if (result == LE_NOT_FOUND)
     {
