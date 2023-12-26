@@ -942,11 +942,11 @@ static int SetNmeaConfiguration
     const char* engineTypePtr          ///< [IN] Specify the engine type to be configured.
 )
 {
-    int nmeaMask = le_hex_HexaToInteger(nmeaMaskPtr);
+    uint64_t nmeaMask = strtoull(nmeaMaskPtr, NULL, 16);
     int datumType = le_hex_HexaToInteger(datumTypePtr);
     int engineType = le_hex_HexaToInteger(engineTypePtr);
 
-    LE_INFO("SetNmeaConfiguration nmeaMask: %d, datumType: %d, engineType: %d",nmeaMask, datumType, engineType);
+    LE_INFO("SetNmeaConfiguration nmeaMask: %" PRIu64 ", datumType: %d, engineType: %d",nmeaMask, datumType, engineType);
 
     le_result_t result = le_gnss_SetNmeaConfiguration(nmeaMask, (le_gnss_GeodeticDatumType_t) datumType, engineType);
 
@@ -1468,8 +1468,8 @@ static int SetNmeaSentences
     const char* nmeaMaskStr     ///< [IN] Enabled NMEA sentences bit mask
 )
 {
-    int nmeaMask = le_hex_HexaToInteger(nmeaMaskStr);
-
+    uint64_t nmeaMask = strtoull(nmeaMaskStr, NULL, 16);
+    LE_INFO("SetNmeaSentences nmeaMask: %" PRIu64"", nmeaMask);
 
     le_result_t result = le_gnss_SetNmeaSentences(nmeaMask);
 
@@ -1483,12 +1483,6 @@ static int SetNmeaSentences
             break;
         case LE_BAD_PARAMETER:
             printf("Failed to set enabled NMEA sentences, incompatible bit mask\n");
-            break;
-        case LE_BUSY:
-            printf("Failed to set enabled NMEA sentences, service is busy\n");
-            break;
-        case LE_TIMEOUT:
-            printf("Failed to set enabled NMEA sentences, timeout error\n");
             break;
        case LE_NOT_PERMITTED:
             printf("GNSS is not in ready state!\n");
@@ -1885,10 +1879,14 @@ static int GetNmeaSentences
     switch (result)
     {
         case LE_OK:
-            printf("Enabled NMEA sentences bit mask = 0x%08X\n", nmeaMask);
+            printf("Enabled NMEA sentences bit mask = %"PRIu64"\n", nmeaMask);
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGGA)
             {
                 printf("\tGPGGA (GPS fix data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GGA)
+            {
+                printf("\tGGA enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGSA)
             {
@@ -1902,13 +1900,25 @@ static int GetNmeaSentences
             {
                 printf("\tGPRMC (GPS recommended minimum data) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_RMC)
+            {
+                printf("\tRMC enabled\n");
+            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPVTG)
             {
                 printf("\tGPVTG (GPS vector track and speed over the ground) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_VTG)
+            {
+                printf("\tVTG enabled\n");
+            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGNS)
             {
                 printf("\tGPGNS enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GNS)
+            {
+                printf("\tGNS enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GLGSV)
             {
@@ -1921,6 +1931,10 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_GNGSA)
             {
                 printf("\tGNGSA (GNSS DOP and active satellites) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GSA)
+            {
+                printf("\tGSA enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GAGGA)
             {
@@ -1941,10 +1955,6 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_GBGSV)
             {
                 printf("\tGBGSV enabled\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GIGSV)
-            {
-                printf("\tNMEA_MASK_GIGSV enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GARMC)
             {
@@ -1982,6 +1992,10 @@ static int GetNmeaSentences
             {
                printf("\tGPDTM (Local geodetic datum and datum offset from a reference) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_DTM)
+            {
+               printf("\tDTM enabled\n");
+            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GAGNS)
             {
                printf("\tGAGNS (Fix data for Galileo) enabled\n");
@@ -1997,7 +2011,7 @@ static int GetNmeaSentences
             printf("Failed to get enabled NMEA sentences, timeout error\n");
             break;
         case LE_NOT_PERMITTED:
-            printf("GNSS is not in active or ready state!\n");
+            printf("GNSS is not in active state!\n");
             break;
         default:
             printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
@@ -2028,7 +2042,7 @@ static int GetSupportedNmeaSentences
     switch (result)
     {
         case LE_OK:
-            printf("Supported NMEA sentences bit mask = 0x%08X\n", nmeaMask);
+            printf("Supported NMEA sentences bit mask = %"PRIu64"\n", nmeaMask);
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGGA)
             {
                 printf("\tGPGGA (GPS fix data) Supported\n");
@@ -2080,9 +2094,6 @@ static int GetSupportedNmeaSentences
             break;
         case LE_FAULT:
             printf("Failed to get Supported NMEA sentences. See logs for details\n");
-            break;
-        case LE_BUSY:
-            printf("Failed to get Supported NMEA sentences, service is busy\n");
             break;
         case LE_TIMEOUT:
             printf("Failed to get Supported NMEA sentences, timeout error\n");
