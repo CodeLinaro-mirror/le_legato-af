@@ -133,7 +133,7 @@ fi
 
 # Include auto-generated header directory.
 CFLAGS="${CFLAGS} -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
-
+CFLAGS="${CFLAGS} ${ARCH_CFLAGS}"
 case "${CC}" in
     *armcc*)
         # ARM method of specifying dependencies

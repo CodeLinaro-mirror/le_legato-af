@@ -1521,6 +1521,9 @@ void PrintSummary
         }
 
         std::cout << LE_I18N("  Has the following limits:") << std::endl;
+        std::cout << mk::format(LE_I18N("    username: %s"),
+                                appPtr->username)
+                  << std::endl;
         std::cout << mk::format(LE_I18N("    maxSecureStorageBytes: %d"),
                                 appPtr->maxSecureStorageBytes.Get())
                   << std::endl;
@@ -1536,6 +1539,8 @@ void PrintSummary
                   << std::endl;
         std::cout << mk::format(LE_I18N("    maxFileSystemBytes: %d"),
                                 appPtr->maxFileSystemBytes.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    startGroup: %d"), appPtr->startGroup.Get())
                   << std::endl;
 
         // Config Tree access.
@@ -1735,6 +1740,18 @@ void PrintSummary
         for (auto& capability : appPtr->capability)
         {
             std::cout << "    " << capability << std::endl;
+        }
+    }
+
+
+    // username
+    if (appPtr->isSandboxed && !appPtr->username.empty())
+    {
+        std::cout << LE_I18N("  username is defined for the sandbox apps")
+                  << std::endl;
+        for (auto& username : appPtr->username)
+        {
+            std::cout << "    " << username << std::endl;
         }
     }
 
@@ -2118,6 +2135,10 @@ model::App_t* GetApp
         {
             AddCapability(appPtr, ToTokenListSectionPtr(sectionPtr));
         }
+        else if (sectionName == "username")
+        {
+            appPtr->username = ToSimpleSectionPtr(sectionPtr)->Text();
+        }
         else if (sectionName == "maxFileSystemBytes")
         {
             appPtr->maxFileSystemBytes = GetNonNegativeInt(ToSimpleSectionPtr(sectionPtr));
@@ -2157,6 +2178,10 @@ model::App_t* GetApp
         else if (sectionName == "start")
         {
             SetStart(appPtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "startGroup")
+        {
+            appPtr->startGroup = GetNonNegativeInt(ToSimpleSectionPtr(sectionPtr));
         }
         else if (sectionName == "version")
         {

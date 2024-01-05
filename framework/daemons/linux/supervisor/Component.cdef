@@ -39,7 +39,9 @@ requires:
     }
     lib:
     {
+    #if ${LE_CONFIG_ENABLE_SELINUX} =y
         lib/libsemanage.so.1
+    #endif
     }
 }
 
@@ -62,6 +64,12 @@ cflags:
             -DTARGET_IMPORTS_ARMV6
         #else
             -DTARGET_IMPORTS_RASPI
+        #endif
+    #elif ${LEGATO_TARGET} = sa525m
+        #if ${LEGATO_TARGET_ARCH} = armv8
+            -DTARGET_IMPORTS_ARMV8
+        #else
+            -DTARGET_IMPORTS_ARMV7
         #endif
     #else
         -DTARGET_IMPORTS_ARMV7

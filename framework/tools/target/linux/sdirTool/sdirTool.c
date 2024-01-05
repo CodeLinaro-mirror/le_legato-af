@@ -45,7 +45,7 @@ static const char* ClientIfPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
-/// Server interface specifier string (used by Bind()).
+/// Server interface specifier string (used by Bind() and Get()).
 //--------------------------------------------------------------------------------------------------
 static const char* ServerIfPtr = NULL;
 
@@ -77,6 +77,7 @@ static void PrintHelpAndExit
         "    sdir list --format=json\n"
         "    sdir load\n"
         "    sdir bind CLIENT_IF SERVER_IF\n"
+        "    sdir get SERVER_IF\n"
         "    sdir help\n"
         "    sdir -h\n"
         "    sdir --help\n"
@@ -104,6 +105,9 @@ static void PrintHelpAndExit
         "                appName.externInterfaceName\n"
         "                <userName>.executableName.componentName.interfaceName\n"
         "                <userName>.externInterfaceName\n"
+        "\n"
+        "    sdir get SERVER_IF\n"
+        "            Get the service information of specified server interface.\n"
         "\n"
         "    sdir help\n"
         "    sdir -h\n"
@@ -327,10 +331,7 @@ static le_result_t GetServerUid
 //--------------------------------------------------------------------------------------------------
 {
     le_result_t result;
-
     char userName[LIMIT_MAX_USER_NAME_BYTES];
-
-    uid_t uid;
 
     // If an app name is present in the binding config,
     if (le_cfg_NodeExists(i, "app"))
@@ -362,91 +363,78 @@ static le_result_t GetServerUid
             return LE_NOT_FOUND;
         }
 
-        // Find out if the server app is sandboxed.  If not, it runs as root.
+        // Check the server's user name.
         char path[LIMIT_MAX_PATH_BYTES];
+        if (snprintf(path, sizeof(path), "/apps/%s/username", appName) >= sizeof(path))
+        {
+            LE_CRIT("Config node path too long (app name '%s').", appName);
+            return LE_OVERFLOW;
+        }
+
+        // Get the server's user name.
+        if (LE_OK != le_cfg_GetString(i, path, userName, sizeof(userName), ""))
+        {
+            LE_CRIT("Config app userName too long (app name '%s').", appName);
+            return LE_OVERFLOW;
+        }
+
+        // Find out if the server app is sandboxed.
+        bool isSandboxed = false;
         if (snprintf(path, sizeof(path), "/apps/%s/sandboxed", appName) >= sizeof(path))
         {
             LE_CRIT("Config node path too long (app name '%s').", appName);
             return LE_OVERFLOW;
         }
-        if (!le_cfg_GetBool(i, path, true))
+        if (le_cfg_GetBool(i, path, true))
         {
-            if (!user_IsTafService(appName))
-            {
-                *uidPtr = 0;
-            }
-            else
-            {
-                if(user_GetDefaultIDs(false, &uid, NULL) != LE_OK)
-                {
-                    *uidPtr = 0;
-                }
-                else
-                {
-                    *uidPtr = uid;
-                }
-            }
+            isSandboxed = true;
+        }
 
+        // Firstly try to use the specified server app user.
+        if (LE_OK == user_GetIDs(userName, uidPtr, NULL))
+        {
             return LE_OK;
         }
 
-        // It is not sandboxed.  Convert the app name into a user name.
-        result = user_AppNameToUserName(appName, userName, sizeof(userName));
-        if (result != LE_OK)
+        // Then use the default user instead if specified user can not be found.
+        const char* defaultUser = isSandboxed ? APP_SANDBOXED_USER : APP_UNSANDBOXED_USER;
+        if(user_GetIDs(defaultUser, uidPtr, NULL)!= LE_OK)
         {
-            LE_CRIT("Failed to convert app name '%s' into a user name.", appName);
-
-            return result;
-        }
-    }
-    // If a server app name is not present in the binding config,
-    else
-    {
-        // Get the server user name instead.
-        result = le_cfg_GetString(i, "user", userName, sizeof(userName), "");
-        if (result != LE_OK)
-        {
-            char path[LIMIT_MAX_PATH_BYTES];
-
-            le_cfg_GetPath(i, "user", path, sizeof(path));
-            LE_CRIT("Server user name too big (@ %s)", path);
-
-            return result;
-        }
-        if (userName[0] == '\0')
-        {
-            char path[LIMIT_MAX_PATH_BYTES];
-
-            le_cfg_GetPath(i, "", path, sizeof(path));
-            LE_CRIT("Server user name or app name missing (@ %s)", path);
-
+            LE_CRIT("Default user (%s) for server app (%s) can not be found.",
+                    defaultUser, appName);
             return LE_NOT_FOUND;
         }
+
+        return LE_OK;
+    }
+
+    // If a server app name is not present in the binding config,
+    // Get the server user name instead.
+    result = le_cfg_GetString(i, "user", userName, sizeof(userName), "");
+    if (result != LE_OK)
+    {
+        char path[LIMIT_MAX_PATH_BYTES];
+
+        le_cfg_GetPath(i, "user", path, sizeof(path));
+        LE_CRIT("Server user name too big (@ %s)", path);
+
+        return result;
+    }
+    if (userName[0] == '\0')
+    {
+        char path[LIMIT_MAX_PATH_BYTES];
+
+        le_cfg_GetPath(i, "", path, sizeof(path));
+        LE_CRIT("Server user name or app name missing (@ %s)", path);
+
+        return LE_NOT_FOUND;
     }
 
     // Convert the server's user name into a user ID.
-    if ((LE_OK != user_GetUid(userName, uidPtr)) &&
-        (LE_OK != user_GetDefaultIDs(true, uidPtr, NULL)))
+    if (LE_OK != user_GetUid(userName, uidPtr))
     {
-        // Note: This can happen if the server application isn't installed yet.
-        //       When the server application is installed, sdir load will be run
-        //       again and the bindings will be correctly set up at that time.
-        if (strncmp(userName, "app", 3) == 0)
-        {
-            LE_INFO("Couldn't get UID for application '%s'.  Perhaps it is not installed yet?",
-                     userName + 3);
-        }
-        else
-        {
-            char path[LIMIT_MAX_PATH_BYTES];
-            le_cfg_GetPath(i, "", path, sizeof(path));
-            LE_CRIT("Couldn't convert server user name '%s' to UID (%s @ %s)",
-                    userName,
-                    LE_RESULT_TXT(result),
-                    path);
-        }
-
-        return result;
+        LE_CRIT("Server user name (%s) is not found.", userName);
+        return LE_NOT_FOUND;
     }
 
     return LE_OK;
@@ -580,7 +568,9 @@ static le_result_t GetAppUid
     le_result_t result;
 
     char appName[LIMIT_MAX_APP_NAME_BYTES];
-    uid_t uid;
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    bool isSandboxed = false;
+
     result = le_cfg_GetNodeName(i, "", appName, sizeof(appName));
     if (result != LE_OK)
     {
@@ -588,52 +578,35 @@ static le_result_t GetAppUid
         return LE_OVERFLOW;
     }
 
-    // If this is an "unsandboxed" app, use the root user ID.
-    if (le_cfg_GetBool(i, "sandboxed", true) == false)
+    // Check if this is an "unsandboxed" app.
+    if (le_cfg_GetBool(i, "sandboxed", true))
     {
-        char path[256];
-        le_cfg_GetPath(i, "", path, sizeof(path));
-        LE_DEBUG("'%s' = <root>", path);
-
-        if (!user_IsTafService(appName))
-        {
-            *uidPtr = 0;
-        }
-        else
-        {
-            if(user_GetDefaultIDs(false, &uid, NULL) != LE_OK)
-            {
-                *uidPtr = 0;
-            }
-            else
-            {
-                *uidPtr = uid;
-            }
-        }
-
-        return LE_OK;
+        isSandboxed = true;
     }
 
-    // Convert the app name into a user name by prefixing it with "app".
-    char userName[LIMIT_MAX_USER_NAME_BYTES] = "app";
-    result = le_utf8_Append(userName, appName, sizeof(userName), NULL);
-    if (result != LE_OK)
+    // Get the app's user name.
+    if (LE_OK != le_cfg_GetString(i, "username", userName, sizeof(userName), ""))
     {
-        LE_CRIT("Failed to convert app name into user name.");
+        LE_CRIT("Config app userName too long (app name '%s').", appName);
         return LE_OVERFLOW;
     }
 
-    // Convert the app user name into a user ID.
-    if ((user_GetUid(userName, uidPtr) != LE_OK) &&
-        (user_GetDefaultIDs(true, uidPtr, NULL) != LE_OK))
+    // Firstly try to use the specified app user.
+    if (LE_OK == user_GetIDs(userName, uidPtr, NULL))
     {
-        LE_CRIT("Failed to get user ID for user '%s'. (%s)", userName, LE_RESULT_TXT(result));
+        return LE_OK;
+    }
+
+    // Then use the default user instead if specified user can not be found.
+    const char* defaultUser = isSandboxed ? APP_SANDBOXED_USER : APP_UNSANDBOXED_USER;
+    if(user_GetIDs(defaultUser, uidPtr, NULL)!= LE_OK)
+    {
+        LE_CRIT("Default user (%s) for app (%s) can not be found.", defaultUser, appName);
         return LE_NOT_FOUND;
     }
 
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -864,6 +837,56 @@ static void Bind
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Execute the 'get' command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Get
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Initialize the "User API".
+    user_Init();
+
+    // Construct the request message.
+    le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
+    le_sdtp_Msg_t* reqPayloadPtr = le_msg_GetPayloadPtr(msgRef);
+
+    reqPayloadPtr->msgType = LE_SDTP_MSGID_FIND_SERVICE;
+
+    // Parse the server interface specifier.
+    ParseInterfaceSpec(ServerIfPtr,
+                       &reqPayloadPtr->server,
+                       reqPayloadPtr->serverInterfaceName,
+                       sizeof(reqPayloadPtr->serverInterfaceName));
+
+    // Send the message and wait for a response.
+    msgRef = le_msg_RequestSyncResponse(msgRef);
+
+    // If a response message was not received, then the operation failed.
+    if (msgRef == NULL)
+    {
+        ExitWithErrorMsg("Communication with Service Directory failed.");
+    }
+
+    // Get the response.
+    le_sdtp_resp_t* resPayloadPtr = le_msg_GetPayloadPtr(msgRef);
+    if (resPayloadPtr->result != LE_OK)
+    {
+        fprintf(stderr, "Failed to get service info (%s).\n", LE_RESULT_TXT(resPayloadPtr->result));
+        exit(EXIT_FAILURE);
+    }
+
+    printf("protocol ID = '%s'\n", resPayloadPtr->id);
+    printf("max message size = %" PRIuS" bytes\n", resPayloadPtr->maxPayloadSize);
+
+    exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Positional argument callback function that gets called with the CLIENT_IF argument from the
  * command line.
  **/
@@ -914,6 +937,11 @@ static void CommandArgHandler
     if (strcmp(CommandPtr, "bind") == 0)
     {
         le_arg_AddPositionalCallback(ClientIfArgHandler);
+        le_arg_AddPositionalCallback(ServerIfArgHandler);
+    }
+    // The get service info command expects one argument: the server interface.
+    else if (strcmp(CommandPtr, "get") == 0)
+    {
         le_arg_AddPositionalCallback(ServerIfArgHandler);
     }
 }
@@ -990,6 +1018,10 @@ COMPONENT_INIT
     else if (strcmp(CommandPtr, "bind") == 0)
     {
         Bind();
+    }
+    else if (strcmp(CommandPtr, "get") == 0)
+    {
+        Get();
     }
     else
     {

@@ -5,6 +5,7 @@
  * <hr>
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef LE_SOCKET_COMMON_H
@@ -17,8 +18,9 @@
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    TCP_TYPE,
-    UDP_TYPE
+    TCP_TYPE = 0,
+    UDP_TYPE,
+    UNKNOWN_TYPE
 }
 SocketType_t;
 

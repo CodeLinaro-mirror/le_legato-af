@@ -36,7 +36,7 @@
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m
+TARGETS := localhost simulation ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm sa415m sa515m sa525m
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
@@ -105,7 +105,7 @@ export TARGET
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 ifneq ($(TARGET),nothing)
   $(info Building Legato for target '$(TARGET)', telAf path '$(TELAF_ROOT)')
-  ifneq ($(findstring $(TARGET), sa415m sa515m),)
+  ifneq ($(findstring $(TARGET), sa415m sa515m sa525m),)
     export DISABLE_SMACK=1
     $(info DISABLE_SMACK->'$(DISABLE_SMACK)' for target '$(TARGET)')
   endif
@@ -150,30 +150,35 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
   override STAGE_SYSTOIMG := stage_systoimgro
 endif
 
+export GCC_PREFIX := $(GCC_PREFIX)
 export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
+ifeq ($(TARGET),sa525m)
+  ifneq ($(findstring oemllib32, $(GCC_PREFIX)),)# sa525m-32bit
+    MKTOOLS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+    MKTOOLS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+    export ARCH_CFLAGS := -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard
+  else # sa525m-64bit
+    MKTOOLS_FLAGS += -C -march=armv8-a
+    MKTOOLS_FLAGS += -X -march=armv8-a -X -std=c++11 -X -lstdc++
+    export ARCH_CFLAGS := -march=armv8-a
+    export LEGATO_TARGET_ARCH := armv8
+  endif
+
+else ifeq ($(TARGET),simulation)
+  MKTOOLS_FLAGS += $(MKTOOLS_FLAGS_SIMULATION_EX)
+
+else ifeq ($(TARGET),localhost)
+# nothing to do for localhost
+
+else # sa415m, sa515m
+  MKTOOLS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
+  MKTOOLS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
+  export ARCH_CFLAGS := -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard
+endif
+
 export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
 export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
 export MKEXE_FLAGS=$(MKTOOLS_FLAGS)
-
-# Fix me later, add hardware float point support
-#MKEXE_FLAGS += -mfpu=neon -mfloat-abi=hard
-ifeq ($(TARGET),sa415m)
-  MKEXE_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKEXE_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-  MKAPP_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKAPP_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-  MKSYS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKSYS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-endif
-
-ifeq ($(TARGET),sa515m)
-  MKEXE_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKEXE_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-  MKAPP_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKAPP_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-  MKSYS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
-  MKSYS_FLAGS += -L -mfloat-abi=hard -L -mfpu=neon -X -mfloat-abi=hard -X -mfpu=neon -X -march=armv7-a -X -mthumb -X -std=c++11 -X -lstdc++
-endif
 
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
@@ -193,6 +198,8 @@ endif
 
 # Target architecture for tests
 ifeq ($(TARGET),localhost)
+  export LEGATO_TARGET_ARCH := $(shell uname -m)
+else ifeq ($(TARGET),simulation)
   export LEGATO_TARGET_ARCH := $(shell uname -m)
 endif
 
@@ -241,6 +248,11 @@ endif
 
 ifneq ($(TARGET),nothing)
   ifeq ($(TARGET),localhost)
+    export LEGATO_KERNELROOT    :=
+    export LEGATO_SYSROOT       :=
+    export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))
+    export TOOLCHAIN_PREFIX     :=
+  else ifeq ($(TARGET),simulation)
     export LEGATO_KERNELROOT    :=
     export LEGATO_SYSROOT       :=
     export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))

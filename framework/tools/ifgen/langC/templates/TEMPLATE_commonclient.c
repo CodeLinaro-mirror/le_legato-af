@@ -214,7 +214,7 @@ LE_SHARED void ifgen_{{apiBaseName}}_CleanupCommonData
         while ( result == LE_OK )
         {
             clientDataPtr = le_ref_GetValue(iterRef);
-            if ( _ifgen_sessionRef == clientDataPtr->callersSessionRef )
+            if ( clientDataPtr != NULL && _ifgen_sessionRef == clientDataPtr->callersSessionRef )
             {
                 LE_DEBUG("Found client session ref %p; match found, so needs cleanup",
                          clientDataPtr->callersSessionRef);

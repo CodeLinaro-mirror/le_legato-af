@@ -330,12 +330,17 @@ le_result_t resLim_SetAppLimits
                 return LE_FAULT;
 
             case LE_DUPLICATE:
+#ifndef LE_CONFIG_TARGET_SIMULATION
                 // Try to delete the cgroup.
                 if (cgrp_Delete(subSys, appNamePtr) != LE_OK)
                 {
                     return LE_FAULT;
                 }
-
+#else
+                // For simulation, maybe multi-docker container run at the same time.
+                // So we should keep the cgroup-item here, just ignore them.
+                subSys++;
+#endif
                 // Go on and try to create it again.
                 break;
 

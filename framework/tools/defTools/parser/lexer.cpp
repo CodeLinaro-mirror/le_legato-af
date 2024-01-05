@@ -2072,7 +2072,6 @@ void Lexer_t::PullCapabilityName
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Pull the name of an IPC agent (user or app) from the input file and store it in the token.

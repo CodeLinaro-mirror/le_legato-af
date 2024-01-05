@@ -95,6 +95,7 @@
  * <hr>
  *
  * Copyright (C) Sierra Wireless Inc.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -173,9 +174,8 @@ typedef void (*le_socket_EventHandler_t)
  * Create a a socket reference and stores the user configuration in a dedicated context.
  *
  * @note
- *  - PDP source address (srcAddr) can be set to Null. In this case, the default PDP profile will
- *    be used and the address family will be selected in the following order: Try IPv4 first, then
- *    try IPv6
+ *    hostPtr must be set to specify the server IP or name for a client socket.
+ *    It can be NULL for a server socket.
  *
  * @return
  *  - Reference to the created context
@@ -271,7 +271,7 @@ LE_SHARED le_result_t le_socket_Disconnect
 LE_SHARED le_result_t le_socket_Send
 (
     le_socket_Ref_t  ref,        ///< [IN] Socket context reference
-    char*            dataPtr,    ///< [IN] Data pointer
+    const char*      dataPtr,    ///< [IN] Data pointer
     size_t           dataLen     ///< [IN] Data length
 );
 
@@ -290,7 +290,7 @@ LE_SHARED le_result_t le_socket_Send
 LE_SHARED le_result_t le_socket_Read
 (
     le_socket_Ref_t  ref,        ///< [IN] Socket context reference
-    char*            dataPtr,    ///< [IN] Read buffer pointer
+    char*            dataPtr,    ///< [OUT] Read buffer pointer
     size_t*          dataLenPtr  ///< [INOUT] Input: size of the buffer. Output: data size read
 );
 
@@ -381,6 +381,119 @@ LE_SHARED le_result_t le_socket_AddEventHandler
 LE_SHARED le_result_t le_socket_TrigMonitoring
 (
     le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a server reception by Binding to a specified address and port.
+ *
+ * @note It will do listen operation if socket type is TCP.
+ *
+ * @return
+ *  - LE_OK               Function success
+ *  - LE_BAD_PARAMETER    Invalid parameter
+ *  - LE_FAULT            Internal error
+ *  - LE_UNAVAILABLE      Unable to reach the server or DNS issue
+ *  - LE_COMM_ERROR       Socket failure
+ *  - LE_NOT_PERMITTED    Function not permitted
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_Bind
+(
+    le_socket_Ref_t    ref       ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Receive a connection from remote client.
+ * It will generate a child socket reference for reception and sending on the connection.
+ *
+ * @return
+ *  - Reference to the client socket    Success
+ *  - NULL                              Failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_socket_Ref_t le_socket_Accept
+(
+    le_socket_Ref_t   serverRef,        ///< [IN]  Server socket reference.
+    char*             clientAddrBufPtr, ///< [OUT] Client's IP address buffer pointer.
+    size_t            clientAddrBufLen, ///< [IN] Size of the client's IP address buffer.
+    int*              clientPort        ///< [OUT] Client's port number.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Join a multicast address to the socket reference. So it can receive multicast packets.
+ *
+ * @note Multicast IP address shall be set in legal scope.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_UNAVAILABLE   Unable to reach the server or DNS issue
+ *  - LE_FAULT         Internal error
+ *  - LE_COMM_ERROR    Socket failure
+ *  - LE_NOT_PERMITTED Function not permitted
+ *  - LE_CLOSED           Socket resource closed or not created
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_JoinMulticastGroup
+(
+    le_socket_Ref_t     ref,         ///< [IN] Socket context reference
+    const char*         mcAddrPtr    ///< [IN] Multicast IP address
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Receive data from the socket and output peer address.
+ *
+ * @note Only supported for UDP type
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_PERMITTED Function not permitted
+ *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_FAULT         Internal error
+ *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
+ *  - LE_CLOSED        Socket resource closed or not created.
+ *  - LE_OVERFLOW      Ip address buffer is overflow
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_RecvFrom
+(
+    le_socket_Ref_t  ref,           ///< [IN] Socket context reference
+    char*            dataPtr,       ///< [OUT] Data buffer pointer
+    size_t*          dataLenPtr,    ///< [INOUT] Input: size of the data buffer.
+                                    ///<         Output: data size is read
+    char*            ipAddrBufPtr,  ///< [OUT] Peer address pointer
+    size_t           ipAddrBufLen,  ///< [IN] Size of peer address buffer.
+    uint16_t*        portPtr        ///< [OUT] Peer port
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send data to the peer address.
+ *
+ * @note Only supported for UDP type
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_PERMITTED Function not permitted
+ *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_FAULT         Internal error
+ *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
+ *  - LE_CLOSED        Socket resource closed or not created.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SendTo
+(
+    le_socket_Ref_t  ref,           ///< [IN] Socket context reference
+    const char*      dataPtr,       ///< [IN] Data buffer pointer
+    size_t           dataLen,       ///< [IN] Data length
+    const char*      ipAddrPtr,     ///< [IN] Peer address pointer
+    uint16_t         port           ///< [IN] Peer port
 );
 
 #endif  // LE_SOCKET_LIB_H

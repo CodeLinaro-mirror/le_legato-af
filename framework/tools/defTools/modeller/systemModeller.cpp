@@ -141,6 +141,10 @@ static void ModelAppOverrides
         {
             SetStart(appPtr, ToSimpleSectionPtr(subsectionPtr));
         }
+        else if (subsectionName == "startGroup")
+        {
+            appPtr->startGroup = GetNonNegativeInt(ToSimpleSectionPtr(subsectionPtr));
+        }
         else if (subsectionName == "watchdogAction")
         {
             SetWatchdogAction(appPtr, ToSimpleSectionPtr(subsectionPtr));

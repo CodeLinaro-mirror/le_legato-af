@@ -18,6 +18,7 @@
 #include "sysPaths.h"
 #include <sys/ptrace.h>
 #include <unistd.h>
+#include <sys/user.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -92,35 +93,69 @@ FileAccessSysCall_t;
 //--------------------------------------------------------------------------------------------------
 static const FileAccessSysCall_t FileAccessSysCalls[] =
 {
+#ifdef __NR_open
     {__NR_open,             0,      "open"},
+#endif
     {__NR_openat,           1,      "openat"},
+#ifdef __NR_creat
     {__NR_creat,            0,      "creat"},
+#endif
+#ifdef __NR_link
     {__NR_link,             0,      "link"},
+#endif
+#ifdef __NR_unlink
     {__NR_unlink,           0,      "unlink"},
+#endif
     {__NR_execve,           0,      "execve"},
     {__NR_chdir,            0,      "chdir"},
+#ifdef __NR_mknod
     {__NR_mknod,            0,      "mknod"},
+#endif
+#ifdef __NR_chmod
     {__NR_chmod,            0,      "chmod"},
+#endif
+#ifdef __NR_lchown
     {__NR_lchown,           0,      "lchown"},
+#endif
     {__NR_mount,            0,      "mount"},
+#ifdef __NR_access
     {__NR_access,           0,      "access"},
+#endif
+#ifdef __NR_rename
     {__NR_rename,           0,      "rename"},
+#endif
+#ifdef __NR_mkdir
     {__NR_mkdir,            0,      "mkdir"},
+#endif
+#ifdef __NR_rmdir
     {__NR_rmdir,            0,      "rmdir"},
+#endif
     {__NR_acct,             0,      "acct"},
     {__NR_umount2,          0,      "umount2"},
     {__NR_chroot,           0,      "chroot"},
+#ifdef __NR_symlink
     {__NR_symlink,          0,      "symlink"},
+#endif
+#ifdef __NR_readlink
     {__NR_readlink,         0,      "readlink"},
+#endif
+#ifdef __NR_uselib
     {__NR_uselib,           0,      "uselib"},
+#endif
     {__NR_swapon,           0,      "swapon"},
     {__NR_truncate,         0,      "truncate"},
     {__NR_statfs,           0,      "statfs"},
+#ifdef __NR_stat
     {__NR_stat,             0,      "stat"},
+#endif
+#ifdef __NR_lstat
     {__NR_lstat,            0,      "lstat"},
+#endif
     {__NR_swapoff,          0,      "swapoff"},
     {__NR_quotactl,         1,      "quotactl"},
+#ifdef __NR_chown
     {__NR_chown,            0,      "chown"},
+#endif
     {__NR_setxattr,         0,      "setxattr"},
     {__NR_lsetxattr,        0,      "lsetxattr"},
     {__NR_getxattr,         0,      "getxattr"},
@@ -1017,6 +1052,7 @@ static bool IsDevice
  *      NULL otherwise.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef __NR_open
 static File_t* FindPathInList
 (
     const char* pathPtr,            ///< [IN] App reference.
@@ -1039,7 +1075,7 @@ static File_t* FindPathInList
 
     return NULL;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1050,6 +1086,7 @@ static File_t* FindPathInList
  * @note This function should only be called if the tracee is in an open() sys call.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef __NR_open
 static void GetOpenSysCallPermStr
 (
     pid_t pid,              ///< [IN] Process that made the system call.
@@ -1099,13 +1136,14 @@ static void GetOpenSysCallPermStr
             break;
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the permission for the device file.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef __NR_open
 static void SetDevicePermissions
 (
     pid_t pid,              ///< [IN] Process that made the system call.
@@ -1125,7 +1163,7 @@ static void SetDevicePermissions
         }
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1150,11 +1188,12 @@ static bool IsLinkException
 
     // readlink(/proc/self/exe) is done by the dynamic linker and is generally not needed in a
     // sanbox.
+#ifdef __NR_readlink
     if ( (sysCallNum == __NR_readlink) && (strcmp(pathPtr, "/proc/self/exe") == 0) )
     {
         return true;
     }
-
+#endif
     return false;
 }
 
@@ -1170,12 +1209,14 @@ static void HandleSysCall
 )
 {
     // Read the register for this system call.
-    Registers_t regs;
+    Registers_t regs = { 0 };
 
+#ifdef PTRACE_GETREGS
     if (Ptrace(PTRACE_GETREGS, pid, NULL, &regs) == LE_NOT_FOUND)
     {
         return;
     }
+#endif
 
     // Get the system call number.
     int callNum = GetSysCallNum(&regs);
@@ -1201,6 +1242,7 @@ static void HandleSysCall
             return;
         }
 
+#ifdef __NR_open
         // Set permissions for devices that have already been added to the app's working dir.
         if ( (callNum == __NR_open) && (IsDevice(path)) )
         {
@@ -1211,6 +1253,7 @@ static void HandleSysCall
                 SetDevicePermissions(pid, &regs, filePtr);
             }
         }
+#endif
 
         if (CanAddFile(AppNamePtr, path))
         {
@@ -1236,11 +1279,12 @@ static void HandleSysCall
                 {
                     // Add the file to the list of added devices.
                     le_sls_Queue(&AddedDevicesList, &(filePtr->link));
-
+#ifdef __NR_open
                     if (callNum == __NR_open)
                     {
                         SetDevicePermissions(pid, &regs, filePtr);
                     }
+#endif
                 }
                 else
                 {

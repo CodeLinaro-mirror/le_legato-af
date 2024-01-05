@@ -277,8 +277,7 @@ bool ima_IsEnabled
     void
 )
 {
-
-    int exitCode = system("(zcat /proc/config.gz | grep CONFIG_IMA=y) &&"
+    int exitCode = system("(zcat /proc/config.gz 2> /dev/null | grep CONFIG_IMA=y) &&"
                           " (cat /proc/cmdline | grep \"ima_appraise=enforce\")");
 
     return WIFEXITED(exitCode) && (0 == WEXITSTATUS(exitCode));

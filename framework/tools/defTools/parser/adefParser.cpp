@@ -612,6 +612,7 @@ static parseTree::CompoundItem_t* ParseSection
         || (sectionName == "maxMQueueBytes")
         || (sectionName == "maxQueuedSignals")
         || (sectionName == "maxThreads")
+        || (sectionName == "startGroup")
         || (sectionName == "maxSecureStorageBytes") )
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
@@ -643,6 +644,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "capability")
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::CAPABILITY_NAME);
+    }
+    else if (sectionName == "username")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);
     }
     else if (sectionName == "processes")
     {

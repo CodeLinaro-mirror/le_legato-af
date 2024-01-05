@@ -73,6 +73,11 @@ config TARGET_LOCALHOST
   ---help---
   Run on local Linux host.
 
+config TARGET_SIMULATION
+  bool "Simulation (TelAF Simulation)"
+  ---help---
+  Run simulation on Linux host.
+
 config TARGET_VIRT_X86
   bool "Virtual x86 (virt-x86)"
   ---help---
@@ -152,6 +157,14 @@ config TARGET_SA515M
   select SA515M
   ---help---
   Run on QCT SA515M.
+
+# For SA525M
+config TARGET_SA525M
+  bool "QCT SA525M (SA525M)"
+  select SIMU
+  select SA525M
+  ---help---
+  Run on QCT SA525M.
 
 config TARGET_WP77XX
   bool "SWI WP77xx (wp77xx)"
@@ -249,6 +262,7 @@ config SDEF
   default "modules/Dualsys/ar759x.sdef" if TARGET_AR759X
   default "modules/Raspi/raspi.sdef" if TARGET_RASPI
   default "localhost.sdef" if TARGET_LOCALHOST
+  default "simulation.sdef" if TARGET_SIMULATION
   default "default_readonly.sdef" if READ_ONLY
   default "default.sdef"
   ---help---
@@ -279,7 +293,7 @@ config CCACHE
 
 config READ_ONLY
   bool "Read-only image"
-  default y if TARGET_AR758X || TARGET_AR759X || TARGET_SA415M || TARGET_SA515M
+  default y if TARGET_AR758X || TARGET_AR759X || TARGET_SA415M || TARGET_SA515M || TARGET_SA525M || TARGET_SIMULATION
   default n
   ---help---
   Generate a read-only image for the target, in addition to the default

@@ -56,6 +56,8 @@ static void GenerateAppLimitsConfig
 
     cfgStream << "  \"maxThreads\" [" << appPtr->maxThreads.Get() << "]" << std::endl;
 
+    cfgStream << "  \"startGroup\" [" << appPtr->startGroup.Get() << "]" << std::endl;
+
     cfgStream << "  \"maxMQueueBytes\" [" << appPtr->maxMQueueBytes.Get() << "]"
               << std::endl;
 
@@ -65,6 +67,11 @@ static void GenerateAppLimitsConfig
     cfgStream << "  \"maxMemoryBytes\" [" << appPtr->maxMemoryBytes.Get() << "]" << std::endl;
 
     cfgStream << "  \"cpuShare\" [" << appPtr->cpuShare.Get() << "]" << std::endl;
+
+    if (appPtr->username != "")
+    {
+        cfgStream << "  \"username\" \"" << appPtr->username << "\"" << std::endl;
+    }
 
     if (appPtr->maxFileSystemBytes.IsSet())
     {
@@ -135,7 +142,7 @@ static void GenerateCapabilityConfig
 {
     const auto& capabilityList = appPtr->capability;
 
-    // If the groups list is empty, nothing needs to be done.
+    // If the capability list is empty, nothing needs to be done.
     if (capabilityList.empty())
     {
         return;
@@ -153,7 +160,6 @@ static void GenerateCapabilityConfig
 
     cfgStream << "  }" << std::endl << std::endl;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------

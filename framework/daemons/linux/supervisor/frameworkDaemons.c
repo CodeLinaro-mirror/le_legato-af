@@ -63,7 +63,8 @@ static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", 
                                           {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
                                           {SYSTEM_BIN_PATH "/configTree", -1},
                                           {SYSTEM_BIN_PATH "/updateDaemon", -1},
-                                          {SYSTEM_BIN_PATH "/watchdog", -1} };
+                                          {SYSTEM_BIN_PATH "/watchdog", -1},
+                                          {SYSTEM_BIN_PATH "/deviceManager", -1} };
 
 
 //--------------------------------------------------------------------------------------------------

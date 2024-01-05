@@ -138,21 +138,4 @@
 #define FS_PREFIX_DATA_PATH      "/data/le_fs"
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Location of the path for backend storage.
- */
-//--------------------------------------------------------------------------------------------------
-#define KS_BASE_PATH     "/persist/tafKeyStoreSvc/keyMaster_pa"
-#define FSC_BASE_PATH     "/persist/tafFSCryptSvc/fscrypt_pa"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Location of the path for the backup copy of internal key file.
- */
-//--------------------------------------------------------------------------------------------------
-#define KS_BACKUP_PATH   "/data/persist/tafKeyStoreSvc/internalKey"
-
-
 #endif  // LEGATO_SYSPATHS_INCLUDE_GUARD

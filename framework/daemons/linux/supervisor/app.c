@@ -62,12 +62,14 @@
 #include "file.h"
 #include "ima.h"
 #include "kernelModules.h"
+#ifdef LE_CONFIG_ENABLE_SELINUX
 #include <semanage/modules.h>
-#include <regex.h>
 #include <selinux/restorecon.h>
+#endif // LE_CONFIG_ENABLE_SELINUX
+#include <linux/securebits.h>
+#include <regex.h>
 #include <sys/mman.h>
 #include <sys/capability.h>
-#include <linux/securebits.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -256,6 +258,8 @@ static const FileLinkObj_t DefaultTmpLinks[] =
  * Files and directories to link into all applications by default for the default system.
  */
 //--------------------------------------------------------------------------------------------------
+#ifndef LE_CONFIG_TARGET_SIMULATION
+
 static const FileLinkObj_t DefaultSystemLinks[] =
 {
     {.src = "/lib/ld-linux-x86-64.so.2", .dest = "/lib/"},
@@ -267,6 +271,25 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libm.so.6", .dest = "/lib/"},
     {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
 };
+
+#else
+
+// Libaries location are different, for Ubuntu20.04 & Ubuntu18.04 as belows.
+static const FileLinkObj_t DefaultSystemLinks[] =
+{
+    {.src = "/lib/x86_64-linux-gnu/libc.so.6", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/librt.so.1", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libdl.so.2", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libgcc_s.so.1", .dest = "/lib/"},
+    {.src = "/lib/x86_64-linux-gnu/libm.so.6", .dest = "/lib/"},
+    {.src = "/usr/lib/x86_64-linux-gnu/libstdc++.so.6", .dest = "/lib/"},
+
+    // Caution: for sandboxed app, we must make some abs path to store dynamic libs in simulation env.
+    {.src = "/lib64/ld-linux-x86-64.so.2", .dest = "/lib64/"},
+    {.src = "/lib/x86_64-linux-gnu/libpthread.so.0", .dest = "/lib/x86_64-linux-gnu/"},
+};
+
+#endif
 
 #elif defined(TARGET_IMPORTS_X86)
 
@@ -326,6 +349,25 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/usr/lib/arm-linux-gnueabihf/libstdc++.so.6", .dest = "/lib/"}
 };
 
+#elif defined(TARGET_IMPORTS_ARMV8)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all applications by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+static const FileLinkObj_t DefaultSystemLinks[] =
+{
+    {.src = "/lib/ld-linux-aarch64.so.1", .dest = "/lib/"},
+    {.src = "/lib/libc.so.6", .dest = "/lib/"},
+    {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
+    {.src = "/lib/librt.so.1", .dest = "/lib/"},
+    {.src = "/lib/libdl.so.2", .dest = "/lib/"},
+    {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
+    {.src = "/lib/libm.so.6", .dest = "/lib/"},
+    {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
+};
+
 #else
 #error No "TARGET_IMPORTS_x" defined.
 #endif
@@ -362,6 +404,7 @@ typedef struct app_Ref
     size_t          numSupplementGids;  // Number of supplementary groups for this app.
     int             capabilities[LIMIT_MAX_NUM_CAPABILITIES];  // List of capabilites.
     size_t          numOfCapabilities;  // Number of capabilities for this app.
+    char*           cfgUser;            // User Name of the application.
     app_State_t     state;              // Applications current state.
     le_dls_List_t   procs;              // List of processes in this application.
     le_dls_List_t   auxProcs;           // List of auxiliary processes in this application.
@@ -537,7 +580,7 @@ static le_result_t StringToLowercase(char *input, char *output, size_t maxSize)
     inputSize = strlen(input);
     if (inputSize >= maxSize)
     {
-        LE_ERROR("inputSize(%d5) is invalid, maxSize is %d", inputSize, maxSize);
+        LE_ERROR("inputSize(%"PRIuS") is invalid, maxSize is %"PRIuS, inputSize, maxSize);
         return LE_BAD_PARAMETER;
     }
 
@@ -665,6 +708,50 @@ static le_result_t GetCapValueFromName(const char* capName, int* valuePtr)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create the username for an application.
+ *
+ * @todo  Make this function just read the username from the configTree
+ *       list into the app object.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void InitAppUserName
+(
+       app_Ref_t appRef
+)
+{
+    // Get an iterator to the capability list in the config
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+    char path[LIMIT_MAX_PATH_LEN] = { 0 };
+    snprintf(path, sizeof(path), "/apps/%s/%s", appRef->name, "username");
+
+    // Read the username from the configTree.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    if (LE_OK != le_cfg_GetString(cfgIter, path, userName, sizeof(userName), ""))
+    {
+        LE_CRIT("Config app userName too long (app name '%s').", appRef->name);
+        le_cfg_CancelTxn(cfgIter);
+        return;
+    }
+
+    if (userName[0] == '\0')
+    {
+        le_cfg_CancelTxn(cfgIter);
+        return;
+    }
+
+    if (appRef->cfgUser == NULL)
+    {
+        appRef->cfgUser = le_mem_ForceAlloc(AppPool);
+        le_utf8_Copy(appRef->cfgUser, userName, LIMIT_MAX_USER_NAME_BYTES, NULL);
+    }
+
+    LE_INFO("Get username (%s) for app '%s' in configTree", appRef->cfgUser, appRef->name);
+    le_cfg_CancelTxn(cfgIter);
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create the capabilities for an application.
  *
  * @todo  Make this function just read the capability from the configTree
@@ -730,7 +817,7 @@ static le_result_t CreateCapList
 
     appRef->numOfCapabilities = i + 1;
     le_cfg_CancelTxn(cfgIter);
-    LE_INFO("Capability list size for '%s': %d", appRef->name, appRef->numOfCapabilities);
+    LE_INFO("Capability list size for '%s': %"PRIuS, appRef->name, appRef->numOfCapabilities);
     return LE_OK;
 }
 
@@ -750,59 +837,29 @@ static le_result_t CreateUserAndGroups
     app_Ref_t appRef        // The app to create user and groups for.
 )
 {
-    // For sandboxed apps,
-    if (appRef->sandboxed)
+    char username[LIMIT_MAX_USER_NAME_BYTES] = { 0 };
+    const char* defaultUserPtr = appRef->sandboxed ? APP_SANDBOXED_USER : APP_UNSANDBOXED_USER;
+
+    // Get the app user in configTree and save it in appRef->cfgUser.
+    InitAppUserName(appRef);
+
+    if ((appRef->cfgUser != NULL) &&
+        (StringToLowercase(appRef->cfgUser, username, LIMIT_MAX_USER_NAME_BYTES) != LE_OK))
     {
-        // Compute the unique user name for the application.
-        char username[LIMIT_MAX_USER_NAME_BYTES];
-        char usernameLowercase[LIMIT_MAX_USER_NAME_BYTES];
-
-        if (user_AppNameToUserName(appRef->name, username, sizeof(username)) != LE_OK)
-        {
-            LE_ERROR("The user name '%s' is too long for app '%s'.", username, appRef->name);
-            return LE_FAULT;
-        }
-
-        if (StringToLowercase(username, usernameLowercase, LIMIT_MAX_USER_NAME_BYTES) != LE_OK)
-        {
-            LE_ERROR("Cound not convert username(%s) to lowercaes", username);
-            return LE_FAULT;
-        }
-
-        // Get the user ID and primary group ID for this app. If fails, get a default uid & gid.
-        if ((user_GetIDs(usernameLowercase, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
-            ((user_GetDefaultIDs(true, &(appRef->uid), &(appRef->gid)) != LE_OK)))
-        {
-            LE_ERROR("Could not get the uid and gid for sandboxed app '%s'.", appRef->name);
-            return LE_FAULT;
-        }
-
-        // Create the supplementary groups...
-        return CreateSupplementaryGroups(appRef);
+        LE_ERROR("Cound not convert username(%s) of app (%s) to lowercaes",
+                 appRef->cfgUser, appRef->name);
+        return LE_FAULT;
     }
-    // For unsandboxed apps,
-    else
+
+    if ((user_GetIDs(username, &(appRef->uid), &(appRef->gid)) != LE_OK) &&
+        (user_GetIDs(defaultUserPtr, &(appRef->uid), &(appRef->gid)) != LE_OK))
     {
-        if (!user_IsTafService(appRef->name))
-        {
-            appRef->uid = 0;
-            appRef->gid = 0;
-        }
-        else
-        {
-            if (user_GetDefaultIDs(false, &(appRef->uid), &(appRef->gid)) != LE_OK)
-            {
-                LE_WARN("Can't get the uid/gid of unsandboxed app '%s', use ROOT instead.",
-                        appRef->name);
-                appRef->uid = 0;
-                appRef->gid = 0;
-            }
-        }
-        // Create the supplementary groups...
-        return CreateSupplementaryGroups(appRef);
+        LE_ERROR("Failed to get the uid/gid of app (%s).", appRef->name);
+        return LE_FAULT;
     }
+
+    return CreateSupplementaryGroups(appRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3609,6 +3666,7 @@ app_Ref_t app_Create
         goto failed;
     }
 
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Enable "notify_on_release" for this app, so the Supervisor will be notified when this app
     // stops.
     // Need to account for the characters other than app name in the path of notify_on_release.
@@ -3618,6 +3676,7 @@ app_Ref_t app_Create
               < sizeof(notifyPath));
 
     file_WriteStr(notifyPath, "1", 0);
+#endif
 
     le_cfg_CancelTxn(cfgIterator);
     return appPtr;
@@ -3707,6 +3766,7 @@ void app_Delete
     le_mem_Release(appRef);
 }
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  *  Overlayfs path for dynamic loading policy
@@ -4076,7 +4136,7 @@ le_result_t semodule_TryInstall
     }
     else
     {
-        LE_INFO("dataPtr: %p, len: %d", dataPtr, dataLen);
+        LE_INFO("dataPtr: %p, len: %"PRIuS, dataPtr, dataLen);
 
         if (stat(sePathPtr, &st) == -1)
         {
@@ -4100,7 +4160,7 @@ le_result_t semodule_TryInstall
         dataPp = malloc(dataLen);
         if (dataPp == NULL)
         {
-             LE_ERROR("Cannot malloc %d from heap", dataLen);
+             LE_ERROR("Cannot malloc %"PRIuS" from heap", dataLen);
              retVal = LE_NOT_POSSIBLE;
              goto module_cleanup;
         }
@@ -4132,7 +4192,7 @@ module_cleanup:
 
     return retVal;
 }
-
+#endif // LE_CONFIG_ENABLE_SELINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Starts an application.
@@ -4183,6 +4243,7 @@ le_result_t app_Start
         return LE_FAULT;
     }
 
+#ifdef LE_CONFIG_ENABLE_SELINUX
     char sePath[LIMIT_M_PATH_BYTES];
     char workPath[LIMIT_M_PATH_BYTES];
     char installPath[LIMIT_M_PATH_BYTES];
@@ -4195,10 +4256,17 @@ le_result_t app_Start
         snprintf(installPath, LIMIT_M_PATH_BYTES, "%s%s%s", appRef->installDirPath, "/", "read-only/");
         semodule_Restore(installPath);
 
+        char realPath[LIMIT_M_PATH_BYTES];
+        if (realpath(installPath, realPath) != NULL)
+        {
+            LE_INFO("Real path for this app: %s", realPath);
+            semodule_Restore(realPath);
+        }
+
         snprintf(workPath, LIMIT_M_PATH_BYTES, "%s%s",appRef->workingDir, "/");
         semodule_Restore(workPath);
     }
-
+#endif // LE_CONFIG_ENABLE_SELINUX
     // Create /tmp for sandboxed apps and link in /tmp files.
     if (appRef->sandboxed)
     {
@@ -4746,6 +4814,43 @@ application '%s'. Restarting app by default.", proc_GetName(procRef), appRef->na
     return LE_OK;
 }
 
+#ifdef LE_CONFIG_TARGET_SIMULATION
+//--------------------------------------------------------------------------------------------------
+/**
+ * In simulation environment (docker container), the cgroup's release_agent strategy is unuseful.
+ * So we should simulate the '_appStopClient' application and send a UDP notification message to
+ * the stop server monitor.
+ *
+ * Caution: This function must be used after 'waitpid', when the child process has been reaped
+ * and legato is working on its own data structures.
+ */
+//--------------------------------------------------------------------------------------------------
+static void notifyAppStopServer(const char *appName)
+{
+    int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (fd == -1) {
+        LE_INFO("Can't be reaped normaly: %s", appName);
+        return;
+    }
+
+    struct sockaddr_un svaddr;
+    memset(&svaddr, 0, sizeof(struct sockaddr_un));
+    svaddr.sun_family = AF_UNIX;
+    le_utf8_Copy(svaddr.sun_path, LE_CONFIG_RUNTIME_DIR "/AppStopServer", sizeof(svaddr.sun_path) - 1, NULL);
+    size_t appNameLen = strlen(appName);
+
+    ssize_t numBytesSent;
+    do
+    {
+        numBytesSent = sendto(fd, appName, appNameLen,
+                            0, (struct sockaddr*)&svaddr, sizeof(struct sockaddr_un));
+    }
+    while ((numBytesSent == -1) && (errno == EINTR));
+
+    close(fd);
+}
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4797,6 +4902,18 @@ void app_SigChildHandler
                         *faultActionPtr = FAULT_ACTION_STOP_APP;
                     }
                 }
+#ifdef LE_CONFIG_TARGET_SIMULATION
+                // Because we don't use the release_agent mechanism in simulation,
+                // here we only deal with data structures maintained by legato
+                // and reap subprocesses. As for the cgroup node, currently
+                // we do not poll here to determine if the cgroup node is empty.
+                // So we should call 'app_HasConfRunningProc', not 'HasRunningProc'.
+                if (! app_HasConfRunningProc(appRef))
+                {
+                    LE_INFO("App (%s) -- N --> [AppStopServer]", appRef->name);
+                    notifyAppStopServer(appRef->name);
+                }
+#endif
                 break;
 
             case FAULT_ACTION_IGNORE:

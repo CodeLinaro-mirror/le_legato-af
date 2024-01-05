@@ -40,7 +40,7 @@ le_result_t appUser_Add
 
     if (result == LE_OK)
     {
-        printf("Created user '%s' (uid %u, gid %u).\n", userName, uid, gid);
+        LE_INFO("Created user '%s' (uid %u, gid %u).\n", userName, uid, gid);
 
         // TODO: Groups configuration.
 
@@ -50,13 +50,13 @@ le_result_t appUser_Add
     {
         // TODO: Verify correct groups configuration.
 
-        printf("User '%s' already exists (uid %u, gid %u).\n", userName, uid, gid);
+        LE_INFO("User '%s' already exists (uid %u, gid %u).\n", userName, uid, gid);
 
         return LE_OK;
     }
     else
     {
-        fprintf(stderr, "** ERROR: user_Create() failed for user '%s'.\n", userName);
+        LE_ERROR("** ERROR: user_Create() failed for user '%s'.\n", userName);
     }
 
     return LE_FAULT;
