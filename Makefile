@@ -40,10 +40,16 @@ TARGETS := localhost simulation ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
-export TELAF_ROOT := $(TELAF_ROOT_SET)
+export TELAF_ROOT ?= NOT_FOUND_TELAF
 
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
+
+# If BUILD_FLAVOR environment variable is not defined, set it to default
+ifndef BUILD_FLAVOR
+  export BUILD_FLAVOR=default
+endif
+$(info BUILD_FLAVOR: $(BUILD_FLAVOR))
 
 # ========== TARGET DETERMINATION ============
 
@@ -416,7 +422,10 @@ ALL_SAMPLES_$(LE_CONFIG_JAVA) += samples_java
 
 # Generate an initial KConfig from the environment.  This rule translates the old configuration
 # method using environment variables into an initial KConfig set.
-$(LEGATO_ROOT)/.config.$(TARGET): $(shell find . -name 'KConfig' -o -name '*.kconfig')
+ALL_KCONFIG :=  $(shell find . -name 'KConfig' -o -name '*.kconfig') \
+                $(shell find $(TELAF_ROOT) -name 'KConfig' -o -name '*.kconfig' 2> /dev/null)
+
+$(LEGATO_KCONFIG): $(ALL_KCONFIG)
 ifeq ($(KNOWN_TARGET),1)
 	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
 	$(Q)KCONFIG_CONFIG=$@ $(SETCONFIG_TOOL) --kconfig=KConfig "TARGET_$(TARGET_CAPS)=y" $(VOUTPUT)

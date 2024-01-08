@@ -59,12 +59,20 @@ DaemonObj_t;
  */
 //--------------------------------------------------------------------------------------------------
 
+#if ! defined (LE_CONFIG_FLAVOR_LXC)
 static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", -1},
                                           {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
                                           {SYSTEM_BIN_PATH "/configTree", -1},
                                           {SYSTEM_BIN_PATH "/updateDaemon", -1},
                                           {SYSTEM_BIN_PATH "/watchdog", -1},
                                           {SYSTEM_BIN_PATH "/deviceManager", -1} };
+#else
+static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", -1},
+                                          {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
+                                          {SYSTEM_BIN_PATH "/configTree", -1},
+                                          {SYSTEM_BIN_PATH "/updateDaemon", -1},
+                                          {SYSTEM_BIN_PATH "/watchdog", -1} };
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
