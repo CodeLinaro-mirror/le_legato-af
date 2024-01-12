@@ -151,6 +151,13 @@ config ENABLE_ECALL_MSD_V3
   ---help---
   Enable eCall msd version three support.
 
+config ENABLE_ECALL_MSD_OPTIONAL_DATA
+  bool "Enable eCall msd optional data support"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable eCall msd optional data support.
+
 config ENABLE_THERMAL_GET_TRIP_ID
   bool "Enable getting trip ID"
   default n if TARGET_SA515M

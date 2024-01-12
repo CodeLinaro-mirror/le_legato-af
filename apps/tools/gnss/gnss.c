@@ -65,6 +65,8 @@
  */
 //-------------------------------------------------------------------------------------------------
 static le_gnss_PositionHandlerRef_t PositionHandlerRef;
+static taf_gnss_CapabilityChangeHandlerRef_t CapabilityHandlerRef;
+static taf_gnss_NmeaHandlerRef_t NmeaHandlerRef;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -97,7 +99,9 @@ void PrintGnssHelp
          "\t\t\tgnss set constellation <ConstellationType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
+         "\t\t\tgnss set nmeaConfig <nmeaMask> <datumType> <engineType>\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
+         "\t\t\tgnss set minGpsWeek <minGpsWeek in weeks>\n"
          "\t\t\tgnss set startMode <StartMode>\n"
          "\t\t\t\t  be as follows:\n"
          "\t\t\t\t\t- 0 ---> HOT\n"
@@ -105,6 +109,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- 2 ---> COLD\n"
          "\t\t\t\t\t- 3 ---> FACTORY\n"
          "\t\t\t\t\t- 4 ---> UNKNOWN\n"
+         "\t\t\tgnss capwatch [WatchPeriod in seconds]\n"
+         "\t\t\tgnss nmeawatch [WatchPeriod in seconds]\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n\n"
          "\t\tDESCRIPTION:\n"
          "\t\t\tgnss help\n"
@@ -175,6 +181,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- acqRate       --> Acquisition Rate (unit milliseconds)\n"
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
+         "\t\t\t\t\t- minGpsWeek    --> Minimum GPS week in weeks\n"
+         "\t\t\t\t\t- locCap        --> Get location capabilities\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
          "\t\t\t\t\t- secondBandConst --> Secondary band Constellations\n"
          "\t\t\t\t\t- robustloc     --> Robust location information\n"
@@ -216,6 +224,7 @@ void PrintGnssHelp
          "\t\t\t\t\t                    Vertical Speed, Vertical Speed accuracy)\n"
          "\t\t\t\t\t- direction     --> Direction indication\n"
          "\t\t\t\t\t- satInfo       --> Satellites Vehicle information\n"
+         "\t\t\t\t\t- satInfoEx     --> Extended Satellites Vehicle information\n"
          "\t\t\t\t\t- satStat       --> Satellites Vehicle status\n"
          "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position. Displayed\n"
          "\t\t\t\t\t-               in all resolutions: (0 to 3 digits after the decimal point) \n"
@@ -243,6 +252,7 @@ void PrintGnssHelp
          "\t\t\t\t- Used to set acquisition rate.\n"
          "\t\t\t\t  Please note that it is available when the device is 'ready' state.\n\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
+         "\t\t\tgnss set nmeaConfig <nmeaMask> <datumType> <engineType>\n"
          "\t\t\t\t- Used to set the enabled NMEA sentences. \n"
          "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
          "\t\t\t\t- Used to set nmea sentences. Allowed when device in 'ready' state. May require\n"
@@ -261,8 +271,17 @@ void PrintGnssHelp
          "\t\t\t\t\t- 400 ----> GBGSV\n"
          "\t\t\t\t\t- 800 ----> GIGSV\n"
          "\t\t\t\t\t- FFFFFFFF ---> ALL\n"
+         "\t\t\t\t  datumType can be as follows:\n"
+         "\t\t\t\t- 0-GEODETIC_TYPE_WGS_84\n"
+         "\t\t\t\t- 1-GEODETIC_TYPE_PZ_90\n"
+         "\t\t\t\t  engineType can be as follows:\n"
+         "\t\t\t\t- 0-LOC_ENGINE_FUSED\n"
+         "\t\t\t\t- 1-LOC_ENGINE_SPE\n"
+         "\t\t\t\t- 2-LOC_ENGINE_PPE\n"
+         "\t\t\t\t- 3-LOC_ENGINE_VPE\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
+         "\t\t\tgnss set minGpsWeek <minGpsWeek value>\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
@@ -720,6 +739,234 @@ static int SetMinElevation
             break;
         default:
             printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function sets the minimum GPS week.
+ *
+ * @return
+ *  - LE_OK             Succeeded.
+ *  - LE_FAULT          Failed.
+ *  - LE_NO_MEMORY      The minGpsWeekPtr is NULL.
+ *  - LE_NOT_PERMITTED  The GNSS device state is not ready.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetMinGpsWeek
+(
+    const char* minGpsWeekPtr           ///< [IN] Minimum GPS week
+)
+{
+    char *end;
+    uint16_t minGpsWeek = strtoul(minGpsWeekPtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad minimum GPS week: %s\n", minGpsWeekPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetMinGpsWeek(minGpsWeek);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set the minimum GPS week\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the minimum GPS week.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetMinGpsWeek
+(
+    void
+)
+{
+    uint16_t  minGpsWeek;
+    le_result_t result = le_gnss_GetMinGpsWeek(&minGpsWeek);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Minimum GPS week: %d\n", minGpsWeek);
+            break;
+        case LE_FAULT:
+            printf("Failed to get the minimum GPS week. See logs for details\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+void DisplayCapabilities(taf_gnss_LocCapabilityType_t capabilityMask) {
+  printf("\n************* Capabilities Information *************\n");
+  printf("The location capabilities bit mask: %xlu\n", capabilityMask);
+  if (capabilityMask & TAF_GNSS_TIME_BASED_TRACKING) {
+    printf("Time based tracking\n");
+  }
+  if (capabilityMask & TAF_GNSS_DISTANCE_BASED_TRACKING) {
+    printf("Distance based tracking\n");
+  }
+  if (capabilityMask & TAF_GNSS_GNSS_MEASUREMENTS) {
+    printf("GNSS Measurement\n");
+  }
+  if (capabilityMask & TAF_GNSS_CONSTELLATION_ENABLEMENT) {
+    printf("Constellation enablement\n");
+  }
+  if (capabilityMask & TAF_GNSS_CARRIER_PHASE) {
+    printf("Carrier phase\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_GNSS_SINGLE_FREQUENCY) {
+    printf("QWES GNSS single frequency\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_GNSS_MULTI_FREQUENCY) {
+    printf("QWES GNSS multi frequency\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_VPE) {
+    printf("QWES VPE\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_CV2X_LOCATION_BASIC) {
+    printf("QWES CV2X location basic\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_CV2X_LOCATION_PREMIUM) {
+    printf("QWES CV2X location premium\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_PPE) {
+    printf("QWES PPE\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_QDR2) {
+    printf("QWES QDR2\n");
+  }
+  if (capabilityMask & TAF_GNSS_QWES_QDR3) {
+    printf("QWES QDR3\n");
+  }
+  if (capabilityMask & TAF_GNSS_TIME_BASED_BATCHING) {
+    printf("TIME_BASED_BATCHING\n");
+  }
+  if (capabilityMask & TAF_GNSS_DISTANCE_BASED_BATCHING) {
+    printf("DISTANCE_BASED_BATCHING\n");
+  }
+  if (capabilityMask & TAF_GNSS_GEOFENCE) {
+    printf("GEOFENCE\n");
+  }
+  if (capabilityMask & TAF_GNSS_OUTDOOR_TRIP_BATCHING) {
+    printf("OUTDOOR_TRIP_BATCHING\n");
+  }
+  if (capabilityMask & TAF_GNSS_SV_POLYNOMIAL) {
+    printf("SV_POLYNOMIAL\n");
+  }
+  if (capabilityMask & TAF_GNSS_NLOS_ML20) {
+    printf("NLOS_ML20\n");
+  }
+  printf("****************************************************\n");
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the location capabilities.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetCapabilities
+(
+    void
+)
+{
+    uint64_t  locCapability;
+    le_result_t result = le_gnss_GetCapabilities(&locCapability);
+
+    switch (result)
+    {
+        case LE_OK:
+            DisplayCapabilities(locCapability);
+            break;
+        case LE_FAULT:
+            printf("Failed to get the location capabilities. See logs for details\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function configure the NMEA sentences.
+ *
+ * @return
+ *  - LE_OK             Succeeded.
+ *  - LE_BAD_PARAMETER  the nmeaMask is zero.
+ *  - LE_FAULT          Failed.
+ *  - LE_NOT_PERMITTED  GNSS device is not ready.
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetNmeaConfiguration
+(
+    const char* nmeaMaskPtr,           ///< [IN] Enabled NMEA sentences bit mask
+    const char* datumTypePtr,          ///< [IN] Specify the datum type to be configured.
+    const char* engineTypePtr          ///< [IN] Specify the engine type to be configured.
+)
+{
+    int nmeaMask = le_hex_HexaToInteger(nmeaMaskPtr);
+    int datumType = le_hex_HexaToInteger(datumTypePtr);
+    int engineType = le_hex_HexaToInteger(engineTypePtr);
+
+    LE_INFO("SetNmeaConfiguration nmeaMask: %d, datumType: %d, engineType: %d",nmeaMask, datumType, engineType);
+
+    le_result_t result = le_gnss_SetNmeaConfiguration(nmeaMask, (le_gnss_GeodeticDatumType_t) datumType, engineType);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Successfully enabled the NMEA!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set NMEA. See logs for details\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Failed to set NMEA, incompatible bit mask\n");
+            break;
+       case LE_NOT_PERMITTED:
+            printf("SetNmeaConfiguration: GNSS is not in ready state!\n");
+            break;
+        default:
+            printf("Failed to set NMEA, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
             break;
     }
 
@@ -1283,7 +1530,7 @@ static int GetTtff
     switch (result)
     {
         case LE_OK:
-            printf("TTFF(Time to First Fix) = %ums\n", ttff);
+            printf("TTFF(Time to First Fix)   : %ums\n", ttff);
             break;
         case LE_BUSY:
             printf("TTFF not calculated (Position not fixed)\n");
@@ -1970,11 +2217,11 @@ static int GetPosState
                                                    &state);
     if (result == LE_OK)
     {
-        printf("Position state: %s\n", (state == LE_GNSS_STATE_FIX_NO_POS)?"No Fix"
-                                     : (state == LE_GNSS_STATE_FIX_2D)?"2D Fix"
-                                     : (state == LE_GNSS_STATE_FIX_3D)?"3D Fix"
-                                     : (state == LE_GNSS_STATE_FIX_ESTIMATED)?"Estimated Fix"
-                                     : "Invalid");
+        printf("Position state            : %s\n", (state == LE_GNSS_STATE_FIX_NO_POS)?"No Fix"
+                                          : (state == LE_GNSS_STATE_FIX_2D)?"2D Fix"
+                                          : (state == LE_GNSS_STATE_FIX_3D)?"3D Fix"
+                                          : (state == LE_GNSS_STATE_FIX_ESTIMATED)?"Estimated Fix"
+                                          : "Invalid");
     }
     else
     {
@@ -2056,8 +2303,8 @@ static int GetAltitude
 
     if(result == LE_OK)
     {
-        printf("Altitude  : %.3fm\n"
-               "vAccuracy : %.1fm\n",
+        printf("Altitude                  : %.3fm\n"
+               "vAccuracy                 : %.1fm\n",
                (float)altitude/1e3,
                (float)vAccuracy/10.0);
     }
@@ -2134,7 +2381,7 @@ static int GetGpsTime
 
     if (result == LE_OK)
     {
-        printf("GPS time, Week %02d:TimeOfWeek %d ms\n",
+        printf("GPS time                  : Week %02d, TimeOfWeek %d ms\n",
                 gpsWeek,
                 gpsTimeOfWeek);
     }
@@ -2179,7 +2426,7 @@ static int GetTime
 
     if (result == LE_OK)
     {
-        printf("Time(HH:MM:SS:MS) %02d:%02d:%02d:%03d\n",
+        printf("Time(HH:MM:SS:MS)         : %02d:%02d:%02d:%03d\n",
                 hours,
                 minutes,
                 seconds,
@@ -2221,7 +2468,7 @@ static int GetEpochTime
 
     if (LE_OK == result)
     {
-        printf("Epoch Time %llu ms\n", (unsigned long long int) epochTime);
+        printf("Epoch Time                : %llu ms\n", (unsigned long long int) epochTime);
     }
     else if (LE_OUT_OF_RANGE == result)
     {
@@ -2257,7 +2504,7 @@ static int GetTimeAccuracy
 
     if (result == LE_OK)
     {
-        printf("GPS time accuracy %dms\n", timeAccuracy);
+        printf("GPS time accuracy         : %dms\n", timeAccuracy);
     }
     else if (result == LE_OUT_OF_RANGE)
     {
@@ -2585,7 +2832,7 @@ static int GetDate
 
     if (result == LE_OK)
     {
-        printf("Date(YYYY-MM-DD) %04d-%02d-%02d\n",
+        printf("Date(YYYY-MM-DD)          : %04d-%02d-%02d\n",
                 year,
                 month,
                 day);
@@ -2629,8 +2876,8 @@ static int GetHorizontalSpeed
                                                      &hSpeedAccuracy);
     if (result == LE_OK)
     {
-        printf("hSpeed %.2fm/s\n"
-               "Accuracy %.1fm/s\n",
+        printf("hSpeed        : %.2fm/s\n"
+               "Accuracy      : %.1fcm/s\n",
                 hSpeed/100.0,
                 hSpeedAccuracy/10.0);
     }
@@ -2671,8 +2918,8 @@ static int GetVerticalSpeed
                                                    &vSpeedAccuracy);
     if (result == LE_OK)
     {
-        printf( "vSpeed %.2fm/s\n"
-                "Accuracy %.1fm/s\n",
+        printf( "vSpeed        : %.2fm/s\n"
+                "Accuracy      : %.1fcm/s\n",
                 vSpeed/100.0,
                 vSpeedAccuracy/10.0);
     }
@@ -2755,11 +3002,11 @@ static int GetDop
 
     static const char *tabDop[] =
     {
-        "Position dilution of precision (PDOP)",
-        "Horizontal dilution of precision (HDOP)",
-        "Vertical dilution of precision (VDOP)",
-        "Geometric dilution of precision (GDOP)",
-        "Time dilution of precision (TDOP)"
+        "Position dilution of precision (PDOP)    :",
+        "Horizontal dilution of precision (HDOP)  :",
+        "Vertical dilution of precision (VDOP)    :",
+        "Geometric dilution of precision (GDOP)   :",
+        "Time dilution of precision (TDOP)        :"
     };
 
     do
@@ -2801,6 +3048,79 @@ static int GetDop
     while (dopType != LE_GNSS_DOP_LAST);
 
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+void PrintGnssSignalType(uint32_t signalTypeMask) {
+   printf("Signals: ");
+   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
+     printf("GPS L1CA, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
+     printf("GPS L1C, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L2) {
+     printf("GPS L2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GPS_L5) {
+     printf("GPS L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
+     printf("Glonass G1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
+     printf("Glonass G2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
+     printf("Galileo E1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
+     printf("Galileo E5A, ");
+   }
+   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
+     printf("Galileo E5B, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
+     printf("Beidou B1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
+     printf("Beidou B2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
+     printf("QZSS L1CA, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
+     printf("QZSS L1S, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
+     printf("QZSS L2, ");
+   }
+   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
+     printf("QZSS L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
+     printf("SBAS L1, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
+     printf("Beidou B1I, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
+     printf("Beidou B1C, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
+     printf("Beidou B2I, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
+     printf("Beidou B2AI, ");
+   }
+   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
+     printf("Navic L5, ");
+   }
+   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
+     printf("Beidou B2AQ, ");
+   }
+   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
+     printf("No signal, ");
+   }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -2879,6 +3199,64 @@ static int GetSatelliteInfo
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Satellites Vehicle information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetSatelliteInfoEx
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    // Satellites information
+    int i;
+    int index = 0;
+    le_result_t result;
+
+    for (int constellation = 1; constellation < TAF_GNSS_SV_CONSTELLATION_MAX; constellation++) {
+
+      taf_gnss_SvInfo_t svInfo[TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS];
+      size_t svInfoLen = TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS;
+
+      result = le_gnss_GetSatellitesInfoEx(positionSampleRef, constellation, svInfo, &svInfoLen);
+
+      if((result == LE_OK)||(result == LE_OUT_OF_RANGE)||(result == LE_OVERFLOW))
+      {
+        LE_INFO("gnss tool: result %d, constellation: %d, numOfSvInfo: %d", (int)result, (int) constellation, (int) svInfoLen);
+        // Satellite Vehicle information
+        for(i=0; i<(int) svInfoLen; i++)
+        {
+            if((svInfo[i].satId != 0)&&(svInfo[i].satId != UINT8_MAX))
+            {
+                printf("[%02d] SVid %03d - C%01d - U%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
+                        , index++
+                        , svInfo[i].satId
+                        , svInfo[i].satConst
+                        , svInfo[i].satUsed
+                        , svInfo[i].satTracked
+                        , svInfo[i].satSnr
+                        , svInfo[i].satAzim
+                        , svInfo[i].satElev);
+
+                PrintGnssSignalType(svInfo[i].signalType);
+                printf("Glonass FCN: %d\n", svInfo[i].glonassFcn);
+                printf("Baseband Carrier To Noise Ratio: %lfdB-Hz\n", svInfo[i].baseBandCnr);
+            }
+        }
+      }
+      else
+      {
+        printf("Failed for constellation %d, See log for details!\n", (int) constellation);
+      }
+    }
+
+    return ((result == LE_OK)||(result == LE_OUT_OF_RANGE)||(result == LE_OVERFLOW)) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2906,7 +3284,7 @@ static int GetSatelliteStatus
 
     if ((result == LE_OK) || (result == LE_OUT_OF_RANGE))
     {
-        printf("satsInView %d - satsTracking %d - satsUsed %d\n",
+        printf("SatsInView: %d, SatsTracking: %d and SatsUsed: %d\n",
                (satsInViewCount == UINT8_MAX) ? 0: satsInViewCount,
                (satsTrackingCount == UINT8_MAX) ? 0: satsTrackingCount,
                (satsUsedCount == UINT8_MAX) ? 0: satsUsedCount);
@@ -3080,7 +3458,7 @@ static int GetVRPBasedLocation
     {
         printf("VRP based Latitude(positive->north) : %lf degrees\n"
                "VRP based Longitude(positive->east) : %lf degress\n"
-               "VRP based altitude                 : %lfm\n",
+               "VRP based altitude                  : %lfm\n",
                 latitude,
                 longitude,
                 (float)altitude);
@@ -3173,12 +3551,12 @@ static int GetSvData
 
     if (result == LE_OK)
     {
-        printf("SVs from GPS constellation  : %"PRIu64"\n",svData->gps);
-        printf("SVs from GLONASS constellation  : %"PRIu64"\n",svData->glo);
+        printf("SVs from GPS constellation       : %"PRIu64"\n",svData->gps);
+        printf("SVs from GLONASS constellation   : %"PRIu64"\n",svData->glo);
         printf("SVs from GALILEO constellation   : %"PRIu64"\n",svData->gal);
-        printf("SVs from BEIDOU constellation  : %"PRIu64"\n",svData->bds);
-        printf("SVs from QZSS constellation  : %"PRIu64"\n",svData->qzss);
-        printf("SVs from NAVIC constellation  : %"PRIu64"\n",svData->navic);
+        printf("SVs from BEIDOU constellation    : %"PRIu64"\n",svData->bds);
+        printf("SVs from QZSS constellation      : %"PRIu64"\n",svData->qzss);
+        printf("SVs from NAVIC constellation     : %"PRIu64"\n",svData->navic);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -3213,6 +3591,7 @@ static int GetSbasType
 
     le_result_t result = le_gnss_GetSbasCorrection( positionSampleRef,
                                                      &sbasMask);
+    printf("SBAS correction: ");
     if (result == LE_OK)
     {
         if(sbasMask & LE_GNSS_SBAS_CORRECTION_IONO)
@@ -3253,7 +3632,7 @@ static int GetSbasType
         }
         if(sbasMask == 0)
         {
-            printf("no SBAS corrections data\n");
+            printf("No SBAS corrections data\n");
         }
     }
     else if(result == LE_OUT_OF_RANGE)
@@ -3290,7 +3669,7 @@ static int GetTechInformation
                                                          &techMask);
     if (result == LE_OK)
     {
-        printf("\nTechnology used in computing the fix:\n");
+        printf("\nTechnology used to compute fix: The ");
         if(techMask & LE_GNSS_LOC_GNSS)
         {
             printf("location calculated using GNSS\n");
@@ -3714,27 +4093,27 @@ static int GetReliabilityInfo
         }
         if(vertReliablity & LE_GNSS_RELIABILITY_NOT_SET)
         {
-            printf("Vertical reliability: NOT_SET\n");
+            printf("Vertical reliability  : NOT_SET\n");
         }
         else if(vertReliablity & LE_GNSS_RELIABILITY_VERY_LOW)
         {
-            printf("Vertical reliability: VERY_LOW\n");
+            printf("Vertical reliability  : VERY_LOW\n");
         }
         else if(vertReliablity & LE_GNSS_RELIABILITY_LOW)
         {
-            printf("Vertical reliability: LOW\n");
+            printf("Vertical reliability  : LOW\n");
         }
         else if(vertReliablity & LE_GNSS_RELIABILITY_MEDIUM)
         {
-            printf("Vertical reliability: MEDIUM\n");
+            printf("Vertical reliability  : MEDIUM\n");
         }
         else if(vertReliablity & LE_GNSS_RELIABILITY_HIGH)
         {
-            printf("Vertical reliability: HIGH\n");
+            printf("Vertical reliability  : HIGH\n");
         }
         else
         {
-            printf("Vertical reliability: UNKNOWN\n");
+            printf("Vertical reliability  : UNKNOWN\n");
         }
     }
     else if(result == LE_OUT_OF_RANGE)
@@ -3773,9 +4152,9 @@ static int GetAzimuthDevInfo
                                                         &azimuth,&eastDev,&northDev);
     if (result == LE_OK)
     {
-        printf("Azimuth: %lf degrees\n",(float)azimuth);
-        printf("East standard deviation: %lfm\n",(float)eastDev);
-        printf("North standard deviation: %lfm\n",(float)northDev);
+        printf("Azimuth                  : %lf degrees\n",(float)azimuth);
+        printf("East standard deviation  : %lfm\n",(float)eastDev);
+        printf("North standard deviation : %lfm\n",(float)northDev);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -3812,8 +4191,8 @@ static int GetRealTimeInfo
                                                         &realTime,&realTimeUnc);
     if (result == LE_OK)
     {
-        printf("Elapsed real time: %"PRIu64" ns\n",realTime);
-        printf("Elapsed real time uncertainity: %"PRIu64" ns\n",realTimeUnc);
+        printf("Elapsed real time              : %"PRIu64" ns\n",realTime);
+        printf("Elapsed real time uncertainity : %"PRIu64" ns\n",realTimeUnc);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -3826,79 +4205,6 @@ static int GetRealTimeInfo
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 
-}
-
-void PrintGnssSignalType(uint32_t signalTypeMask) {
-   printf("Signals: ");
-   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
-     printf("GPS L1CA, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
-     printf("GPS L1C, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L2) {
-     printf("GPS L2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GPS_L5) {
-     printf("GPS L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
-     printf("Glonass G1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
-     printf("Glonass G2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
-     printf("Galileo E1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
-     printf("Galileo E5A, ");
-   }
-   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
-     printf("Galileo E5B, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
-     printf("Beidou B1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
-     printf("Beidou B2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
-     printf("QZSS L1CA, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
-     printf("QZSS L1S, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
-     printf("QZSS L2, ");
-   }
-   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
-     printf("QZSS L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
-     printf("SBAS L1, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
-     printf("Beidou B1I, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
-     printf("Beidou B1C, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
-     printf("Beidou B2I, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
-     printf("Beidou B2AI, ");
-   }
-   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
-     printf("Navic L5, ");
-   }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
-     printf("Beidou B2AQ, ");
-   }
-   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
-     printf("No signal, ");
-   }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -4184,9 +4490,28 @@ static void PositionHandlerFunction
 
     if (strcmp(ParamsName, "watch") == 0)
     {
+        printf("\n******** Detailed Location Information Report ********\n");
         GetPosInfo(positionSampleRef);
         GetSatelliteStatus(positionSampleRef);
-        GetSatelliteInfo(positionSampleRef);
+        le_gnss_FixState_t state;
+        le_result_t result = le_gnss_GetPositionState( positionSampleRef, &state);
+        if ((result == LE_OK) && (state == LE_GNSS_STATE_FIX_2D || state == LE_GNSS_STATE_FIX_3D))
+        {
+            GetSatelliteInfoEx(positionSampleRef);
+            GetNmeaSentences();
+            GetGnssMeasurementInfo(positionSampleRef);
+            GetVRPBasedLocation(positionSampleRef);
+            GetVRPBasedVelocityInfo(positionSampleRef);
+            GetAltitudeMeanSeaLevel(positionSampleRef);
+            GetCapabilities();
+            GetSvData(positionSampleRef);
+            GetTechInformation(positionSampleRef);
+            GetReliabilityInfo(positionSampleRef);
+            GetRealTimeInfo(positionSampleRef);
+            GetSbasType(positionSampleRef);
+            GetAzimuthDevInfo(positionSampleRef);
+        }
+        printf("\n************************ End *************************\n");
         // Release provided Position sample reference
         le_gnss_ReleaseSampleRef(positionSampleRef);
     }
@@ -4299,6 +4624,10 @@ static void PositionHandlerFunction
         {
             status = GetSatelliteInfo(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "satInfoEx") == 0)
+        {
+            status = GetSatelliteInfoEx(positionSampleRef);
+        }
         else if (strcmp(ParamsName, "satStat") == 0)
         {
             status = GetSatelliteStatus(positionSampleRef);
@@ -4357,6 +4686,43 @@ static void PositionHandlerFunction
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for location capability notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CapabilityHandlerFunction
+(
+    taf_gnss_LocCapabilityType_t locCapability,
+    void* contextPtr
+)
+{
+    DisplayCapabilities(locCapability);
+}
+
+void DisplayNmea(const char nmeaMask[LE_GNSS_NMEA_STRING_MAX]) {
+    printf( "**** DisplayNmea NMEA handler string received: %s",nmeaMask);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for NMEA notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void NmeaHandlerFunction
+(
+    uint64_t timestamp,
+    const char nmeaInfo[LE_GNSS_NMEA_STRING_MAX],
+    void* contextPtr
+)
+{
+    printf("\n************* NMEA Information ***************\n");
+    printf("\tTimestamp                    : %"PRIu64" \n", timestamp);
+    DisplayNmea(nmeaInfo);
+    printf("**********************************************\n");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4409,6 +4775,108 @@ static int WatchGnssInfo
     return EXIT_SUCCESS;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread to monitor gnss capability information.
+ *
+*/
+//--------------------------------------------------------------------------------------------------
+static void* CapabilityThread
+(
+    void* contextPtr             ///< [IN] The context pointer
+)
+{
+    le_gnss_ConnectService();
+
+    CapabilityHandlerRef = le_gnss_AddCapabilityChangeHandler(CapabilityHandlerFunction, NULL);
+    LE_ASSERT(CapabilityHandlerRef != NULL);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to watch location capability information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+static int WatchGnssCapInfo
+(
+    uint32_t watchPeriod          ///< [IN] Watch period in seconds
+)
+{
+    le_thread_Ref_t capabilityThreadRef;
+
+    // Add location capability Handler
+    capabilityThreadRef = le_thread_Create("CapabilityThread",CapabilityThread,NULL);
+    le_thread_Start(capabilityThreadRef);
+
+    printf("Watch location capability data for %ds\n", watchPeriod);
+    le_thread_Sleep(watchPeriod);
+
+    le_gnss_RemoveCapabilityChangeHandler(CapabilityHandlerRef);
+
+    // stop thread
+    le_thread_Cancel(capabilityThreadRef);
+
+    return EXIT_SUCCESS;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread to monitor NMEA information.
+ *
+*/
+//--------------------------------------------------------------------------------------------------
+static void* NmeaThread
+(
+    void* contextPtr             ///< [IN] The context pointer
+)
+{
+    le_gnss_ConnectService();
+
+    NmeaHandlerRef = le_gnss_AddNmeaHandler(NmeaHandlerFunction, NULL);
+    LE_ASSERT(NmeaHandlerRef != NULL);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to watch NMEA information.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+static int WatchGnssNmeaInfo
+(
+    uint32_t watchPeriod          ///< [IN] Watch period in seconds
+)
+{
+    le_thread_Ref_t nmeaThreadRef;
+
+    // Add location capability Handler
+    nmeaThreadRef = le_thread_Create("NmeaThread",NmeaThread,NULL);
+    le_thread_Start(nmeaThreadRef);
+
+    printf("Watch NMEA data for %ds\n", watchPeriod);
+    le_thread_Sleep(watchPeriod);
+
+    le_gnss_RemoveNmeaHandler(NmeaHandlerRef);
+
+    // stop thread
+    le_thread_Cancel(nmeaThreadRef);
+
+    return EXIT_SUCCESS;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -4503,6 +4971,14 @@ static void GetGnssParams
     {
         exit(GetMinElevation());
     }
+    else if (0 == strcmp(params, "minGpsWeek"))
+    {
+        exit(GetMinGpsWeek());
+    }
+    else if (0 == strcmp(params, "locCap"))
+    {
+        exit(GetCapabilities());
+    }
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
              (0 == strcmp(params, "alt"))         ||
@@ -4518,6 +4994,7 @@ static void GetGnssParams
              (0 == strcmp(params, "motion"))      ||
              (0 == strcmp(params, "direction"))   ||
              (0 == strcmp(params, "satInfo"))     ||
+             (0 == strcmp(params, "satInfoEx"))   ||
              (0 == strcmp(params, "satStat"))     ||
              (0 == strcmp(params, "dop"))         ||
              (0 == strcmp(params, "magDev"))      ||
@@ -4608,9 +5085,18 @@ static int SetGnssParams
     {
         status = SetNmeaSentences(argValPtr);
     }
+    else if (strcmp(argNamePtr, "nmeaConfig") == 0)
+    {
+        const char* arg3ValPtr = le_arg_GetArg(4);
+        status = SetNmeaConfiguration(argValPtr, arg2ValPtr, arg3ValPtr);
+    }
     else if (0 == strcmp(argNamePtr, "minElevation"))
     {
         status = SetMinElevation(argValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "minGpsWeek"))
+    {
+        status = SetMinGpsWeek(argValPtr);
     }
     else if (0 == strcmp(argNamePtr, "startMode"))
     {
@@ -5047,6 +5533,60 @@ COMPONENT_INIT
         // Copy the command
         le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
         exit(WatchGnssInfo(watchPeriod));
+    }
+    else if (strcmp(commandPtr, "capwatch") == 0)
+    {
+        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+        {
+            printf("GNSS is not in active state!\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* capwatchPeriodPtr = le_arg_GetArg(1);
+        uint32_t capwatchPeriod = DEFAULT_WATCH_PERIOD;
+        //Check whether any watch period value is specified.
+        if (NULL != capwatchPeriodPtr)
+        {
+            char *endPtr;
+            errno = 0;
+            capwatchPeriod = strtoul(capwatchPeriodPtr, &endPtr, 10);
+
+            if (endPtr[0] != '\0' || errno != 0)
+            {
+                fprintf(stderr, "Bad watch period value: %s\n", capwatchPeriodPtr);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // Copy the command
+        le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+        exit(WatchGnssCapInfo(capwatchPeriod));
+    }
+    else if (strcmp(commandPtr, "nmeawatch") == 0)
+    {
+        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+        {
+            printf("GNSS is not in active state!\n");
+            exit(EXIT_FAILURE);
+        }
+        const char* nmeawatchPeriodPtr = le_arg_GetArg(1);
+        uint32_t nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+        //Check whether any watch period value is specified.
+        if (NULL != nmeawatchPeriodPtr)
+        {
+            char *endPtr;
+            errno = 0;
+            nmeawatchPeriod = strtoul(nmeawatchPeriodPtr, &endPtr, 10);
+
+            if (endPtr[0] != '\0' || errno != 0)
+            {
+                fprintf(stderr, "Bad watch period value: %s\n", nmeawatchPeriodPtr);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // Copy the command
+        le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+        exit(WatchGnssNmeaInfo(nmeawatchPeriod));
     }
     else
     {
