@@ -31,7 +31,7 @@ bindings:
     cm.cm.taf_mdc -> tafDataCallSvc.taf_mdc
     cm.cm.le_sim -> tafSimCardSvc.taf_sim
     cm.cm.le_sms -> tafSMSSvc.taf_sms
-    // cm.cm.le_info -> modemService.le_info
+    cm.cm.le_info -> tafDevInfoSvc.taf_info
     // cm.cm.le_adc -> modemService.le_adc
     // cm.cm.le_temp -> modemService.le_temp
     // cm.cm.le_ips -> modemService.le_ips

@@ -61,7 +61,6 @@ const cm_Service_t Services[] = {
         .commandHandler = cm_sim_ProcessSimCommand,
     },
 
-#if 0
     /* Info */
     {
         .serviceNamePtr = "info",
@@ -70,6 +69,7 @@ const cm_Service_t Services[] = {
         .commandHandler = cm_info_ProcessInfoCommand,
     },
 
+#if 0
     /* Temperature */
     {
         .serviceNamePtr = "temp",
