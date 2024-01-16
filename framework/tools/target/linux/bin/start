@@ -42,7 +42,7 @@ case "$1" in
         # When we're in docker container, '/proc/sys/net/core/wmem_max' should be mounted to container,
         # just like: -v /proc/sys/net/core/wmem_max:/proc/sys/net/core/wmem_max
         # but presently, we don't want to do this to impact the host, just ignore them
-        if [ -z ${ON_TELAF_SIMULATION_DOCKER} ]; then
+        if [ -z "${TELAF_IN_CONTAINER}" ]; then
             sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
                 echo "Failed to set net.unix.max_dgram_qlen"
             sysctl -w net.core.wmem_max=266240 >/dev/null || \

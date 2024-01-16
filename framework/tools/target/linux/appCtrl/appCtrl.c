@@ -308,10 +308,6 @@ static void __attribute__((noreturn)) StartApp
     void
 )
 {
-#if defined (LE_CONFIG_FLAVOR_LXC)
-    fprintf(stderr, "Option not supported\n");
-    exit(EXIT_SUCCESS);
-#endif
     le_appCtrl_AppRef_t appRef = NULL;
 
     le_appCtrl_ConnectService();
@@ -411,10 +407,6 @@ static void StopApp
     void
 )
 {
-#if defined (LE_CONFIG_FLAVOR_LXC)
-    fprintf(stderr, "Option not supported\n");
-    exit(EXIT_SUCCESS);
-#endif
     le_appCtrl_ConnectService();
 
     // Stop the application.
