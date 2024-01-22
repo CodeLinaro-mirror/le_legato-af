@@ -302,6 +302,92 @@ static void StartDaemon
     LE_INFO("Started system process '%s' with PID: %d.", daemonNamePtr, pid);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Iterate over the process PID and query if it is an orphaned process
+ * If so then kill it
+ * If not then keep it
+ */
+//--------------------------------------------------------------------------------------------------
+void KillOrphanProcess(const char *pids, const char *procName)
+{
+    char *saveRestPtr = NULL;
+    char *ptoken = strtok_r((char *)pids, " ", &saveRestPtr);
+
+    while (ptoken != NULL)
+    {
+        int pid = atoi(ptoken);
+
+        char GetPPidCmd[LIMIT_MAX_PATH_BYTES];
+        int s = snprintf(GetPPidCmd, sizeof(GetPPidCmd), "cat /proc/%d/stat | cut -d ' ' -f4", pid);
+
+        if (s >= sizeof(GetPPidCmd))
+        {
+            LE_FATAL("Could not create combined cmd, buffer is too small %zd < %d", sizeof(GetPPidCmd), s);
+        }
+
+        FILE *fp = popen(GetPPidCmd, "r");
+        if (!fp)
+        {
+            LE_FATAL("Could not create pipe for getting ppid. [%s]", GetPPidCmd);
+        }
+
+        // It's enough for one PID
+        char ppidStr[LIMIT_MAX_ARGS_STR_BYTES];
+        while (fgets(ppidStr, sizeof(ppidStr), fp) != NULL)
+        {
+            int ppid = atoi(ppidStr);
+
+            // Only kill orphaned processes and keep non-orphaned processes,
+            // because there may be containers running another TelAF framework on the system
+            if (1 == ppid)
+            {
+                LE_INFO("Kill the Orphan process [%s]/(pid:%d).", procName, pid);
+                kill_ByName(procName);
+            }
+            else
+            {
+                LE_INFO("Keep [%s]/(pid:%d) process here.", procName, pid);
+            }
+        }
+
+        pclose(fp);
+
+        ptoken = strtok_r(NULL, " ", &saveRestPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the PID of the process by name and check if they are orphaned processes.
+ */
+//--------------------------------------------------------------------------------------------------
+void CheckOrphanProcess(const char *procName)
+{
+    char GetPidCmd[LIMIT_MAX_PATH_BYTES];
+    int len = snprintf(GetPidCmd, sizeof(GetPidCmd), "pidof %s", procName);
+
+    if (len >= sizeof(GetPidCmd))
+    {
+        LE_FATAL("Could not create 'pidof' cmd, buffer is too small. "
+                 "Buffer is %zd bytes but needs to be %d bytes.", sizeof(GetPidCmd), len);
+    }
+
+    FILE *fp = popen(GetPidCmd, "r");
+    if (!fp)
+    {
+        LE_FATAL("Could not create pipe for getting pid by name. [%s]", GetPidCmd);
+    }
+
+    char pids[LIMIT_MAX_ARGS_STR_BYTES];
+    while (fgets(pids, sizeof(pids), fp) != NULL)
+    {
+        pids[strcspn(pids, "\n")] = '\0';
+        KillOrphanProcess(pids, procName);
+    }
+
+     pclose(fp);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -317,8 +403,10 @@ void fwDaemons_Start
     for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
     {
         char* daemonNamePtr = le_path_GetBasenamePtr(FrameworkDaemons[i].path, "/");
-        // Kill all other instances of this process just in case.
-        kill_ByName(daemonNamePtr);
+
+        // Check the daemon procces, if they are orphan processes, kill them
+        // Ohterwise, keep them there
+        CheckOrphanProcess(daemonNamePtr);
     }
 
     int rc;
