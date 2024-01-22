@@ -4916,21 +4916,14 @@ void app_SigChildHandler
                         *faultActionPtr = FAULT_ACTION_STOP_APP;
                     }
                 }
-#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
-                CheckAndNotifyToServer(appRef, "cmd-action");
-#endif
+
                 break;
 
             case FAULT_ACTION_IGNORE:
                 LE_WARN("Process '%s' in app '%s' faulted: Ignored.",
                         proc_GetName(procRef),
                         appRef->name);
-#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
-                // Without CGROUP release_agent, the framework don't know the application already
-                // exited. For applications with the 'Ignore Fault' action, we should notify the
-                // AppStopServer to mark the application as 'STOP'
-                CheckAndNotifyToServer(appRef, "ign-action");
-#endif
+
                 break;
 
             case FAULT_ACTION_RESTART_PROC:
@@ -4972,6 +4965,13 @@ void app_SigChildHandler
                 *faultActionPtr = FAULT_ACTION_REBOOT;
                 break;
         }
+
+#ifdef LE_CONFIG_SUPERV_CGRP_NO_RELEASE_AGENT
+            // Without CGROUP release_agent, the framework don't know the application already
+            // exited. We should notify the AppStopServer to mark the application as 'STOP'
+            CheckAndNotifyToServer(appRef, "no-release-agent");
+#endif
+
     }
 }
 
