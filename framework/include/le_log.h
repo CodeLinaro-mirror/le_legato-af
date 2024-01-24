@@ -319,13 +319,13 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
 
 * The core file maximum size is determined by the process settings @c maxCoreDumpFileBytes and
 * @c maxFileBytes found in the processes section of your app's @c .adef file.  By default, the
-* @c maxCoreDumpFileBytes is set to 0, do not create a core file.
+* @c maxCoreDumpFileBytes and @c maxFileBytes are both set to 100K.
 
 * To help save the target from flash burnout, the syslog and core files are stored in the RAM
 * FS under /tmp.  When a crash occurs, this directory is created:
 
  @verbatim
- /tmp/legato_logs/
+ /tmp/telaf_crash_logs/
  @endverbatim
 
 * The files in that directory look like this:
@@ -341,7 +341,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
 * this (and the most recent files in RAM space are preserved across reboots):
 
  @verbatim
- /mnt/flash/legato_logs/
+ /data/telaf_crash_logs/
  @endverbatim
 
 *
