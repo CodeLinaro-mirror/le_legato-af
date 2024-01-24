@@ -98,6 +98,12 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_EXPECTED_TRACES 20
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of log messages.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MSG_SIZE 256
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -317,6 +323,8 @@ typedef struct
     int             pid;                                    ///< PID of the process.
     le_log_Level_t  level;                                  ///< Log level.
     le_fdMonitor_Ref_t monitorRef;                          ///< Monitor object.
+    char msg[MAX_MSG_SIZE];                                 ///< Cached message buffer.
+    size_t msgSize;                                         ///< Cached message size.
 }
 FdLog_t;
 
@@ -327,15 +335,6 @@ FdLog_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t FdLogPoolRef;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum length of log messages.
- */
-//--------------------------------------------------------------------------------------------------
-#define MAX_MSG_SIZE            256
-
 
 
 // ========================================
@@ -2633,33 +2632,72 @@ static void LogFdMessages
     short events
 )
 {
+    char tmpBuffer[MAX_MSG_SIZE] = {'\0'};
+    char *tokenPtr = NULL;
+    char *preTokenPtr = NULL;
+    char *savePtr = NULL;
+
     FdLog_t* fdLogPtr = le_fdMonitor_GetContextPtr();
+    char* msgPtr = fdLogPtr->msg;
+    size_t remainLen = fdLogPtr->msgSize;
+    ssize_t c = 0;
+    bool newlineDetected = false;
 
     if (events & POLLIN)
     {
-        // Read the data from the fd.
-        char msg[MAX_MSG_SIZE] = {'\0'};
-
-        int c;
-
+        // We need to parse the char of '\n' in the log message that reads from pipe.
         do
         {
-            c = read(fd, msg, sizeof(msg));
-        }
-        while ( (c == -1) && (errno == EINTR) );
+            memset(msgPtr+remainLen, 0, MAX_MSG_SIZE-remainLen);
+            c = read(fd, msgPtr+remainLen, MAX_MSG_SIZE-remainLen-1);
 
-        if (c == -1)
+            if (c > 0)
+            {
+                // Update length of remain data.
+                remainLen += c;
+
+                // Check if cached log string ends up with '\n'.
+                newlineDetected = false;
+                newlineDetected = (*(msgPtr+remainLen-1) == '\n')? true: false;
+
+                // Copy the cached log string to a tmp buffer.
+                memset(tmpBuffer, 0, MAX_MSG_SIZE);
+                le_utf8_Copy(tmpBuffer, msgPtr, MAX_MSG_SIZE, NULL);
+
+                tokenPtr = strtok_r(tmpBuffer, "\n", &savePtr);
+                while (tokenPtr != NULL)
+                {
+                    preTokenPtr = tokenPtr;
+                    remainLen = strlen(preTokenPtr);
+
+                    tokenPtr = strtok_r(NULL, "\n", &savePtr);
+                    // if it is the last substring and msg not end with '\n',
+                    // we will copy this substring to the head of next new message line.
+                    if ((NULL == tokenPtr) && !newlineDetected && (remainLen < MAX_MSG_SIZE - 1))
+                    {
+                        memset(fdLogPtr->msg, 0, MAX_MSG_SIZE);
+                        memcpy(fdLogPtr->msg, preTokenPtr, remainLen);
+                        break;
+                    }
+
+                    log_LogGenericMsg(fdLogPtr->level, fdLogPtr->procName,
+                                      fdLogPtr->pid, preTokenPtr);
+                    remainLen = 0;
+                }
+
+                // Update the length of cached message data.
+                fdLogPtr->msgSize = remainLen;
+            }
+        }
+        while ( ((c == -1) && (errno == EINTR)) || (c > 0) );
+
+        if ((c == -1) && (errno != EAGAIN) && (errno != EWOULDBLOCK))
         {
             LE_ERROR("Could not read fd log message for app/process '%s/%s[%d]'.  %m.",
                      fdLogPtr->appName, fdLogPtr->procName, fdLogPtr->pid);
 
             DeleteFdLog(fd, fdLogPtr);
         }
-
-        // Log the data.
-        // TODO: Don't log the app name for now so that it matches all the other log formats.  Add
-        //       the app name to all log messages at the same time.
-        log_LogGenericMsg(fdLogPtr->level, fdLogPtr->procName, fdLogPtr->pid, msg);
     }
 
     if ( (events & POLLRDHUP) || (events & POLLERR) || (events & POLLHUP) )
@@ -2702,6 +2740,11 @@ static void CreateFdLogMonitor
 
     fdLogPtr->level = logLevel;
     fdLogPtr->pid = pid;
+    fdLogPtr->msgSize = 0;
+    memset(fdLogPtr->msg, 0, MAX_MSG_SIZE);
+
+    // Set the fd as non-blocked.
+    fd_SetNonBlocking(fd);
 
     // Create the fd monitor.
     fdLogPtr->monitorRef = le_fdMonitor_Create(monitorNamePtr, fd, LogFdMessages, 0);
@@ -2711,6 +2754,7 @@ static void CreateFdLogMonitor
 
     // Enable the monitoring.
     le_fdMonitor_Enable(fdLogPtr->monitorRef, POLLIN);
+
 }
 
 
