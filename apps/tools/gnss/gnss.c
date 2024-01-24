@@ -207,6 +207,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- reportStatus  -->Gets status of report in terms of how optimally the report was calculated by the engine\n"
          "\t\t\t\t\t- altMSeaLevel  -->Gets the altitude with respect to mean sea level in meters\n"
          "\t\t\t\t\t- svIds         -->Gets the GNSS Satellite Vehicles used in position data.\n"
+         "\t\t\t\t\t- gnssData      -->Gets the GNSS data mask,Jammer and AGC data\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
@@ -234,6 +235,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- 1.0 ---> Most comforming\n"
          "\t\t\t\t\t- calibData  --> Get the sensor calibration status and confidence percent\n"
          "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
+         "\t\t\t\t\t- xtraStatus --> Get the device's xtra status\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
@@ -969,6 +971,80 @@ static int SetNmeaConfiguration
                     result, LE_RESULT_TXT(result));
             break;
     }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the xtra status.
+ *
+ * @return
+ *  - LE_OK             Succeeded.
+ *  - LE_FAULT          Failed.
+ *  - LE_NOT_PERMITTED  GNSS device is not ready.
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetXtraStatus
+(
+    void
+)
+{
+    taf_gnss_XtraStatusParams_t *XtraParamsPtr;
+    le_result_t result = LE_FAULT;
+    le_mem_PoolRef_t XtraFramePool = NULL;
+    XtraFramePool = le_mem_CreatePool("XtraFramePool", sizeof(taf_gnss_XtraStatusParams_t));
+    XtraParamsPtr = (taf_gnss_XtraStatusParams_t*) le_mem_ForceAlloc(XtraFramePool);
+    if(XtraParamsPtr != NULL)
+    {
+        result = le_gnss_GetXtraStatus(XtraParamsPtr);
+    }
+    else
+    {
+        printf("XtraParamsPtr is NULL pointer\n");
+    }
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("**** Request Xtra Status Info ****\n");
+            printf("GetXtraStatus featureEnabled:%d\n",XtraParamsPtr->featureEnabled);
+            printf("GetXtraStatus xtraDataStatus:");
+            switch(XtraParamsPtr->xtraDataStatus)
+            {
+                case LE_GNSS_XTRA_DATA_STATUS_UNKNOWN:
+                    printf("Unknown\n");
+                    break;
+                case LE_GNSS_XTRA_DATA_STATUS_NOT_AVAIL:
+                    printf("Not available\n");
+                    break;
+                case LE_GNSS_XTRA_DATA_STATUS_NOT_VALID:
+                    printf("Invalid\n");
+                    break;
+                case LE_GNSS_XTRA_DATA_STATUS_VALID:
+                    printf("Valid\n");
+                    break;
+                default:
+                    printf("No xtra status\n");
+                break;
+            }
+            printf("GetXtraStatus xtraValidForHours:%d\n",XtraParamsPtr->xtraValidForHours);
+            break;
+        case LE_FAULT:
+            printf("Failed to get xtra status. See logs for details\n");
+            break;
+       case LE_NOT_PERMITTED:
+            printf("Device is not in ready/active state!\n");
+            break;
+        default:
+            printf("Failed to get xtra status, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    //release the memory
+    le_mem_Release(XtraParamsPtr);
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -4384,6 +4460,49 @@ static int GetSVIds
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+static int GetGnssData
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    size_t maxSigTypes = TAF_GNSS_NUMBER_OF_SIGNAL_TYPES_MAX;
+    taf_gnss_GnssData_t gnssDataPtr[TAF_GNSS_NUMBER_OF_SIGNAL_TYPES_MAX];
+    le_result_t result = le_gnss_GetGnssData(positionSampleRef, gnssDataPtr, &maxSigTypes);
+
+    if (result != LE_OK)
+    {
+      printf("Error to get Jammer and AGC data.\n");
+      return EXIT_FAILURE;
+    }
+
+    for(uint8_t i = 0; i < maxSigTypes; i++)
+    {
+        printf("GetGnssData type :%d\n", i);
+        printf("gnssDataMask:%d\n", gnssDataPtr[i].gnssDataMask);
+        if(gnssDataPtr[i].gnssDataMask & TAF_GNSS_HAS_JAMMER)
+        {
+            printf("jammerInd is present\n");
+            printf("jammerInd: %lf\n",gnssDataPtr[i].jammerInd);
+        }
+        else
+        {
+            printf("jammerInd is not present\n");
+        }
+        if(gnssDataPtr[i].gnssDataMask & TAF_GNSS_HAS_AGC)
+        {
+            printf("Automatic Gain Control is present\n");
+            printf("AGC: %lf\n",gnssDataPtr[i].agc);
+        }
+        else
+        {
+            printf("Automatic Gain Control is not present\n");
+        }
+        printf("\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Function to get all positional information of last updated sample.
@@ -4692,6 +4811,10 @@ static void PositionHandlerFunction
         {
             status = GetSVIds(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "gnssData") == 0)
+        {
+            status = GetGnssData(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         exit(status);
     }
@@ -4990,6 +5113,10 @@ static void GetGnssParams
     {
         exit(GetCapabilities());
     }
+    else if (0 == strcmp(params, "xtraStatus"))
+    {
+        exit(GetXtraStatus());
+    }
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
              (0 == strcmp(params, "alt"))         ||
@@ -5028,7 +5155,8 @@ static void GetGnssParams
              (0 == strcmp(params, "measInfo"))||
              (0 == strcmp(params, "altMSeaLevel"))||
              (0 == strcmp(params, "svIds"))||
-             (0 == strcmp(params, "reportStatus")))
+             (0 == strcmp(params, "reportStatus"))||
+             (0 == strcmp(params, "gnssData")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
