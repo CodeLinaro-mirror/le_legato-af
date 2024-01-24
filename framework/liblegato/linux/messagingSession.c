@@ -499,7 +499,7 @@ static void CloseSession
 
     // If there are any messages stranded on the transmit queue, the pending transaction list,
     // or the receive queue, clean them all up.
-    if (sessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
+    if (sessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_CLIENT)
     {
         PurgeTxnList(sessionPtr);
     }
