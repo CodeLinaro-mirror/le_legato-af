@@ -214,7 +214,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
          "\t\t\t\t\t- time          --> Time of the last updated location\n"
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
-         "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
+         "\t\t\t\t\t- timeAcc       --> Time accuracy in nanoseconds\n"
          "\t\t\t\t\t- LeapSeconds   --> Current and next leap seconds\n"
          "\t\t\t\t\t- GpsLeapSeconds --> UTC leap seconds in advance in seconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
@@ -1678,20 +1678,20 @@ static int GetConstellation
     {
         printf("ConstellationType %d\n", constellationMask);
 
-        (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("***GPS activated***\n") :
-                                                              printf("GPS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("***GLONASS activated***\n") :
-                                                              printf("GLONASS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)  ? printf("***BEIDOU activated***\n") :
-                                                              printf("BEIDOU not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("***GALILEO activated***\n") :
-                                                              printf("GALILEO not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("***SBAS activated***\n") :
-                                                              printf("SBAS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("***QZSS activated***\n") :
-                                                              printf("QZSS not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_NAVIC)   ? printf("***NAVIC activated***\n") :
-                                                              printf("NAVIC not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("***GPS blacklisted***\n") :
+                                                              printf("GPS not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("***GLONASS blacklisted***\n") :
+                                                              printf("GLONASS not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)  ? printf("***BEIDOU blacklisted***\n") :
+                                                              printf("BEIDOU not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("***GALILEO blacklisted***\n") :
+                                                              printf("GALILEO not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("***SBAS blacklisted***\n") :
+                                                              printf("SBAS not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("***QZSS blacklisted***\n") :
+                                                              printf("QZSS not blacklisted\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_NAVIC)   ? printf("***NAVIC blacklisted***\n") :
+                                                              printf("NAVIC not blacklisted\n");
     }
     else if(result == LE_NOT_PERMITTED)
     {
@@ -2591,7 +2591,7 @@ static int GetTimeAccuracy
 
     if (result == LE_OK)
     {
-        printf("GPS time accuracy         : %dms\n", timeAccuracy);
+        printf("GPS time accuracy         : %dns\n", timeAccuracy);
     }
     else if (result == LE_OUT_OF_RANGE)
     {
