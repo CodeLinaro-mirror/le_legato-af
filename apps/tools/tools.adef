@@ -13,7 +13,9 @@ executables:
     fwupdate = (fwupdate)
     //secstore = (secstore)
     //pmtool = (pmtool)
+#if ${TELUX_LOCATION_SUPPORTED} = y
     gnss = (gnss)
+#endif
     //uartMode = (uartMode)
     //kmod = (moduleLoad)
 #endif
@@ -39,9 +41,11 @@ bindings:
     // cm.cm.le_mdmCfg -> modemService.le_mdmCfg
     // cm.cm.le_ulpm -> powerMgr.le_ulpm
 
+#if ${TELUX_LOCATION_SUPPORTED} = y
     gnss.gnss.le_gnss -> tafLocationSvc.taf_gnss
     gnss.gnss.le_pos -> tafLocationSvc.taf_pos
     gnss.gnss.le_posCtrl -> tafLocationSvc.taf_posCtrl
+#endif
 
     fwupdate.fwupdate.le_fwupdate -> tafUpdateSvc.taf_fwupdate
 
