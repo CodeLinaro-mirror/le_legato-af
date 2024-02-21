@@ -291,6 +291,13 @@ config FEATURE_ENHANCED_IMS
   ---help---
   Enable enhanced IMS feature.
 
+config ENABLE_MULTI_VM_SUPPORT
+  bool "Enable multivm feature"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Enable multivm feature.
+
 config RADIO_SIGNAL_INDICATION_CONFIG
   bool "Threshold and delta configuration for radio siganl indication"
   default y if TARGET_SA525M
