@@ -9,9 +9,7 @@
  */
 //-------------------------------------------------------------------------------------------------
 
-
-#include "legato.h"
-#include "interfaces.h"
+#include "gnss.h"
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -75,6 +73,11 @@ static taf_gnss_NmeaHandlerRef_t NmeaHandlerRef;
  */
 //-------------------------------------------------------------------------------------------------
 static char ParamsName[128] = "";
+static bool ExitApp = true;
+char TokenArray[MAX_NUMBER_OF_INPUT][MAX_LEN_OF_EACH_INPUT];
+
+time_t StartTime, FinishTime;
+uint32_t WatchPeriod;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -89,51 +92,51 @@ void PrintGnssHelp
     puts("\n\t\tNAME:\n"
          "\t\t\tgnss - Used to access different functionality of gnss\n\n"
          "\t\tSYNOPSIS:\n"
-         "\t\t\tgnss help\n"
-         "\t\t\tgnss <enable/disable>\n"
-         "\t\t\tgnss <start/stop>\n"
-         "\t\t\tgnss restart <RestartType>\n"
-         "\t\t\tgnss fix [FixTime in seconds]\n"
-         "\t\t\tgnss get <parameter>\n"
-         "\t\t\tgnss get posInfo\n"
-         "\t\t\tgnss set constellation <ConstellationType>\n"
-         "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
-         "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
-         "\t\t\tgnss set nmeaConfig <nmeaMask> <datumType> <engineType>\n"
-         "\t\t\tgnss set minElevation <minElevation in degrees>\n"
-         "\t\t\tgnss set minGpsWeek <minGpsWeek in weeks>\n"
-         "\t\t\tgnss set startMode <StartMode>\n"
+         "\t\t\thelp\n"
+         "\t\t\t<enable/disable>\n"
+         "\t\t\t<start/stop>\n"
+         "\t\t\trestart <RestartType>\n"
+         "\t\t\tfix [FixTime in seconds]\n"
+         "\t\t\tget <parameter>\n"
+         "\t\t\tget posInfo\n"
+         "\t\t\tset constellation <ConstellationType>\n"
+         "\t\t\tset acqRate <acqRate in milliseconds>\n"
+         "\t\t\tset nmeaSentences <nmeaMask>\n"
+         "\t\t\tset nmeaConfig <nmeaMask> <datumType> <engineType>\n"
+         "\t\t\tset minElevation <minElevation in degrees>\n"
+         "\t\t\tset minGpsWeek <minGpsWeek in weeks>\n"
+         "\t\t\tset startMode <StartMode>\n"
          "\t\t\t\t  be as follows:\n"
          "\t\t\t\t\t- 0 ---> HOT\n"
          "\t\t\t\t\t- 1 ---> WARM\n"
          "\t\t\t\t\t- 2 ---> COLD\n"
          "\t\t\t\t\t- 3 ---> FACTORY\n"
          "\t\t\t\t\t- 4 ---> UNKNOWN\n"
-         "\t\t\tgnss capwatch [WatchPeriod in seconds]\n"
-         "\t\t\tgnss nmeawatch [WatchPeriod in seconds]\n"
-         "\t\t\tgnss watch [WatchPeriod in seconds]\n\n"
+         "\t\t\tcapwatch [WatchPeriod in seconds]\n"
+         "\t\t\tnmeawatch [WatchPeriod in seconds]\n"
+         "\t\t\twatch [WatchPeriod in seconds]\n\n"
          "\t\tDESCRIPTION:\n"
-         "\t\t\tgnss help\n"
+         "\t\t\thelp\n"
          "\t\t\t\t- Print this help message and exit\n\n"
-         "\t\t\tgnss <enable/disable>\n"
+         "\t\t\t<enable/disable>\n"
          "\t\t\t\t- Enable/disable gnss device\n\n"
-         "\t\t\tgnss <start/stop>\n"
+         "\t\t\t<start/stop>\n"
          "\t\t\t\t- Start/stop gnss device\n\n"
-         "\t\t\tgnss startType <EngineType>\n"
+         "\t\t\tstartType <EngineType>\n"
          "\t\t\t\t- Set GNSS device with the specified engine type. Type can be as follows:\n"
          "\t\t\t\t\t- 0 ---> FUSED\n"
          "\t\t\t\t\t- 1 ---> SPE\n"
          "\t\t\t\t\t- 2 ---> PPE\n"
          "\t\t\t\t\t- 3 ---> VPE\n\n"
-         "\t\t\tgnss ConfigLevArm <forwardOffset(double)> <sidewaysOffset(double)> <upOffset(double)> <levArmType>\n"
+         "\t\t\tConfigLevArm <forwardOffset(double)> <sidewaysOffset(double)> <upOffset(double)> <levArmType>\n"
          "\t\t\t\t- Configure Lever Arm Parameters to support QDR.levArmType can be as follows:\n"
          "\t\t\t\t\t- GNSS_TO_VRP->1\n"
          "\t\t\t\t\t- DR_IMU_TO_GNSS->2\n"
          "\t\t\t\t\t- VPE_IMU_TO_GNSS->3\n\n"
-         "\t\t\tgnss ConfigDR <rollOffset(double)> <yawOffset(double)> <pitchOffset(double)> <offsetUnc(double)>\n"
+         "\t\t\tConfigDR <rollOffset(double)> <yawOffset(double)> <pitchOffset(double)> <offsetUnc(double)>\n"
          "\t\t\t\t     <speedFactor(double)> <speedFactorUnc(double)> <gyroFactor(double)> <gyroFactorUnc(double>\n"
          "\t\t\t\t- Configure Dead Reckoning Engine Parameters to support QDR.\n\n"
-         "\t\t\tgnss set configEng <EngineType> <EngineState>\n"
+         "\t\t\tset configEng <EngineType> <EngineState>\n"
          "\t\t\t\t  Engine type be as follows:\n"
          "\t\t\t\t\t- 0 ---> UNKNOWN\n"
          "\t\t\t\t\t- 1 ---> SPE(Currently not supported)\n"
@@ -144,11 +147,11 @@ void PrintGnssHelp
          "\t\t\t\t\t- 0 ---> UNKNOWN\n"
          "\t\t\t\t\t- 1 ---> SUSPEND\n"
          "\t\t\t\t\t- 2 ---> RUNNING\n"
-         "\t\t\tgnss set robustloc <enable> <enabled911>\n"
+         "\t\t\tset robustloc <enable> <enabled911>\n"
          "\t\t\t\t- Configuring robust location information be as follows:\n"
          "\t\t\t\t\t-  enable->1 for enabling  enable->0 for disabling\n"
          "\t\t\t\t\t-  enable911->1 for enabling enable911->0 for disabling\n"
-         "\t\t\tgnss set secondBandConst <constellation type>"
+         "\t\t\tset secondBandConst <constellation type>"
          "\t\t\t\t  constellation type be as follows:\n"
          "\t\t\t\t\t- -1 ---> UNKNOWN\n"
          "\t\t\t\t\t-  1 ---> GPS\n"
@@ -159,7 +162,7 @@ void PrintGnssHelp
          "\t\t\t\t\t-  32 ---> BDS\n"
          "\t\t\t\t\t-  64 ---> QZSS\n"
          "\t\t\t\t\t-  128 ---> NAVIC\n"
-         "\t\t\tgnss restart <RestartType>\n"
+         "\t\t\trestart <RestartType>\n"
          "\t\t\t\t- Restart gnss device. Allowed when device in 'active' state. Restart type can\n"
          "\t\t\t\t  be as follows:\n"
          "\t\t\t\t\t- hot\n"
@@ -168,13 +171,13 @@ void PrintGnssHelp
          "\t\t\t\t\t- factory\n"
          "\t\t\t\tTo know more about these restart types, please look at: \n"
          "\t\t\t\t           https://docs.legato.io/latest/c_gnss.html\n\n"
-         "\t\t\tgnss fix [FixTime in seconds]\n"
+         "\t\t\tfix [FixTime in seconds]\n"
          "\t\t\t\t- Loop for certain time for first position fix. Here, FixTime is optional.\n"
          "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
-         "\t\t\tgnss supportedNmeaSentences --> Supported NMEA sentences (bit mask)\n\n"
-         "\t\t\tgnss supportedConstellations --> Supported Constellations (bit mask)\n\n"
-         "\t\t\tgnss configDefSecBand --> Configure default secondary band constellations\n\n"
-         "\t\t\tgnss get <parameter>\n"
+         "\t\t\tsupportedNmeaSentences --> Supported NMEA sentences (bit mask)\n\n"
+         "\t\t\tsupportedConstellations --> Supported Constellations (bit mask)\n\n"
+         "\t\t\tconfigDefSecBand --> Configure default secondary band constellations\n\n"
+         "\t\t\tget <parameter>\n"
          "\t\t\t\t- Used to get different gnss parameter.\n"
          "\t\t\t\t  Follows parameters and their descriptions :\n"
          "\t\t\t\t\t- ttff          --> Time to First Fix (milliseconds)\n"
@@ -237,7 +240,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
          "\t\t\t\t\t- xtraStatus --> Get the device's xtra status\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
-         "\t\t\tgnss set constellation <ConstellationType>\n"
+         "\t\t\tset constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
          "\t\t\t\t  ConstellationType can be as follows:\n"
@@ -250,11 +253,11 @@ void PrintGnssHelp
          "\t\t\t\t\t- 64 --> NAVIC\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t10 for GLONASS+GALILEO, 46 for GLONASS+BEIDOU+GALILEO+QZSS\n\n"
-         "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
+         "\t\t\tset acqRate <acqRate in milliseconds>\n"
          "\t\t\t\t- Used to set acquisition rate.\n"
          "\t\t\t\t  Please note that it is available when the device is 'ready' state.\n\n"
-         "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
-         "\t\t\tgnss set nmeaConfig <nmeaMask> <datumType> <engineType>\n"
+         "\t\t\tset nmeaSentences <nmeaMask>\n"
+         "\t\t\tset nmeaConfig <nmeaMask> <datumType> <engineType>\n"
          "\t\t\t\t- Used to set the enabled NMEA sentences. \n"
          "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
          "\t\t\t\t- Used to set nmea sentences. Allowed when device in 'ready' state. May require\n"
@@ -281,10 +284,10 @@ void PrintGnssHelp
          "\t\t\t\t- 1-LOC_ENGINE_SPE\n"
          "\t\t\t\t- 2-LOC_ENGINE_PPE\n"
          "\t\t\t\t- 3-LOC_ENGINE_VPE\n"
-         "\t\t\tgnss set minElevation <minElevation in degrees>\n"
+         "\t\t\tset minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
-         "\t\t\tgnss set minGpsWeek <minGpsWeek value>\n"
-         "\t\t\tgnss watch [WatchPeriod in seconds]\n"
+         "\t\t\tset minGpsWeek <minGpsWeek value>\n"
+         "\t\t\twatch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
          "\t\t\t\t  specified\n\n"
@@ -292,7 +295,9 @@ void PrintGnssHelp
          "\t(and platform reboot) to produce valid result. Please look :\n"
          "\thttps://docs.legato.io/latest/howToGNSS.html,\n"
          "\thttps://docs.legato.io/latest/c_gnss.html and platform documentation for more\n"
-         "\tdetails.\n"
+         "\tdetails.\n\n"
+         "\t? / h - For help\n"
+         "\tq / 0 - To exit\n"
          );
 }
 
@@ -1226,7 +1231,7 @@ static int ConfigureSecondaryBandConstellations
     if (endPtr[0] != '\0' || errno != 0 || constellationSum == 0)
     {
         fprintf(stderr, "Bad constellation parameter: %s\n", secondBandConstPtr);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
@@ -1281,7 +1286,7 @@ static int ConfigureSecondaryBandConstellations
     if (constellationSum != 0)
     {
         fprintf(stderr, "Bad constellation parameter: %s\n", secondBandConstPtr);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     le_result_t result = le_gnss_ConfigureSecondaryBandConstellations(constellationMask);
@@ -1328,7 +1333,7 @@ static int SetConstellation
     if (endPtr[0] != '\0' || errno != 0 || constellationSum == 0)
     {
         fprintf(stderr, "Bad constellation parameter: %s\n", constellationPtr);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
@@ -1383,7 +1388,7 @@ static int SetConstellation
     if (constellationSum != 0)
     {
         fprintf(stderr, "Bad constellation parameter: %s\n", constellationPtr);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     le_result_t result =
@@ -1437,7 +1442,7 @@ static int SetConstellationArea
     {
         fprintf(stderr, "Bad constellation or area parameter: %s %s\n", constellationPtr,
                                                                         constellationAreaPtr);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     le_result_t result = le_gnss_SetConstellationArea((le_gnss_Constellation_t)constellation,
@@ -2268,7 +2273,7 @@ static int DefaultSecondaryBandConstellations
     switch (result)
     {
         case LE_OK:
-                printf("Succesfully configured default second band constellations");
+            printf("Succesfully configured default second band constellations\n");
             break;
         case LE_FAULT:
             printf("Failed to configure secondary band constellations\n");
@@ -4640,10 +4645,23 @@ static void PositionHandlerFunction
             GetRealTimeInfo(positionSampleRef);
             GetSbasType(positionSampleRef);
             GetAzimuthDevInfo(positionSampleRef);
+            printf("\n***********************************\n");
+            GetEngineOutputParams(positionSampleRef);
+            printf("***********************************\n");
         }
         printf("\n************************ End *************************\n");
         // Release provided Position sample reference
         le_gnss_ReleaseSampleRef(positionSampleRef);
+
+        time(&FinishTime);
+        if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+        {
+            if (PositionHandlerRef != NULL)
+            {
+                le_gnss_RemovePositionHandler(PositionHandlerRef);
+            }
+            GnssMainFunction();
+        }
     }
     else
     {
@@ -4816,7 +4834,12 @@ static void PositionHandlerFunction
             status = GetGnssData(positionSampleRef);
         }
         le_gnss_ReleaseSampleRef(positionSampleRef);
-        exit(status);
+        ExitApp = true;
+        if (PositionHandlerRef != NULL)
+        {
+            le_gnss_RemovePositionHandler(PositionHandlerRef);
+        }
+        GnssMainFunction();
     }
 }
 
@@ -4833,10 +4856,21 @@ static void CapabilityHandlerFunction
 )
 {
     DisplayCapabilities(locCapability);
+
+    time(&FinishTime);
+
+    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    {
+        if (CapabilityHandlerRef != NULL)
+        {
+            le_gnss_RemoveCapabilityChangeHandler(CapabilityHandlerRef);
+        }
+        GnssMainFunction();
+    }
 }
 
 void DisplayNmea(const char nmeaMask[LE_GNSS_NMEA_STRING_MAX]) {
-    printf( "**** DisplayNmea NMEA handler string received: %s",nmeaMask);
+    printf("NMEA string : %s",nmeaMask);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4853,29 +4887,20 @@ static void NmeaHandlerFunction
 )
 {
     printf("\n************* NMEA Information ***************\n");
-    printf("\tTimestamp                    : %"PRIu64" \n", timestamp);
+    printf("Timestamp   : %"PRIu64" \n", timestamp);
     DisplayNmea(nmeaInfo);
     printf("**********************************************\n");
-}
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Thread to monitor all gnss information.
- *
-*/
-//--------------------------------------------------------------------------------------------------
-static void* PositionThread
-(
-    void* contextPtr             ///< [IN] The context pointer
-)
-{
-    le_gnss_ConnectService();
+    time(&FinishTime);
 
-    PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
-    LE_ASSERT((PositionHandlerRef != NULL));
-
-    le_event_RunLoop();
-    return NULL;
+    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    {
+        if (NmeaHandlerRef != NULL)
+        {
+            le_gnss_RemoveNmeaHandler(NmeaHandlerRef);
+        }
+        GnssMainFunction();
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4892,41 +4917,17 @@ static int WatchGnssInfo
     uint32_t watchPeriod          ///< [IN] Watch period in seconds
 )
 {
-    le_thread_Ref_t positionThreadRef;
+    WatchPeriod = watchPeriod;
+
+    time(&StartTime);
 
     // Add Position Handler
-    positionThreadRef = le_thread_Create("PositionThread",PositionThread,NULL);
-    le_thread_Start(positionThreadRef);
+    PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
+    LE_ASSERT((PositionHandlerRef != NULL));
 
     printf("Watch positioning data for %ds\n", watchPeriod);
-    le_thread_Sleep(watchPeriod);
-
-    le_gnss_RemovePositionHandler(PositionHandlerRef);
-
-    // stop thread
-    le_thread_Cancel(positionThreadRef);
 
     return EXIT_SUCCESS;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Thread to monitor gnss capability information.
- *
-*/
-//--------------------------------------------------------------------------------------------------
-static void* CapabilityThread
-(
-    void* contextPtr             ///< [IN] The context pointer
-)
-{
-    le_gnss_ConnectService();
-
-    CapabilityHandlerRef = le_gnss_AddCapabilityChangeHandler(CapabilityHandlerFunction, NULL);
-    LE_ASSERT(CapabilityHandlerRef != NULL);
-
-    le_event_RunLoop();
-    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4943,42 +4944,17 @@ static int WatchGnssCapInfo
     uint32_t watchPeriod          ///< [IN] Watch period in seconds
 )
 {
-    le_thread_Ref_t capabilityThreadRef;
 
-    // Add location capability Handler
-    capabilityThreadRef = le_thread_Create("CapabilityThread",CapabilityThread,NULL);
-    le_thread_Start(capabilityThreadRef);
+    WatchPeriod = watchPeriod;
 
-    printf("Watch location capability data for %ds\n", watchPeriod);
-    le_thread_Sleep(watchPeriod);
+    time(&StartTime);
 
-    le_gnss_RemoveCapabilityChangeHandler(CapabilityHandlerRef);
+    CapabilityHandlerRef = le_gnss_AddCapabilityChangeHandler(CapabilityHandlerFunction, NULL);
+    LE_ASSERT(CapabilityHandlerRef != NULL);
 
-    // stop thread
-    le_thread_Cancel(capabilityThreadRef);
+    printf("Watch GNSS capabilities data for %ds\n", watchPeriod);
 
     return EXIT_SUCCESS;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Thread to monitor NMEA information.
- *
-*/
-//--------------------------------------------------------------------------------------------------
-static void* NmeaThread
-(
-    void* contextPtr             ///< [IN] The context pointer
-)
-{
-    le_gnss_ConnectService();
-
-    NmeaHandlerRef = le_gnss_AddNmeaHandler(NmeaHandlerFunction, NULL);
-    LE_ASSERT(NmeaHandlerRef != NULL);
-
-    le_event_RunLoop();
-    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4995,19 +4971,14 @@ static int WatchGnssNmeaInfo
     uint32_t watchPeriod          ///< [IN] Watch period in seconds
 )
 {
-    le_thread_Ref_t nmeaThreadRef;
+    WatchPeriod = watchPeriod;
 
-    // Add location capability Handler
-    nmeaThreadRef = le_thread_Create("NmeaThread",NmeaThread,NULL);
-    le_thread_Start(nmeaThreadRef);
+    time(&StartTime);
+
+    NmeaHandlerRef = le_gnss_AddNmeaHandler(NmeaHandlerFunction, NULL);
+    LE_ASSERT(NmeaHandlerRef != NULL);
 
     printf("Watch NMEA data for %ds\n", watchPeriod);
-    le_thread_Sleep(watchPeriod);
-
-    le_gnss_RemoveNmeaHandler(NmeaHandlerRef);
-
-    // stop thread
-    le_thread_Cancel(nmeaThreadRef);
 
     return EXIT_SUCCESS;
 }
@@ -5065,57 +5036,57 @@ static void GetGnssParams
 
     if (0 == strcmp(params, "ttff"))
     {
-        exit(GetTtff(state));
+        GetTtff(state);
     }
     else if (0 == strcmp(params, "acqRate"))
     {
-        exit(GetAcquisitionRate());
+        GetAcquisitionRate();
     }
     else if (0 == strcmp(params, "LeapSeconds"))
     {
-        exit(GetLeapSeconds());
+        GetLeapSeconds();
     }
     /*else if (0 == strcmp(params, "agpsMode"))
     {
-        exit(GetAgpsMode());
+        GetAgpsMode();
     }*/
     else if (0 == strcmp(params, "constellation"))
     {
-        exit(GetConstellation());
+        GetConstellation();
     }
     else if (0 == strcmp(params, "secondBandConst"))
     {
-        exit(RequestSecondaryBandConstellations());
+        RequestSecondaryBandConstellations();
     }
     else if (0 == strcmp(params, "robustloc"))
     {
-        exit(RobustLocationInformation());
+        RobustLocationInformation();
     }
     #if 0
     else if (0 == strcmp(params, "constArea"))
     {
-        exit(GetConstellationArea());
+        GetConstellationArea();
     }
     #endif
     else if (0 == strcmp(params, "nmeaSentences"))
     {
-        exit(GetNmeaSentences());
+        GetNmeaSentences();
     }
     else if (0 == strcmp(params, "minElevation"))
     {
-        exit(GetMinElevation());
+        GetMinElevation();
     }
     else if (0 == strcmp(params, "minGpsWeek"))
     {
-        exit(GetMinGpsWeek());
+        GetMinGpsWeek();
     }
     else if (0 == strcmp(params, "locCap"))
     {
-        exit(GetCapabilities());
+        GetCapabilities();
     }
     else if (0 == strcmp(params, "xtraStatus"))
     {
-        exit(GetXtraStatus());
+        GetXtraStatus();
     }
     else if ((0 == strcmp(params, "posState"))    ||
              (0 == strcmp(params, "loc2d"))       ||
@@ -5161,8 +5132,9 @@ static void GetGnssParams
         if (LE_GNSS_STATE_ACTIVE != state)
         {
             printf("GNSS is not in active state!\n");
-            exit(EXIT_FAILURE);
+            return;
         }
+        ExitApp = false;
 
         // Copy the param
         le_utf8_Copy(ParamsName, params, sizeof(ParamsName), NULL);
@@ -5172,12 +5144,11 @@ static void GetGnssParams
     }
     else if (strcmp(params, "status") == 0)
     {
-        exit(GetGnssDeviceStatus());
+        GetGnssDeviceStatus();
     }
     else
     {
         printf("Bad parameter: %s\n", params);
-        exit(EXIT_FAILURE);
     }
 
 }
@@ -5207,7 +5178,7 @@ static int SetGnssParams
         if (NULL == arg2ValPtr)
         {
             LE_ERROR("arg2ValPtr is NULL");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         status = SetConstellationArea(argValPtr, arg2ValPtr);
     }
@@ -5226,7 +5197,7 @@ static int SetGnssParams
     }
     else if (strcmp(argNamePtr, "nmeaConfig") == 0)
     {
-        const char* arg3ValPtr = le_arg_GetArg(4);
+        const char* arg3ValPtr = TokenArray[4];
         status = SetNmeaConfiguration(argValPtr, arg2ValPtr, arg3ValPtr);
     }
     else if (0 == strcmp(argNamePtr, "minElevation"))
@@ -5246,7 +5217,7 @@ static int SetGnssParams
         if (NULL == arg2ValPtr)
         {
             printf("arg2ValPtr is NULL");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         status = ConfigureEngineState(argValPtr, arg2ValPtr);
     }
@@ -5255,7 +5226,7 @@ static int SetGnssParams
         if (NULL == arg2ValPtr)
         {
             printf("arg2ValPtr is NULL");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         status = ConfigureRobustLocation(argValPtr,arg2ValPtr);
     }
@@ -5268,7 +5239,7 @@ static int SetGnssParams
         printf("Bad parameter request: %s\n", argNamePtr);
     }
 
-    exit(status);
+    return status;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5291,10 +5262,562 @@ void CheckEnoughParams
     else
     {
         printf("%s\nTry '%s help'\n", errorMsgPtr, le_arg_GetProgramName());
-        exit(EXIT_FAILURE);
+        return;
     }
 }
 
+void GnssMainFunction
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+    char inputStr[MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT];
+    int tokenNum = 0; // Index to token list.
+
+    do
+    {
+        memset(inputStr, 0, MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT);
+        for (int i = 0; i < MAX_NUMBER_OF_INPUT; i++)
+        {
+            memset(TokenArray[i], 0, MAX_LEN_OF_EACH_INPUT);
+        }
+
+        le_gnss_State_t state = le_gnss_GetState();
+        if (TAF_GNSS_STATE_ACTIVE == state)
+        {
+            printf("\033[1;32mgnss> \033[0m"); // Color GREEN
+        }
+        else
+        {
+            printf("\033[1;35mgnss> \033[0m"); // Color MAGENTA
+        }
+
+        tokenNum = 0;
+        char *p = fgets(inputStr, sizeof(inputStr), stdin);
+
+        if (p != NULL)
+        {
+            LE_INFO("Input string is: %s, string length: %d", inputStr, (int) strlen(inputStr));
+            char *context = NULL;
+            char *token = strtok_r(inputStr, " ", &context);
+            while (token != NULL)
+            {
+                if (tokenNum < MAX_NUMBER_OF_INPUT)
+                {
+                    le_utf8_Copy(TokenArray[tokenNum], token, sizeof(TokenArray[tokenNum]), NULL);
+                    tokenNum++;
+                    token = strtok_r(NULL, " ", &context);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            int nullAt = strlen(TokenArray[tokenNum - 1]);
+            TokenArray[tokenNum - 1][nullAt - 1] = '\0';
+        }
+        else
+        {
+            return;
+        }
+
+        // Process the command
+        ExitApp = true;
+        if (tokenNum < 1)
+        {
+            // No argument specified.
+            continue;
+        }
+
+        const char *commandPtr = TokenArray[0];
+        if (NULL == commandPtr)
+        {
+            LE_ERROR("commandPtr is NULL");
+        }
+
+        size_t numArgs = tokenNum;
+
+        if (strcmp(commandPtr, "h") == 0 || strcmp(commandPtr, "?") == 0 ||
+            strcmp(commandPtr, "help") == 0)
+        {
+            PrintGnssHelp();
+        }
+        else if (strcmp(commandPtr, "start") == 0)
+        {
+            Start();
+        }
+        else if (0 == strcmp(commandPtr, "startType"))
+        {
+            const char *startTypePtr = TokenArray[1];
+            if (startTypePtr == NULL)
+            {
+                printf("start type is NULL.\n");
+                continue;
+            }
+
+            StartEngineType(startTypePtr);
+        }
+        else if (0 == strcmp(commandPtr, "ConfigLevArm"))
+        {
+            const char *forwOffsetPtr = TokenArray[1];
+            if (forwOffsetPtr == NULL)
+            {
+                printf("forwOffsetPtr is NULL.\n");
+                continue;
+            }
+
+            const char *sideOffsetPtr = TokenArray[2];
+            if (sideOffsetPtr == NULL)
+            {
+                printf("sideOffsetPtr is NULL.\n");
+                continue;
+            }
+
+            const char *upOffsePtr = TokenArray[3];
+            if (upOffsePtr == NULL)
+            {
+                printf("upOffsePtr is NULL.\n");
+                continue;
+            }
+
+            const char *levArmTypePtr = TokenArray[4];
+            if (levArmTypePtr == NULL)
+            {
+                printf("levArmTypePtr is NULL.\n");
+                continue;
+            }
+
+            le_gnss_LeverArmParams_t * leverArmParamsPtr;
+            char *endPtr;
+            double forwardOffsetMeters;
+            double sidewaysOffsetMeters;
+            double upOffsetMeters;
+            uint32_t levArmType;
+            forwardOffsetMeters = strtod(forwOffsetPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad forwOffsetPtr: %s\n", forwOffsetPtr);
+                continue;
+            }
+
+            sidewaysOffsetMeters = strtod(sideOffsetPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad sideOffsetPtr: %s\n", sideOffsetPtr);
+                continue;
+            }
+
+            upOffsetMeters = strtod(upOffsePtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad upOffsePtr: %s\n", upOffsePtr);
+                continue;
+            }
+
+            levArmType = strtod(levArmTypePtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad levArmTypePtr: %s\n", levArmTypePtr);
+                continue;
+            }
+
+            le_mem_PoolRef_t LevArmFramePool = NULL;
+            LevArmFramePool
+                = le_mem_CreatePool("LevArmFramePool", sizeof(le_gnss_LeverArmParams_t));
+            leverArmParamsPtr
+                = (le_gnss_LeverArmParams_t*) le_mem_ForceAlloc(LevArmFramePool);
+            leverArmParamsPtr->forwardOffsetMeters = forwardOffsetMeters;
+            leverArmParamsPtr->sidewaysOffsetMeters = sidewaysOffsetMeters;
+            leverArmParamsPtr->upOffsetMeters = upOffsetMeters;
+            leverArmParamsPtr->levArmType = levArmType;
+            ConfigureLevArm(leverArmParamsPtr);
+        }
+        else if (0 == strcmp(commandPtr, "ConfigDR"))
+        {
+            const char *rollOffsetPtr = TokenArray[1];
+            if (rollOffsetPtr == NULL)
+            {
+                printf("rollOffsetPtr is NULL.\n");
+                continue;
+            }
+
+            const char *yawOffsetPtr = TokenArray[2];
+            if (yawOffsetPtr == NULL)
+            {
+                printf("yawOffsetPtr is NULL.\n");
+                continue;
+            }
+
+            const char *pitchOffsetPtr = TokenArray[3];
+            if (pitchOffsetPtr == NULL)
+            {
+                printf("pitchOffsetPtr is NULL.\n");
+                continue;
+            }
+
+            const char *offsetUncPtr = TokenArray[4];
+            if (offsetUncPtr == NULL)
+            {
+                printf("offsetUncPtr is NULL.\n");
+                continue;
+            }
+
+            const char *speedFactorPtr = TokenArray[5];
+            if (speedFactorPtr == NULL)
+            {
+                printf("speedFactorPtr is NULL.\n");
+                continue;
+            }
+
+            const char *speedFactorUncPtr = TokenArray[6];
+            if (speedFactorUncPtr == NULL)
+            {
+                printf("speedFactorUncPtr is NULL.\n");
+                continue;
+            }
+
+            const char *gyroFactorPtr = TokenArray[7];
+            if (gyroFactorPtr == NULL)
+            {
+                printf("gyroFactorPtr is NULL.\n");
+                continue;
+            }
+
+            const char *gyroFactorUncPtr = TokenArray[8];
+            if (gyroFactorUncPtr == NULL)
+            {
+                printf("gyroFactorUncPtr is NULL.\n");
+                continue;
+            }
+
+            le_gnss_DrParams_t *DrParamsPtr;
+            char *endPtr;
+            double rollOffset;
+            double yawOffset;
+            double pitchOffset;
+            double offsetUnc;
+            double speedFactor;
+            double speedFactorUnc;
+            double gyroFactor;
+            double gyroFactorUnc;
+            rollOffset = strtod(rollOffsetPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad rollOffsetPtr: %s\n", rollOffsetPtr);
+                continue;
+            }
+
+            yawOffset = strtod(yawOffsetPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad yawOffsetPtr: %s\n", yawOffsetPtr);
+                continue;
+            }
+
+            pitchOffset = strtod(pitchOffsetPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad pitchOffsetPtr: %s\n", pitchOffsetPtr);
+                continue;
+            }
+
+            offsetUnc = strtod(offsetUncPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad offsetUncPtr: %s\n", offsetUncPtr);
+                continue;
+            }
+
+            speedFactor = strtod(speedFactorPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad speedFactorPtr: %s\n", speedFactorPtr);
+                continue;
+            }
+
+            speedFactorUnc = strtod(speedFactorUncPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad speedFactorUncPtr: %s\n", speedFactorUncPtr);
+                continue;
+            }
+
+            gyroFactor = strtod(gyroFactorPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad gyroFactorPtr: %s\n", gyroFactorPtr);
+                continue;
+            }
+
+            gyroFactorUnc = strtod(gyroFactorUncPtr, &endPtr);
+            if (endPtr[0] != '\0')
+            {
+                printf("Bad gyroFactorUncPtr: %s\n", gyroFactorUncPtr);
+                continue;
+            }
+
+            le_mem_PoolRef_t DrFramePool = NULL;
+            DrFramePool = le_mem_CreatePool("DrFramePool", sizeof(le_gnss_LeverArmParams_t));
+            DrParamsPtr = (le_gnss_DrParams_t*) le_mem_ForceAlloc(DrFramePool);
+            if (DrParamsPtr != NULL)
+            {
+                DrParamsPtr->rollOffset = rollOffset;
+                DrParamsPtr->yawOffset = yawOffset;
+                DrParamsPtr->pitchOffset = pitchOffset;
+                DrParamsPtr->offsetUnc = offsetUnc;
+                DrParamsPtr->speedFactor = speedFactor;
+                DrParamsPtr->speedFactorUnc = speedFactorUnc;
+                DrParamsPtr->gyroFactor = gyroFactor;
+                DrParamsPtr->gyroFactorUnc = gyroFactorUnc;
+                ConfigureDeadReckoning(DrParamsPtr);
+            }
+            else
+            {
+                continue;
+            }
+        }
+        else if (strcmp(commandPtr, "stop") == 0)
+        {
+            Stop();
+        }
+        else if (strcmp(commandPtr, "enable") == 0)
+        {
+            Enable();
+        }
+        else if (strcmp(commandPtr, "disable") == 0)
+        {
+            Disable();
+        }
+        else if (strcmp(commandPtr, "restart") == 0)
+        {
+            const char *restartTypePtr = TokenArray[1];
+            if (restartTypePtr == NULL)
+            {
+                printf("Restart type is NULL.\n");
+                continue;
+            }
+
+            // Following function exit on failure, so no need to check return code.
+            CheckEnoughParams(1, numArgs, "Restart type missing");
+            Restart(restartTypePtr);
+        }
+        else if (strcmp(commandPtr, "fix") == 0)
+        {
+            const char *fixPeriodPtr = TokenArray[1];
+            uint32_t fixPeriod = DEFAULT_3D_FIX_TIME;
+            // Check whether any watch period value is specified.
+            if (NULL != fixPeriodPtr)
+            {
+                char *endPtr;
+                errno = 0;
+                fixPeriod = strtoul(fixPeriodPtr, &endPtr, 10);
+
+                if (endPtr[0] != '\0' || errno != 0)
+                {
+                    fprintf(stderr, "Bad fix period value: %s\n", fixPeriodPtr);
+                    continue;
+                }
+            }
+
+            le_gnss_State_t state = le_gnss_GetState();
+            if (TAF_GNSS_STATE_ACTIVE != state)
+            {
+                printf("GNSS is not in active state!\n");
+                continue;
+            }
+
+            if (fixPeriod == 0)
+            {
+                fixPeriod = DEFAULT_3D_FIX_TIME;
+            }
+
+            DoPosFix(fixPeriod);
+        }
+        else if (strcmp(commandPtr, "supportedNmeaSentences") == 0)
+        {
+            GetSupportedNmeaSentences();
+        }
+        else if (strcmp(commandPtr, "supportedConstellations") == 0)
+        {
+            GetSupportedConstellations();
+        }
+        else if (strcmp(commandPtr, "configDefSecBand") == 0)
+        {
+            DefaultSecondaryBandConstellations();
+        }
+        else if (strcmp(commandPtr, "get") == 0)
+        {
+            const char *paramsPtr = TokenArray[1];
+            if (NULL == paramsPtr)
+            {
+                LE_ERROR("paramsPtr is NULL");
+                continue;
+            }
+
+            CheckEnoughParams(1, numArgs, "Missing arguments");
+            GetGnssParams(paramsPtr);
+        }
+        else if (strcmp(commandPtr, "set") == 0)
+        {
+            const char *argNamePtr = TokenArray[1];
+            const char *argValPtr = TokenArray[2];
+            const char *arg2ValPtr = TokenArray[3];
+            if (NULL == argNamePtr)
+            {
+                LE_ERROR("argNamePtr is NULL");
+                printf("argNamePtr is NULL");
+                continue;
+            }
+
+            if (NULL == argValPtr)
+            {
+                LE_ERROR("argValPtr is NULL");
+                printf("argValPtr is NULL");
+                continue;
+            }
+
+            CheckEnoughParams(2, numArgs, "Missing arguments");
+            SetGnssParams(argNamePtr, argValPtr, arg2ValPtr);
+        }
+        else if (strcmp(commandPtr, "watch") == 0)
+        {
+            if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+            {
+                printf("GNSS is not in active state!\n");
+                continue;
+            }
+
+            const char *watchPeriodPtr = TokenArray[1];
+            uint32_t watchPeriod = DEFAULT_WATCH_PERIOD;
+            // Check whether any watch period value is specified.
+            if (NULL != watchPeriodPtr)
+            {
+                char *endPtr;
+                errno = 0;
+                watchPeriod = strtoul(watchPeriodPtr, &endPtr, 10);
+
+                if (endPtr[0] != '\0' || errno != 0)
+                {
+                    fprintf(stderr, "Bad watch period value: %s\n", watchPeriodPtr);
+                    continue;
+                }
+            }
+
+            if (watchPeriod == 0)
+            {
+                watchPeriod = DEFAULT_WATCH_PERIOD;
+            }
+
+            // Copy the command
+            le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            WatchGnssInfo(watchPeriod);
+            ExitApp = false;
+        }
+        else if (strcmp(commandPtr, "capwatch") == 0)
+        {
+            if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+            {
+                printf("GNSS is not in active state!\n");
+                continue;
+            }
+
+            const char *capwatchPeriodPtr = TokenArray[1];
+            uint32_t capwatchPeriod = DEFAULT_WATCH_PERIOD;
+            // Check whether any watch period value is specified.
+            if (NULL != capwatchPeriodPtr)
+            {
+                char *endPtr;
+                errno = 0;
+                capwatchPeriod = strtoul(capwatchPeriodPtr, &endPtr, 10);
+
+                if (endPtr[0] != '\0' || errno != 0)
+                {
+                    fprintf(stderr, "Bad watch period value: %s\n", capwatchPeriodPtr);
+                    continue;
+                }
+            }
+
+            if (capwatchPeriod == 0)
+            {
+                capwatchPeriod = DEFAULT_WATCH_PERIOD;
+            }
+
+            // Copy the command
+            le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            WatchGnssCapInfo(capwatchPeriod);
+            ExitApp = false;
+        }
+        else if (strcmp(commandPtr, "nmeawatch") == 0)
+        {
+            if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+            {
+                printf("GNSS is not in active state!\n");
+                continue;
+            }
+
+            const char *nmeawatchPeriodPtr = TokenArray[1];
+            uint32_t nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+            // Check whether any watch period value is specified.
+            if (NULL != nmeawatchPeriodPtr)
+            {
+                char *endPtr;
+                errno = 0;
+                nmeawatchPeriod = strtoul(nmeawatchPeriodPtr, &endPtr, 10);
+
+                if (endPtr[0] != '\0' || errno != 0)
+                {
+                    fprintf(stderr, "Bad watch period value: %s\n", nmeawatchPeriodPtr);
+                    continue;
+                }
+            }
+
+            if (nmeawatchPeriod == 0)
+            {
+                nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+            }
+
+            // Copy the command
+            le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            WatchGnssNmeaInfo(nmeawatchPeriod);
+            ExitApp = false;
+        }
+        else
+        {
+            if (inputStr[0] != 'q' && inputStr[0] != '0')
+            {
+                printf("Invalid command for GNSS service. Input 'help' to check usages.\n");
+            }
+        }
+    } while (inputStr[0] != 'q' && inputStr[0] != '0' && ExitApp);
+
+    if (ExitApp)
+    {
+        if (TAF_GNSS_STATE_ACTIVE == le_gnss_GetState())
+        {
+            result = le_gnss_Stop();
+        }
+
+        LE_INFO("result of le_gnss_Stop is %d", (int) result);
+        if (PositionHandlerRef != NULL)
+        {
+            le_gnss_RemovePositionHandler(PositionHandlerRef);
+        }
+
+        if (CapabilityHandlerRef != NULL)
+        {
+            le_gnss_RemoveCapabilityChangeHandler(CapabilityHandlerRef);
+        }
+
+        if (NmeaHandlerRef != NULL)
+        {
+            le_gnss_RemoveNmeaHandler(NmeaHandlerRef);
+        }
+
+        exit(EXIT_SUCCESS);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5303,435 +5826,11 @@ void CheckEnoughParams
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Process the command
-    if (le_arg_NumArgs() < 1)
-    {
-        // No argument specified. Print help and exit.
-        PrintGnssHelp();
-        exit(EXIT_FAILURE);
-    }
-
-    const char* commandPtr = le_arg_GetArg(0);
-    if(NULL == commandPtr)
-    {
-        LE_ERROR("commandPtr is NULL");
-        exit(EXIT_FAILURE);
-    }
-    size_t numArgs = le_arg_NumArgs();
-
-    if (strcmp(commandPtr, "help") == 0)
+    if (le_arg_NumArgs() > 0 && strcmp(le_arg_GetArg(0), "help") == 0)
     {
         PrintGnssHelp();
-        exit(EXIT_SUCCESS);
-    }
-    else if (strcmp(commandPtr, "start") == 0)
-    {
-        exit(Start());
-    }
-    else if (0 == strcmp(commandPtr, "startType"))
-    {
-        const char* startTypePtr = le_arg_GetArg(1);
-        if (startTypePtr == NULL)
-        {
-            printf("start type is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        exit(StartEngineType(startTypePtr));
-    }
-    else if (0 == strcmp(commandPtr, "ConfigLevArm"))
-    {
-        const char* forwOffsetPtr = le_arg_GetArg(1);
-        if (forwOffsetPtr == NULL)
-        {
-            printf("forwOffsetPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* sideOffsetPtr = le_arg_GetArg(2);
-        if (sideOffsetPtr == NULL)
-        {
-            printf("sideOffsetPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* upOffsePtr = le_arg_GetArg(3);
-        if (upOffsePtr == NULL)
-        {
-            printf("upOffsePtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* levArmTypePtr = le_arg_GetArg(4);
-        if (levArmTypePtr == NULL)
-        {
-            printf("levArmTypePtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        taf_gnss_LeverArmParams_t *leverArmParamsPtr;
-        char* endPtr;
-        double forwardOffsetMeters;
-        double sidewaysOffsetMeters;
-        double upOffsetMeters;
-        uint32_t levArmType;
-        forwardOffsetMeters = strtod(forwOffsetPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad forwOffsetPtr: %s\n", forwOffsetPtr);
-            exit(EXIT_FAILURE);
-        }
-        sidewaysOffsetMeters = strtod(sideOffsetPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad sideOffsetPtr: %s\n", sideOffsetPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        upOffsetMeters = strtod(upOffsePtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad upOffsePtr: %s\n", upOffsePtr);
-            exit(EXIT_FAILURE);
-        }
-
-        levArmType = strtod(levArmTypePtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad levArmTypePtr: %s\n", levArmTypePtr);
-            exit(EXIT_FAILURE);
-        }
-
-        le_mem_PoolRef_t LevArmFramePool = NULL;
-        LevArmFramePool = le_mem_CreatePool("LevArmFramePool", sizeof(taf_gnss_LeverArmParams_t));
-        leverArmParamsPtr = (taf_gnss_LeverArmParams_t*) le_mem_ForceAlloc(LevArmFramePool);
-        leverArmParamsPtr->forwardOffsetMeters = forwardOffsetMeters;
-        leverArmParamsPtr->sidewaysOffsetMeters = sidewaysOffsetMeters;
-        leverArmParamsPtr->upOffsetMeters = upOffsetMeters;
-        leverArmParamsPtr->levArmType = levArmType;
-        exit(ConfigureLevArm(leverArmParamsPtr));
     }
 
-    else if (0 == strcmp(commandPtr, "ConfigDR"))
-    {
-        const char* rollOffsetPtr = le_arg_GetArg(1);
-        if (rollOffsetPtr == NULL)
-        {
-            printf("rollOffsetPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* yawOffsetPtr = le_arg_GetArg(2);
-        if (yawOffsetPtr == NULL)
-        {
-            printf("yawOffsetPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* pitchOffsetPtr = le_arg_GetArg(3);
-        if (pitchOffsetPtr == NULL)
-        {
-            printf("pitchOffsetPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* offsetUncPtr = le_arg_GetArg(4);
-        if (offsetUncPtr == NULL)
-        {
-            printf("offsetUncPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* speedFactorPtr = le_arg_GetArg(5);
-        if (speedFactorPtr == NULL)
-        {
-            printf("speedFactorPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* speedFactorUncPtr = le_arg_GetArg(6);
-        if (speedFactorUncPtr == NULL)
-        {
-            printf("speedFactorUncPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* gyroFactorPtr = le_arg_GetArg(7);
-        if (gyroFactorPtr == NULL)
-        {
-            printf("gyroFactorPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* gyroFactorUncPtr = le_arg_GetArg(8);
-        if (gyroFactorUncPtr == NULL)
-        {
-            printf("gyroFactorUncPtr is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        taf_gnss_DrParams_t *DrParamsPtr;
-        char* endPtr;
-        double rollOffset;
-        double yawOffset;
-        double pitchOffset;
-        double offsetUnc;
-        double speedFactor;
-        double speedFactorUnc;
-        double gyroFactor;
-        double gyroFactorUnc;
-        rollOffset = strtod(rollOffsetPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad rollOffsetPtr: %s\n", rollOffsetPtr);
-            exit(EXIT_FAILURE);
-        }
-        yawOffset = strtod(yawOffsetPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad yawOffsetPtr: %s\n", yawOffsetPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        pitchOffset = strtod(pitchOffsetPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad pitchOffsetPtr: %s\n", pitchOffsetPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        offsetUnc = strtod(offsetUncPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad offsetUncPtr: %s\n", offsetUncPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        speedFactor = strtod(speedFactorPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad speedFactorPtr: %s\n", speedFactorPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        speedFactorUnc = strtod(speedFactorUncPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad speedFactorUncPtr: %s\n", speedFactorUncPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        gyroFactor = strtod(gyroFactorPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad gyroFactorPtr: %s\n", gyroFactorPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        gyroFactorUnc = strtod(gyroFactorUncPtr,&endPtr);
-        if(endPtr[0]!='\0')
-        {
-            printf("Bad gyroFactorUncPtr: %s\n", gyroFactorUncPtr);
-            exit(EXIT_FAILURE);
-        }
-
-        le_mem_PoolRef_t DrFramePool = NULL;
-        DrFramePool = le_mem_CreatePool("DrFramePool", sizeof(taf_gnss_LeverArmParams_t));
-        DrParamsPtr = (taf_gnss_DrParams_t*) le_mem_ForceAlloc(DrFramePool);
-        if(DrParamsPtr != NULL)
-        {
-            DrParamsPtr->rollOffset = rollOffset;
-            DrParamsPtr->yawOffset = yawOffset;
-            DrParamsPtr->pitchOffset = pitchOffset;
-            DrParamsPtr->offsetUnc = offsetUnc;
-            DrParamsPtr->speedFactor = speedFactor;
-            DrParamsPtr->speedFactorUnc = speedFactorUnc;
-            DrParamsPtr->gyroFactor = gyroFactor;
-            DrParamsPtr->gyroFactorUnc = gyroFactorUnc;
-            exit(ConfigureDeadReckoning(DrParamsPtr));
-        }
-        else
-        {
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    else if (strcmp(commandPtr, "stop") == 0)
-    {
-        exit(Stop());
-    }
-    else if (strcmp(commandPtr, "enable") == 0)
-    {
-        exit(Enable());
-    }
-    else if (strcmp(commandPtr, "disable") == 0)
-    {
-        exit(Disable());
-    }
-    else if (strcmp(commandPtr, "restart") == 0)
-    {
-        const char* restartTypePtr = le_arg_GetArg(1);
-        if (restartTypePtr == NULL)
-        {
-            printf("Restart type is NULL.\n");
-            exit(EXIT_FAILURE);
-        }
-        // Following function exit on failure, so no need to check return code.
-        CheckEnoughParams( 1,
-                           numArgs,
-                          "Restart type missing");
-        exit(Restart(restartTypePtr));
-
-    }
-    else if (strcmp(commandPtr, "fix") == 0)
-    {
-        const char* fixPeriodPtr = le_arg_GetArg(1);
-        uint32_t fixPeriod = DEFAULT_3D_FIX_TIME;
-        //Check whether any watch period value is specified.
-        if (NULL != fixPeriodPtr)
-        {
-            char *endPtr;
-            errno = 0;
-            fixPeriod = strtoul(fixPeriodPtr, &endPtr, 10);
-
-            if (endPtr[0] != '\0' || errno != 0)
-            {
-                fprintf(stderr, "Bad fix period value: %s\n", fixPeriodPtr);
-                exit(EXIT_FAILURE);
-            }
-        }
-        le_gnss_State_t state = le_gnss_GetState();
-        if (LE_GNSS_STATE_ACTIVE != state)
-        {
-            printf("GNSS is not in active state!\n");
-            exit(EXIT_FAILURE);
-        }
-        exit(DoPosFix(fixPeriod));
-    }
-    else if (strcmp(commandPtr, "supportedNmeaSentences") == 0)
-    {
-        exit(GetSupportedNmeaSentences());
-    }
-    else if (strcmp(commandPtr, "supportedConstellations") == 0)
-    {
-        exit(GetSupportedConstellations());
-    }
-
-    else if (strcmp(commandPtr, "configDefSecBand") == 0)
-    {
-        exit(DefaultSecondaryBandConstellations());
-    }
-
-    else if (strcmp(commandPtr, "get") == 0)
-    {
-        const char* paramsPtr = le_arg_GetArg(1);
-        if (NULL == paramsPtr)
-        {
-            LE_ERROR("paramsPtr is NULL");
-            exit(EXIT_FAILURE);
-        }
-        CheckEnoughParams( 1,
-                           numArgs,
-                           "Missing arguments");
-        GetGnssParams(paramsPtr);
-    }
-    else if (strcmp(commandPtr, "set") == 0)
-    {
-        const char* argNamePtr = le_arg_GetArg(1);
-        const char* argValPtr = le_arg_GetArg(2);
-        const char* arg2ValPtr = le_arg_GetArg(3);
-        if (NULL == argNamePtr)
-        {
-            LE_ERROR("argNamePtr is NULL");
-            printf("argNamePtr is NULL");
-            exit(EXIT_FAILURE);
-        }
-        if (NULL == argValPtr)
-        {
-            LE_ERROR("argValPtr is NULL");
-            printf("argValPtr is NULL");
-            exit(EXIT_FAILURE);
-        }
-        CheckEnoughParams( 2,
-                           numArgs,
-                           "Missing arguments");
-        exit(SetGnssParams(argNamePtr, argValPtr, arg2ValPtr));
-    }
-    else if (strcmp(commandPtr, "watch") == 0)
-    {
-        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
-        {
-            printf("GNSS is not in active state!\n");
-            exit(EXIT_FAILURE);
-        }
-
-        const char* watchPeriodPtr = le_arg_GetArg(1);
-        uint32_t watchPeriod = DEFAULT_WATCH_PERIOD;
-        //Check whether any watch period value is specified.
-        if (NULL != watchPeriodPtr)
-        {
-            char *endPtr;
-            errno = 0;
-            watchPeriod = strtoul(watchPeriodPtr, &endPtr, 10);
-
-            if (endPtr[0] != '\0' || errno != 0)
-            {
-                fprintf(stderr, "Bad watch period value: %s\n", watchPeriodPtr);
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        // Copy the command
-        le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
-        exit(WatchGnssInfo(watchPeriod));
-    }
-    else if (strcmp(commandPtr, "capwatch") == 0)
-    {
-        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
-        {
-            printf("GNSS is not in active state!\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* capwatchPeriodPtr = le_arg_GetArg(1);
-        uint32_t capwatchPeriod = DEFAULT_WATCH_PERIOD;
-        //Check whether any watch period value is specified.
-        if (NULL != capwatchPeriodPtr)
-        {
-            char *endPtr;
-            errno = 0;
-            capwatchPeriod = strtoul(capwatchPeriodPtr, &endPtr, 10);
-
-            if (endPtr[0] != '\0' || errno != 0)
-            {
-                fprintf(stderr, "Bad watch period value: %s\n", capwatchPeriodPtr);
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        // Copy the command
-        le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
-        exit(WatchGnssCapInfo(capwatchPeriod));
-    }
-    else if (strcmp(commandPtr, "nmeawatch") == 0)
-    {
-        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
-        {
-            printf("GNSS is not in active state!\n");
-            exit(EXIT_FAILURE);
-        }
-        const char* nmeawatchPeriodPtr = le_arg_GetArg(1);
-        uint32_t nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
-        //Check whether any watch period value is specified.
-        if (NULL != nmeawatchPeriodPtr)
-        {
-            char *endPtr;
-            errno = 0;
-            nmeawatchPeriod = strtoul(nmeawatchPeriodPtr, &endPtr, 10);
-
-            if (endPtr[0] != '\0' || errno != 0)
-            {
-                fprintf(stderr, "Bad watch period value: %s\n", nmeawatchPeriodPtr);
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        // Copy the command
-        le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
-        exit(WatchGnssNmeaInfo(nmeawatchPeriod));
-    }
-    else
-    {
-        printf("Invalid command for GNSS service\n");
-        exit(EXIT_FAILURE);
-    }
-
+    GnssMainFunction();
 }
 
