@@ -71,6 +71,7 @@ le_result_t {{apiName}}_TryConnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *
  * Set handler called when server disconnection is detected.
  *
  * When a server connection is lost, call this handler then exit with LE_FATAL.  If a program wants
@@ -85,6 +86,7 @@ LE_FULL_API void {{apiName}}_SetServerDisconnectHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *
  * Set handler called when server disconnection is detected without exiting.
  *
  * When a server connection is lost, call this handler without exit.

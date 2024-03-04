@@ -492,15 +492,15 @@ static void NonExitSessionCloseHandler
 }
 
 //--------------------------------------------------------------------------------------------------
-/**
- * Set handler called when server disconnection is detected.
- *
- * When a server connection is lost, call this handler without exit.
- *
- * @warning When using the API, it needs the application developer to handle some cases like
- * re-connecting and recycling the resources.
- * For most of cases, it is safe to use SetServerDisconnectHandler.
- */
+//
+// Set handler called when server disconnection is detected.
+//
+// When a server connection is lost, call this handler without exit.
+//
+// @warning When using the API, it needs the application developer to handle some cases like
+// re-connecting and recycling the resources.
+// For most of cases, it is safe to use SetServerDisconnectHandler.
+//
 //--------------------------------------------------------------------------------------------------
 void {{apiName}}_SetNonExitServerDisconnectHandler
 (
