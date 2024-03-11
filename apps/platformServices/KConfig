@@ -298,6 +298,13 @@ config ENABLE_MULTI_VM_SUPPORT
   ---help---
   Enable multivm feature.
 
+config GET_IMEI_SUPPORT
+  bool "Get IMEI support"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Get IMEI support
+
 config RADIO_SIGNAL_INDICATION_CONFIG
   bool "Threshold and delta configuration for radio siganl indication"
   default y if TARGET_SA525M
