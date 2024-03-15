@@ -77,6 +77,8 @@ static bool ExitApp = true;
 char TokenArray[MAX_NUMBER_OF_INPUT][MAX_LEN_OF_EACH_INPUT];
 
 time_t StartTime, FinishTime;
+time_t FirstWatchReportTime = -1;
+uint32_t AcqRate;
 uint32_t WatchPeriod;
 
 //-------------------------------------------------------------------------------------------------
@@ -4626,6 +4628,10 @@ static void PositionHandlerFunction
     if (strcmp(ParamsName, "watch") == 0)
     {
         printf("\n******** Detailed Location Information Report ********\n");
+        if (FirstWatchReportTime == -1)
+        {
+            time(&FirstWatchReportTime);
+        }
         GetPosInfo(positionSampleRef);
         GetSatelliteStatus(positionSampleRef);
         le_gnss_FixState_t state;
@@ -4654,11 +4660,28 @@ static void PositionHandlerFunction
         le_gnss_ReleaseSampleRef(positionSampleRef);
 
         time(&FinishTime);
-        if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+        int arrvFirstEventIn = (int) difftime(FirstWatchReportTime, StartTime);
+        int acqRateInSec = (int) AcqRate/1000;
+        int earlyArrvOfFirstReport = (acqRateInSec - arrvFirstEventIn) > 0 ? (acqRateInSec - arrvFirstEventIn) : 0;
+        int residualWchTimeSec = acqRateInSec > 1 ? WatchPeriod % acqRateInSec : 0;
+        int watchTimeSec = (int) difftime(FinishTime, StartTime);
+        LE_DEBUG("Watching for: %ds, arrvFirstEventIn: %ds so earlyArrvOfFirstReport: %ds, "
+                "acqRateInSec: %ds, residualWchTimeSec: %ds", watchTimeSec, arrvFirstEventIn,
+                earlyArrvOfFirstReport, acqRateInSec, residualWchTimeSec);
+        if (residualWchTimeSec > 0 && (earlyArrvOfFirstReport+residualWchTimeSec) > acqRateInSec)
+        {
+            earlyArrvOfFirstReport = (earlyArrvOfFirstReport+residualWchTimeSec) - acqRateInSec;
+            residualWchTimeSec = 0;
+        }
+        if (watchTimeSec >= (WatchPeriod - earlyArrvOfFirstReport - residualWchTimeSec))
         {
             if (PositionHandlerRef != NULL)
             {
                 le_gnss_RemovePositionHandler(PositionHandlerRef);
+            }
+            if (earlyArrvOfFirstReport+residualWchTimeSec > 0)
+            {
+                le_thread_Sleep(earlyArrvOfFirstReport+residualWchTimeSec);
             }
             GnssMainFunction();
         }
@@ -4859,7 +4882,7 @@ static void CapabilityHandlerFunction
 
     time(&FinishTime);
 
-    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    if ((int) difftime(FinishTime, StartTime) >= WatchPeriod)
     {
         if (CapabilityHandlerRef != NULL)
         {
@@ -4893,7 +4916,7 @@ static void NmeaHandlerFunction
 
     time(&FinishTime);
 
-    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    if ((int) difftime(FinishTime, StartTime) >= WatchPeriod)
     {
         if (NmeaHandlerRef != NULL)
         {
@@ -4919,7 +4942,12 @@ static int WatchGnssInfo
 {
     WatchPeriod = watchPeriod;
 
+    FirstWatchReportTime = -1;
+
     time(&StartTime);
+
+    le_gnss_GetAcquisitionRate(&AcqRate);
+    LE_DEBUG("Watch Gnss info for %ds at interval of (AcqRate) %dms", WatchPeriod, AcqRate);
 
     // Add Position Handler
     PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
@@ -5277,10 +5305,10 @@ void GnssMainFunction
 
     do
     {
-        memset(inputStr, 0, MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT);
+        memset(inputStr, '\0', MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT);
         for (int i = 0; i < MAX_NUMBER_OF_INPUT; i++)
         {
-            memset(TokenArray[i], 0, MAX_LEN_OF_EACH_INPUT);
+            memset(TokenArray[i], '\0', MAX_LEN_OF_EACH_INPUT);
         }
 
         le_gnss_State_t state = le_gnss_GetState();
@@ -5703,11 +5731,20 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", watchPeriodPtr);
                     continue;
                 }
+                if (strcmp(watchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    watchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
-            if (watchPeriod == 0)
+            uint32_t acqRate;
+            result = le_gnss_GetAcquisitionRate(&acqRate);
+            if (watchPeriod == 0 || (LE_OK == result && acqRate > watchPeriod*1000))
             {
-                watchPeriod = DEFAULT_WATCH_PERIOD;
+                printf("Watch positioning data for %ds\n", watchPeriod);
+                le_thread_Sleep(watchPeriod);
+                continue;
             }
 
             // Copy the command
@@ -5737,15 +5774,20 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", capwatchPeriodPtr);
                     continue;
                 }
-            }
-
-            if (capwatchPeriod == 0)
-            {
-                capwatchPeriod = DEFAULT_WATCH_PERIOD;
+                if (strcmp(capwatchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    capwatchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
             // Copy the command
             le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            if (capwatchPeriod == 0)
+            {
+                printf("Watch GNSS capabilities data for %ds\n", capwatchPeriod);
+                continue;
+            }
             WatchGnssCapInfo(capwatchPeriod);
             ExitApp = false;
         }
@@ -5771,15 +5813,19 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", nmeawatchPeriodPtr);
                     continue;
                 }
-            }
-
-            if (nmeawatchPeriod == 0)
-            {
-                nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+                if (strcmp(nmeawatchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
             // Copy the command
             le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            if (nmeawatchPeriod == 0) {
+                printf("Watch NMEA data for %ds\n", nmeawatchPeriod);
+                continue;
+            }
             WatchGnssNmeaInfo(nmeawatchPeriod);
             ExitApp = false;
         }
