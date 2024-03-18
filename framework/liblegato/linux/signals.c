@@ -351,7 +351,7 @@ static void ShowStackSignalHandler
     {
         char gdbServerPortString[10], pidString[10];
         int gdbPid, gdbStatus;
-        snprintf(gdbServerPortString, sizeof(gdbServerPortString), ":%u", GdbServerPort);
+        snprintf(gdbServerPortString, sizeof(gdbServerPortString), ":%hu", GdbServerPort);
         snprintf(pidString, sizeof(pidString), "%d", getpid());
         char *gdbArg[] =
         {
