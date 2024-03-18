@@ -5448,6 +5448,10 @@ void GnssMainFunction
                 }
             }
 
+            if (tokenNum < 1)
+            {
+                return;
+            }
             int nullAt = strlen(TokenArray[tokenNum - 1]);
             TokenArray[tokenNum - 1][nullAt - 1] = '\0';
         }
