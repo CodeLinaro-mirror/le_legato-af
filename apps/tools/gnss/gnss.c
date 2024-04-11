@@ -136,6 +136,12 @@ void PrintGnssHelp
          "\t\t\tConfigDR <rollOffset(double)> <yawOffset(double)> <pitchOffset(double)> <offsetUnc(double)>\n"
          "\t\t\t\t     <speedFactor(double)> <speedFactorUnc(double)> <gyroFactor(double)> <gyroFactorUnc(double>\n"
          "\t\t\t\t- Configure Dead Reckoning Engine Parameters to support QDR.\n\n"
+         "\t\t\tDRValidity <Mask value>\n"
+         "\t\t\t\t\t- 1->BODY_TO_SENSOR_MOUNT_PARAMS\n"
+         "\t\t\t\t\t- 2->VEHICLE_SPEED_SCALE_FACTOR\n"
+         "\t\t\t\t\t- 4->VEHICLE_SPEED_SCALE_FACTOR_UNC\n"
+         "\t\t\t\t\t- 8->GYRO_SCALE_FACTOR\n"
+         "\t\t\t\t\t- 16->GYRO_SCALE_FACTOR_UNC\n"
          "\t\t\tset configEng <EngineType> <EngineState>\n"
          "\t\t\t\t  Engine type be as follows:\n"
          "\t\t\t\t\t- 0 ---> UNKNOWN\n"
@@ -536,6 +542,9 @@ static int ConfigureDeadReckoning
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in Ready State\n");
+            break;
+        case LE_OUT_OF_RANGE:
+            printf("Dead reckoning parameters out of range\n");
             break;
         default:
             printf("Invalid status\n");
@@ -4508,6 +4517,51 @@ static int GetGnssData
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+/**
+ * This function Sets the dead reckoning parameters validity mask.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetDRValidityMask
+(
+    const char* validityMaskPtr           ///< [IN] DR validity mask
+)
+{
+    char *end;
+    uint32_t mask = strtoul(validityMaskPtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad DR validity mask : %s\n", validityMaskPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetDRConfigValidity(mask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Successfully set DR engine parameters mask!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set DR engine parameters mask\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter to set DR engine parameters mask\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("The GNSS device is not ready state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 //-------------------------------------------------------------------------------------------------
 /**
  * Function to get all positional information of last updated sample.
@@ -5577,6 +5631,16 @@ void GnssMainFunction
             {
                 continue;
             }
+        }
+        else if (0 == strcmp(commandPtr, "DRValidity"))
+        {
+            const char *validityMaskPtr = TokenArray[1];
+            if (validityMaskPtr == NULL)
+            {
+                printf("DR parameters validityMaskPtr is NULL.\n");
+                continue;
+            }
+            SetDRValidityMask(validityMaskPtr);
         }
         else if (strcmp(commandPtr, "stop") == 0)
         {
