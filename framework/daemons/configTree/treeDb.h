@@ -30,6 +30,8 @@
 #ifndef CFG_TREE_DB_INCLUDE_GUARD
 #define CFG_TREE_DB_INCLUDE_GUARD
 
+#include "jansson.h"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum size of the binary data encoded into string (including terminating zero).
@@ -272,6 +274,20 @@ bool tdb_ReadTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
     FILE* filePtr           ///< [IN] The file to read from.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a configuration tree node's contents from the json object.
+ *
+ *
+ *  @return True if the read is successful, or false if not.
+ */
+// -------------------------------------------------------------------------------------------------
+bool tdb_ReadTreeNodeFromJsonNode
+(
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
+    json_t* nodePtr         ///< [IN] The json object to read from.
 );
 
 

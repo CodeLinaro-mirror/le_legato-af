@@ -152,8 +152,8 @@
  * Maximum string length and byte storage size of environment variable names.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_ENV_VAR_NAME_LEN              31
-#define LIMIT_MAX_ENV_VAR_NAME_BYTES            (LIMIT_MAX_TIMER_NAME_LEN + 1)
+#define LIMIT_MAX_ENV_VAR_NAME_LEN              63
+#define LIMIT_MAX_ENV_VAR_NAME_BYTES            (LIMIT_MAX_ENV_VAR_NAME_LEN + 1)
 
 
 //--------------------------------------------------------------------------------------------------

@@ -267,7 +267,7 @@ static void ShowStackSignalHandler
     SIG_WRITE(sigString, strlen(sigString));
 
     // Dump the legato version
-    snprintf(sigString, sizeof(sigString), "LEGATO VERSION\n");
+    snprintf(sigString, sizeof(sigString), "TELAF VERSION\n");
     SIG_WRITE(sigString, strlen(sigString));
     fd = open("/legato/systems/current/version", O_RDONLY);
     if (-1 != fd)

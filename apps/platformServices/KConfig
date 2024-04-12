@@ -158,6 +158,13 @@ config ENABLE_ECALL_MSD_OPTIONAL_DATA
   ---help---
   Enable eCall msd optional data support.
 
+config ENABLE_PRIVATE_ECALL
+  bool "Enable private eCall support"
+  default n if TARGET_SA515M
+  default y
+  ---help---
+  Enable private eCall support.
+
 config ENABLE_THERMAL_GET_TRIP_ID
   bool "Enable getting trip ID"
   default n if TARGET_SA515M
@@ -283,6 +290,20 @@ config FEATURE_ENHANCED_IMS
   default n
   ---help---
   Enable enhanced IMS feature.
+
+config ENABLE_MULTI_VM_SUPPORT
+  bool "Enable multivm feature"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Enable multivm feature.
+
+config GET_IMEI_SUPPORT
+  bool "Get IMEI support"
+  default y if TARGET_SA525M
+  default n
+  ---help---
+  Get IMEI support
 
 config RADIO_SIGNAL_INDICATION_CONFIG
   bool "Threshold and delta configuration for radio siganl indication"

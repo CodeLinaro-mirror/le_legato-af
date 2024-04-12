@@ -11,7 +11,8 @@
  *
  * The API includes the following functions:
  * - an iterator function to walk the current list of trees.
- * - an import function to bulk load the data (full or partial) into a tree.
+ * - an import function to bulk load the data (full or partial) into a tree from a given file in
+ *   .cfg format or .json format.
  * - an export function to save the contents of a tree.
  * - a delete function to remove a tree and all its objects.
  *
@@ -46,6 +47,8 @@
  *
  * Example of @b Importing a Tree:
  *
+ * - le_cfgAdmin_ImportTree() -- Imports a tree from a file in .cfg or .json format.
+ *
  * @code
  * void ImportMyTree(const char* filePath)
  * {
@@ -57,13 +60,13 @@
  *         errno);
  *
  *     // Open a write transaction on /myData, as we will be writing to the configTree.
- *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("/myData");
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn("/myData");
  *
  *     // Our iterator is currently on /myData, so everything under that node is replaced.  If we
  *     // want to replace the whole tree we could supply a "/" here instead of using the iterator's
  *     // current location.  Alternativly, we could have opened or moved the iterator to "/" in the
  *     // first place.
- *     LE_FATAL_IF(le_cfgAdmin_ExportTree(iteratorRef, resolvedPath, "") != LE_OK,
+ *     LE_FATAL_IF(le_cfgAdmin_ImportTree(iteratorRef, resolvedPath, "") != LE_OK,
  *                 "Error occured while writing config data.");
  *
  *     // Close up the iterator,free it's resources, and commit the new data to the configTree.
@@ -72,6 +75,147 @@
  *
  * // To import the config data back from ./myData.cfg:
  * ImportMyData("./myData.cfg");
+ * @endcode
+ *
+ * Supported @b JSON Types:
+ *
+ * Primitive Types:
+ *
+ * - String
+ *
+ * The template of a string type config field is as follows:
+ *
+ * @code
+ * {
+ *     "name": "aStringField",     // The field name of a string type node.
+ *     "type": "string",           // The type should be string.
+ *     "value": "someStringValue"  // The field value.
+ * }
+ * @endcode
+ *
+ * Example:
+ *
+ * @code
+ * {
+ *     "name": "valueA",
+ *     "type": "string",
+ *     "value": "aNewValue"
+ * }
+ *
+ * - Integer
+ *
+ * The template of a integer type config field is as follows:
+ *
+ * @code
+ * {
+ *     "name": "anIntField",  // The field name of a string type node.
+ *     "type": "int",         // The type should be int.
+ *     "value":               // The field value, range is -2,147,483,648 to 2,147,483,647.
+ * }
+ * @endcode
+ *
+ * Example:
+ *
+ * @code
+ * {
+ *     "name": "valueA",
+ *     "type": "int",
+ *     "value": 1024
+ * }
+ * @endcode
+ *
+ * - Float
+ *
+ * The template of a string type config field is as follows:
+ *
+ * @code
+ * {
+ *     "name": "aFloatField",  // The field name of a string type node.
+ *     "type": "float",        // The type should be string.
+ *     "value":                // The field value.
+ * }
+ * @endcode
+ *
+ * Example:
+ *
+ * @code
+ * {
+ *     "name": "valueA",
+ *     "type": "float",
+ *     "value": 10.24
+ * }
+ * @endcode
+ *
+ * - Boolean
+ *
+ * The template of a string type config field is as follows:
+ *
+ * @code
+ * {
+ *     "name": "aBoolField",  // The field name of a string type node.
+ *     "type": "bool",        // The type should be string.
+ *     "value":               // true or false.
+ * }
+ * @endcode
+ *
+ * Example:
+ *
+ * @code
+ * {
+ *     "name": "valueA",
+ *     "type": "bool",
+ *     "value": false
+ * }
+ * @endcode
+ *
+ * Nested value:
+ *
+ * - Stem
+ *
+ * The template of a string type config field is as follows:
+ *
+ * @code
+ * {
+ *     "name": "aNestedValue",  // The field name of a string type node.
+ *     "type": "stem",          // The type should be string.
+ *     "children": []           // The array of nested fields.
+ * }
+ * @endcode
+ *
+ * Example:
+ *
+ * @code
+ * {
+ *     "name": "nestedValues",
+ *     "type": "stem",
+ *     "children": [
+ *         {
+ *             "name": "aBoolValue",
+ *             "type": "bool",
+ *             "value": true
+ *         },
+ *         {
+ *             "name": "aSecondBoolValue",
+ *             "type": "bool",
+ *             "value": false
+ *         },
+ *         {
+ *             "name": "aStringValue",
+ *             "type": "string",
+ *             "value": "Something \"wicked\" this way comes!"
+ *         },
+ *         {
+ *             "name": "anIntVal",
+ *             "type": "int",
+ *             "value": 1024
+ *         },
+ *         {
+ *             "name": "aFloatVal",
+ *             "type": "float",
+ *             "value": 10.24
+ *         }
+ *     ]
+ * }
  * @endcode
  *
  * Example of @b Exporting a Tree
@@ -168,7 +312,6 @@ FUNCTION le_result_t ImportTree
                                      ///<   as an empty string to use the iterator's current
                                      ///<   node.
 );
-
 
 //-------------------------------------------------------------------------------------------------
 /**

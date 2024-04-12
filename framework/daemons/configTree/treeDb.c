@@ -144,6 +144,15 @@
 /// Maximum size (in bytes) of a "small" string, including the null terminator.
 #define SMALL_STR 24
 
+/// Size of the command string used by the import with JSON.
+#define COMMAND_MAX 16
+
+/// Json field names.
+#define JSON_FIELD_TYPE "type"
+#define JSON_FIELD_NAME "name"
+#define JSON_FIELD_CHILDREN "children"
+#define JSON_FIELD_VALUE "value"
+
 
 
 
@@ -2386,7 +2395,230 @@ cleanup:
     return result;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Get the node type from the string.
+ *
+ *  @return the TokenType_t converted from the string.
+ *
+ */
+// -------------------------------------------------------------------------------------------------
+static TokenType_t GetNodeTypeFromString
+(
+    const char* typeNamePtr  ///< The index of the command line argument to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    // Check the given name against what we're expecting.
+    if (strncmp(typeNamePtr, "string", COMMAND_MAX) == 0)
+    {
+        return TT_STRING_VALUE;
+    }
+    else if (strncmp(typeNamePtr, "bool", COMMAND_MAX) == 0)
+    {
+        return TT_BOOL_VALUE;
+    }
+    else if (strncmp(typeNamePtr, "int", COMMAND_MAX) == 0)
+    {
+        return TT_INT_VALUE;
+    }
+    else if (strncmp(typeNamePtr, "float", COMMAND_MAX) == 0)
+    {
+        return TT_FLOAT_VALUE;
+    }
+    else if (strncmp(typeNamePtr, "stem", COMMAND_MAX) == 0)
+    {
+        return TT_OPEN_GROUP;
+    }
 
+    // Looks like we didn't get something useful, so return in error.
+    LE_ERROR("Unrecognized node type specified, '%s'\n", typeNamePtr);
+    return TT_CLOSE_GROUP;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a node value from the json object.
+ *
+ *  @return LE_OK if the read is successful.
+ *          LE_FORMAT_ERROR if parse errors are encountered.
+ *          LE_NOT_POSSIBLE if the node conflicts.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t InternalReadNodeFromJson
+(
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node we're reading a value for.
+    json_t* nodePtr         ///< [IN] The file we're reading the value from.
+)
+{
+    le_result_t result = LE_OK;
+
+    // Get value
+    json_t* value = json_object_get(nodePtr, JSON_FIELD_VALUE);
+
+    // Check type
+    const char* typeStr = json_string_value(json_object_get(nodePtr, JSON_FIELD_TYPE));
+    if (typeStr == NULL)
+    {
+        LE_ERROR("Type is NULL.");
+        result = LE_FORMAT_ERROR;
+        return result;
+    }
+
+    TokenType_t type = GetNodeTypeFromString(typeStr);
+    if(type == TT_CLOSE_GROUP)
+    {
+        LE_ERROR("Unexpected EOF or bad token in file.");
+        result = LE_FORMAT_ERROR;
+        return result;
+    }
+
+    result = LE_OK;
+
+    tdb_SetEmpty(nodeRef);
+
+    switch (type)
+    {
+        case TT_BOOL_VALUE:
+            tdb_SetValueAsBool(nodeRef, json_is_true(value));
+            nodeRef->type = LE_CFG_TYPE_BOOL;
+            break;
+
+        case TT_INT_VALUE:
+            {
+                if(!json_is_integer(value))
+                {
+                    LE_ERROR("Wrong value for the type of int");
+                    result = LE_FORMAT_ERROR;
+                    return result;
+                }
+                tdb_SetValueAsInt(nodeRef, json_integer_value(value));
+                nodeRef->type = LE_CFG_TYPE_INT;
+            }
+            break;
+
+        case TT_FLOAT_VALUE:
+            {
+                if (!json_is_real(value))
+                {
+                    LE_ERROR("Wrong value for the type of float");
+                    result = LE_FORMAT_ERROR;
+                    return result;
+                }
+                tdb_SetValueAsFloat(nodeRef, json_real_value(value));
+                nodeRef->type = LE_CFG_TYPE_FLOAT;
+            }
+            break;
+
+        case TT_STRING_VALUE:
+            {
+                const char* jsonStr = json_string_value(value);
+                if (jsonStr == NULL)
+                {
+                    LE_ERROR("Json string is NULL.\n");
+                    result = LE_FORMAT_ERROR;
+                    return result;
+                }
+                tdb_SetValueAsString(nodeRef, jsonStr);
+            }
+            break;
+
+        case TT_EMPTY_VALUE:
+            // The node has already been cleared, so there's nothing left to do but make sure that
+            // the node exists.
+            ClearDeletedFlag(nodeRef);
+            break;
+
+        case TT_OPEN_GROUP:
+            {
+                // Iterate on children
+                json_t* childrenPtr = json_object_get(nodePtr, JSON_FIELD_CHILDREN);
+                json_t* childPtr = NULL;
+                int i = 0;
+
+                json_array_foreach(childrenPtr, i, childPtr)
+                {
+                    // Get name
+                    const char* name = json_string_value(json_object_get(childPtr,
+                                                                            JSON_FIELD_NAME));
+
+                    if (name  == NULL)
+                    {
+                        LE_ERROR("Name is NULL.");
+                        result = LE_FORMAT_ERROR;
+                        break;
+                    }
+                    // Is node exist with this name?
+                    le_cfg_nodeType_t existingType = tdb_GetNodeType(nodeRef);
+
+                    switch (existingType)
+                    {
+                        case LE_CFG_TYPE_DOESNT_EXIST:
+                        case LE_CFG_TYPE_STEM:
+                        case LE_CFG_TYPE_EMPTY:
+                        case LE_CFG_TYPE_STRING:
+                        case LE_CFG_TYPE_BOOL:
+                        case LE_CFG_TYPE_INT:
+                        case LE_CFG_TYPE_FLOAT:
+                            // If not existing, already a stem, empty node,
+                            // or any expected type, do nothing
+                        break;
+
+                        default:
+                            // Issue with node creation
+                            LE_ERROR("Node conflict when importing, at node %s", name);
+                            result = LE_NOT_POSSIBLE;
+                        break;
+                    }
+
+                    // Iterate to this child
+                    tdb_NodeRef_t childRef = GetNamedChild(nodeRef, name);
+
+                    if (childRef == NULL)
+                    {
+                        childRef = NewChildNode(nodeRef);
+                        if (tdb_SetNodeName(childRef, name) != LE_OK)
+                        {
+                            LE_ERROR("Bad node name, '%s'.", name);
+                            result = LE_FORMAT_ERROR;
+                            break;
+                        }
+
+                        LE_DEBUG("New node, %s", name);
+                    }
+
+                    tdb_EnsureExists(childRef);
+
+                    // Iterate
+                    le_result_t subResult = InternalReadNodeFromJson(childRef, childPtr);
+                    if (subResult != LE_OK)
+                    {
+                        // Something went wrong
+                        return subResult;
+                    }
+
+                }
+            }
+            break;
+        case TT_CLOSE_GROUP:
+        default:
+            LE_ERROR("Unexpected token found.");
+            result = LE_FORMAT_ERROR;
+    }
+
+    if (IsShadow(nodeRef) == false)
+    {
+        ClearModifiedFlag(nodeRef);
+    }
+    else
+    {
+        SetModifiedFlag(nodeRef);
+    }
+
+    tdb_EnsureExists(nodeRef);
+
+    return result;
+}
 
 
 // -------------------------------------------------------------------------------------------------
@@ -3278,7 +3510,50 @@ bool tdb_ReadTreeNode
     return result;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a configuration tree node's contents from the json object.
+ *
+ *
+ *  @return True if the read is successful, or false if not.
+ */
+// -------------------------------------------------------------------------------------------------
+bool tdb_ReadTreeNodeFromJsonNode
+(
+    tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
+    json_t* nodePtr         ///< [IN] The file to read from.
+)
+{
+    LE_ASSERT(nodeRef != NULL);
+    LE_ASSERT(nodePtr != NULL);
 
+    // Clear out any contents that the node may have, and make sure that it isn't marked as deleted.
+    tdb_SetEmpty(nodeRef);
+    tdb_EnsureExists(nodeRef);
+
+    // Ok read the specified node from the file object.  If the read fails, report it and clear out
+    // the node.  We shouldn't be leaving the node in a half initialized state.
+    bool result = true;
+
+    // Compute starting point, how big is the path so far??
+    // Must already be less than LE_CFG_STR_LEN.
+    size_t pathLen = ComputePathLength(nodeRef);
+
+    if (pathLen >= LE_CFG_STR_LEN)
+    {
+        result = false;
+    }
+    else
+    {
+        if (InternalReadNodeFromJson(nodeRef, nodePtr) != LE_OK)
+        {
+            tdb_SetEmpty(nodeRef);
+            result = false;
+        }
+    }
+
+    return result;
+}
 
 
 // -------------------------------------------------------------------------------------------------

@@ -35,6 +35,16 @@ void cm_info_PrintInfoHelp
             "To print all known info:\n"
             "\tcm info\n"
             "\tcm info all\n\n"
+            "To print the IMEI:\n"
+            "\tcm info imei\n\n"
+            );
+
+    /*
+    printf("Info usage\n"
+            "==========\n\n"
+            "To print all known info:\n"
+            "\tcm info\n"
+            "\tcm info all\n\n"
             "To print the device model:\n"
             "\tcm info device\n\n"
             "To print the IMEI:\n"
@@ -56,6 +66,7 @@ void cm_info_PrintInfoHelp
             "To print the number of resets:\n"
             "\tcm info resetsCount\n\n"
             );
+    */
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -87,6 +98,7 @@ void cm_info_PrintImei
  * Print the IMEISV
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintImeiSv
 (
     bool withHeaders
@@ -105,12 +117,14 @@ void cm_info_PrintImeiSv
         printf("%s\n", imeiSv);
     }
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the last reset cause
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintResetCause
 (
     bool withHeaders
@@ -136,12 +150,14 @@ void cm_info_PrintResetCause
         printf("%s\n", resetStr);
     }
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the serial number
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintSerialNumber
 (
     bool withHeaders
@@ -160,12 +176,14 @@ void cm_info_PrintSerialNumber
         printf("%s\n", serialNumber);
     }
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the firmware version
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintFirmwareVersion
 (
     bool withHeaders
@@ -184,12 +202,14 @@ void cm_info_PrintFirmwareVersion
         printf("%s\n", version);
     }
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the bootloader version
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintBootloaderVersion
 (
     bool withHeaders
@@ -208,12 +228,14 @@ void cm_info_PrintBootloaderVersion
         printf("%s\n", version);
     }
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print the device model identity (Target Hardware Platform).
  */
 //--------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintDeviceModel
 (
     bool withHeaders
@@ -232,12 +254,14 @@ void cm_info_PrintDeviceModel
         printf("%s\n", model);
     }
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print the product requirement information (PRI) part number and revision number.
  */
 //--------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintGetPriId
 (
     bool withHeaders
@@ -266,12 +290,14 @@ void cm_info_PrintGetPriId
         printf("%s %s\n", priIdPn, priIdRev);
     }
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print the carrier product requirement information (PRI) name and revision number.
  */
 //--------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintGetCarrierPri
 (
     bool withHeaders
@@ -295,12 +321,14 @@ void cm_info_PrintGetCarrierPri
         printf("%s %s\n", priName, priRev);
     }
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print the MCU version
  */
 //--------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintMcuVersion
 (
     bool withHeaders
@@ -321,6 +349,7 @@ void cm_info_PrintMcuVersion
         printf("%s\n", mcuVersion);
     }
 }
+*/
 
 
 //--------------------------------------------------------------------------------------------------
@@ -328,6 +357,7 @@ void cm_info_PrintMcuVersion
  * Print the product stock keeping unit number (SKU).
  */
 //--------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintGetSku
 (
     bool withHeaders
@@ -346,12 +376,14 @@ void cm_info_PrintGetSku
         printf("%s\n", skuId);
     }
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the number of resets
  */
 //-------------------------------------------------------------------------------------------------
+/*
 void cm_info_PrintResetsCount
 (
     bool withHeaders
@@ -382,6 +414,7 @@ void cm_info_PrintResetsCount
         printf("%s\n", buf);
     }
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -400,8 +433,10 @@ void cm_info_ProcessInfoCommand
     }
     else if (strcmp(command, "all") == 0)
     {
-        cm_info_PrintDeviceModel(true);
         cm_info_PrintImei(true);
+        /*
+        // to be implemented later by tafDevInfoSvc
+        cm_info_PrintDeviceModel(true);
         cm_info_PrintImeiSv(true);
         cm_info_PrintSerialNumber(true);
         cm_info_PrintFirmwareVersion(true);
@@ -412,7 +447,14 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintGetSku(true);
         cm_info_PrintResetCause(true);
         cm_info_PrintResetsCount(true);
+        */
     }
+    else if (strcmp(command, "imei") == 0)
+    {
+        cm_info_PrintImei(false);
+    }
+    /*
+    // to be implemented later by tafDevInfoSvc
     else if (strcmp(command, "firmware") == 0)
     {
         cm_info_PrintFirmwareVersion(false);
@@ -424,10 +466,6 @@ void cm_info_ProcessInfoCommand
     else if (strcmp(command, "device") == 0)
     {
         cm_info_PrintDeviceModel(false);
-    }
-    else if (strcmp(command, "imei") == 0)
-    {
-        cm_info_PrintImei(false);
     }
     else if (0 == strcmp(command, "imeiSv"))
     {
@@ -461,6 +499,7 @@ void cm_info_ProcessInfoCommand
     {
         cm_info_PrintResetsCount(false);
     }
+    */
     else
     {
         printf("Invalid command for info service.\n");

@@ -641,6 +641,14 @@ le_result_t netSocket_Bind
         return LE_COMM_ERROR;
     }
 
+    opt = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0)
+    {
+        LE_ERROR("Failed to set reuse option--%s", strerror(errno));
+        close(fd);
+        return LE_COMM_ERROR;
+    }
+
     // Bind socket to source address
     if(bind(fd, (struct sockaddr*)&srcSockAddr, sizeof(struct sockaddr_storage)) < 0)
     {
