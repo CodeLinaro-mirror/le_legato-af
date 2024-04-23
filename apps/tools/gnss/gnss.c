@@ -1595,9 +1595,9 @@ static int GetTtff
     uint32_t ttff;
     le_result_t result;
 
-    if (LE_GNSS_STATE_ACTIVE != state)
+    if ((LE_GNSS_STATE_ACTIVE != state) && (LE_GNSS_STATE_READY != state))
     {
-        printf("GNSS is not in active state!\n");
+        printf("GNSS is not in active or ready state!\n");
         return EXIT_FAILURE;
     }
 
