@@ -2418,6 +2418,9 @@ COMPONENT_INIT
     }
     else
     {
+        // If an app update needs finishing, finish it now.
+        app_FinishUpdates();
+
         // Test if /etc/passwd and /etc/group are writable to run sandboxed apps
         if ((0 == access("/etc/passwd", W_OK)) && (0 == access("/etc/group", W_OK)))
         {
@@ -2433,6 +2436,12 @@ COMPONENT_INIT
         if (sysStatus_Status() == SYS_GOOD)
         {
             LE_INFO("Current system is 'good'.");
+        }
+        else if (sysStatus_Status() == SYS_PROBATION)
+        {
+            LE_INFO("Current system is 'probation'.");
+            // RO system is always "good", to be fixed later.
+            updateDaemon_MarkGood();
         }
         else
         {

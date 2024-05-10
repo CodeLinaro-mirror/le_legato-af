@@ -70,7 +70,9 @@ sysStatus_Status_t sysStatus_GetStatus
     char* triedStr = "tried ";
     size_t triedSize = strlen(triedStr);
 
-    if (strncmp(triedStr, statusBuffer, triedSize) == 0)
+    // Status file could be empty in case of power loss duirng app installation or removal.
+    if (strncmp(triedStr, statusBuffer, triedSize) == 0 ||
+        strlen(statusBuffer) == 0)
     {
         return SYS_PROBATION;
     }
@@ -98,7 +100,7 @@ sysStatus_Status_t sysStatus_Status
 
     if (status == SYS_BAD)
     {
-        LE_FATAL("Currently running a 'bad' system!");
+        LE_ERROR("Currently running a 'bad' system!");
     }
 
     return status;

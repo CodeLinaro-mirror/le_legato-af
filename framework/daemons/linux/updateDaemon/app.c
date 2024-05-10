@@ -1198,38 +1198,34 @@ le_result_t app_InstallIndividual
         smack_SetLabel(path, "framework");
     }
 
+    char newAppName[PATH_MAX] = "";
+
+    // Mark update in progress so update can be finished if Legato crashes stopping app.
+    // Mark as untried so if, for some reason, the app fails to boot too many times it will
+    // revert back to the snapshot.
+    sysStatus_SetUntried();
+    le_utf8_Copy(newAppName, ".new.", sizeof(newAppName), NULL);
+    le_utf8_Append(newAppName, appNamePtr, sizeof(newAppName), NULL);
+    system_SymlinkApp("current", appMd5Ptr, newAppName);
+    sync();
+
     // If this app is already in the current system but its app hash is different,
     if (systemHasThisApp)
     {
-        char newAppName[PATH_MAX] = "";
-
-        // Mark update in progress so update can be finished if Legato crashes stopping app.
-        // Mark as untried so if, for some reason, the app fails to boot too many times it will
-        // revert back to the snapshot.
-        sysStatus_SetUntried();
-        le_utf8_Copy(newAppName, ".new.", sizeof(newAppName), NULL);
-        le_utf8_Append(newAppName, appNamePtr, sizeof(newAppName), NULL);
-        system_SymlinkApp("current", appMd5Ptr, newAppName);
-        sync();
-
         // Otherwise, stop it before we update it.
         supCtrl_StopApp(appNamePtr);
 
         sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
-
         le_result_t result = PerformAppUpgrade(appMd5Ptr, appNamePtr);
         if (LE_OK != result)
         {
             return result;
         }
-
-        system_RemoveApp(newAppName);
     }
     // If the app is not in the current system yet, install fresh.
     else
     {
         sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
-
         le_result_t result = PerformAppInstall(appMd5Ptr, appNamePtr);
         if (LE_OK != result)
         {
@@ -1237,6 +1233,7 @@ le_result_t app_InstallIndividual
         }
     }
 
+    system_UnlinkApp("current", newAppName);
 
     // Reload the bindings configuration
     int retCode;
@@ -1367,7 +1364,7 @@ void app_FinishUpdates
     while (errno = 0, (curEntryPtr = readdir(dirPtr)) != NULL)
     {
         char appPath[PATH_MAX];
-        char appName[PATH_MAX];
+        char appName[LIMIT_MAX_APP_NAME_BYTES];
         char appMd5[LIMIT_MD5_STR_BYTES];
         int matchLen = 0;
 
@@ -1387,13 +1384,35 @@ void app_FinishUpdates
             snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntryPtr->d_name);
             installer_GetAppHashFromSymlink(appPath, appMd5);
 
-            if (PerformAppUpgrade(appMd5, appName) != LE_OK)
+            if (system_HasApp(appName))
             {
-                LE_ERROR("Failed to finish upgrade of app '%s'", appName);
-                updateSuccess = false;
+                LE_INFO("Continue to perform app '%s' upgrade.", appName);
+                if (PerformAppUpgrade(appMd5, appName) != LE_OK)
+                {
+                    LE_ERROR("Failed to finish upgrade of app '%s'", appName);
+                    updateSuccess = false;
+                }
+            }
+            else
+            {
+                LE_INFO("Continue to perform app '%s' install.", appName);
+                if (PerformAppInstall(appMd5, appName) != LE_OK)
+                {
+                    LE_ERROR("Failed to finish installation of app '%s'", appName);
+                    updateSuccess = false;
+                }
             }
 
+            system_UnlinkApp("current", curEntryPtr->d_name);
+            LE_INFO("App '%s' temporary file '%s' is removed.", appName, curEntryPtr->d_name);
+
             ExecPostinstallHook(appMd5);
+
+#ifdef LE_CONFIG_ENABLE_SELINUX
+            char sePathPtr[PATH_MAX];
+            snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appMd5, appName);
+            semodule_TryInstall(appName, sePathPtr);
+#endif // LE_CONFIG_ENABLE_SELINUX
         }
         else if ((1 == sscanf(curEntryPtr->d_name, ".del.%s%n", appName, &matchLen)) &&
                  (strlen(curEntryPtr->d_name) == matchLen))
@@ -1402,9 +1421,10 @@ void app_FinishUpdates
             if (!finishedUpdate)
             {
                 // Before making any changes, mark the current system as bad.
-                if (LE_OK != system_Snapshot())
+                if (false == sysStatus_IsReadOnly())
                 {
-                    break;
+                    if (LE_OK != system_Snapshot())
+                        break;
                 }
 
                 sysStatus_MarkBad();
@@ -1414,11 +1434,22 @@ void app_FinishUpdates
             snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntryPtr->d_name);
             installer_GetAppHashFromSymlink(appPath, appMd5);
 
+            LE_INFO("Continue to perform app '%s' delete.", appName);
+
             if (PerformAppDelete(appMd5, appName, NULL) != LE_OK)
             {
                 LE_ERROR("Failed to finish removal of app '%s'", appName);
                 updateSuccess = false;
             }
+
+            system_UnlinkApp("current", curEntryPtr->d_name);
+            LE_INFO("App '%s' temporary file '%s' is removed.", appName, curEntryPtr->d_name);
+
+#ifdef LE_CONFIG_ENABLE_SELINUX
+            char sePathPtr[PATH_MAX];
+            snprintf(sePathPtr, sizeof(sePathPtr), SELINUX_MODULE_PATH, appMd5, appName);
+            semodule_Remove(appName, sePathPtr);
+#endif // LE_CONFIG_ENABLE_SELINUX
         }
         else
         {
