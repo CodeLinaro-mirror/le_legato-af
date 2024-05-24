@@ -219,6 +219,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- altMSeaLevel  -->Gets the altitude with respect to mean sea level in meters\n"
          "\t\t\t\t\t- svIds         -->Gets the GNSS Satellite Vehicles used in position data.\n"
          "\t\t\t\t\t- gnssData      -->Gets the GNSS data mask,Jammer and AGC data\n"
+         "\t\t\t\t\t- gPTPTime      --> Get Gptp time stamp information\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
@@ -1061,6 +1062,43 @@ static int GetXtraStatus
 
     //release the memory
     le_mem_Release(XtraParamsPtr);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function Gets Gptp time and its uncertainity.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGptpTimeInformation
+(
+    le_gnss_SampleRef_t positionSampleRef   ///< [IN] Position sample reference
+)
+{
+    uint64_t gPtpTime;
+    uint64_t gPtpTimeUnc;
+
+    le_result_t result = le_gnss_GetGptpTime(positionSampleRef,&gPtpTime,&gPtpTimeUnc);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Gptp Time(in ns) :%"PRIu64"\n",gPtpTime);
+            printf("Gptp Time Uncertainity(in ns) :%"PRIu64"\n",gPtpTimeUnc);
+            break;
+        case LE_FAULT:
+            printf("Failed to get gptp time Information\n");
+            break;;
+        default:
+            printf("Failed to get gptp time Information, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -3901,6 +3939,14 @@ static int GetValidityInfo
         {
             printf("valid elapsed real time Uncertainity\n");
         }
+        if(validityMask & LE_GNSS_HAS_GPTP_TIME_BIT)
+        {
+            printf("valid gptp time\n");
+        }
+        if(validityMask & LE_GNSS_HAS_GPTP_TIME_UNC_BIT)
+        {
+            printf("valid gptp time Uncertainity\n");
+        }
         if(validityMask == 0)
         {
             printf("no Valid Mask\n");
@@ -4910,6 +4956,10 @@ static void PositionHandlerFunction
         {
             status = GetGnssData(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "gPTPTime") == 0)
+        {
+            status = GetGptpTimeInformation(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         ExitApp = true;
         if (PositionHandlerRef != NULL)
@@ -5209,7 +5259,8 @@ static void GetGnssParams
              (0 == strcmp(params, "altMSeaLevel"))||
              (0 == strcmp(params, "svIds"))||
              (0 == strcmp(params, "reportStatus"))||
-             (0 == strcmp(params, "gnssData")))
+             (0 == strcmp(params, "gnssData"))||
+             (0 == strcmp(params,"gPTPTime")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
