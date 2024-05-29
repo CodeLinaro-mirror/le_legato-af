@@ -829,7 +829,11 @@ static void CaptureDebugData
     void
 )
 {
-    int r = system("/legato/systems/current/bin/saveLogs framework unknown REBOOT");
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    int r = system("/legato/systems/current/bin/saveLogs framework unknown DLT REBOOT");
+#else
+    int r = system("/legato/systems/current/bin/saveLogs framework unknown SYSLOG REBOOT");
+#endif
 
     if (!WIFEXITED(r) || (WEXITSTATUS(r) != EXIT_SUCCESS))
     {

@@ -47,4 +47,8 @@ else
     CFLAGS="$CFLAGS -O2 -fno-omit-frame-pointer"
 fi
 
+if [ "${LE_CONFIG_ENABLE_DLT_LOGGING}" == "y" ]; then
+    NINJA_LDFLAGS="$NINJA_LDFLAGS -ldlt"
+fi
+
 LIBLEGATO_SHARED=y

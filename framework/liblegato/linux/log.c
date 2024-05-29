@@ -15,6 +15,21 @@
 #include "logPlatform.h"
 #include "messagingSession.h"
 
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+#include <dlt/dlt.h>
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * TelAF DLT applicationID and contextID.
+ */
+//--------------------------------------------------------------------------------------------------
+DLT_DECLARE_CONTEXT(TafDltCtx)
+
+static char  DltAppId[DLT_ID_SIZE + 1] = { 0 };
+static char  DltCtxId[DLT_ID_SIZE + 1] = { 0 };
+static bool  DltInitialized = false;
+#endif
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum length of log messages.
@@ -718,6 +733,53 @@ static void RegisterWithLogControlDaemon
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize/Reinitialize DLT logging.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_DltInit
+(
+    void
+)
+{
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+
+    if (DltInitialized)
+    {
+        DltInitialized = false;
+
+        DLT_UNREGISTER_CONTEXT(TafDltCtx);
+        DLT_UNREGISTER_APP_FLUSH_BUFFERED_LOGS();
+        dlt_free();
+    }
+
+    // Set DLT appId/ctxId from build options.
+    le_utf8_Copy(DltAppId, LE_CONFIG_DLT_APP_ID, sizeof(DltAppId), NULL);
+    le_utf8_Copy(DltCtxId, LE_CONFIG_DLT_CTX_ID, sizeof(DltCtxId), NULL);
+
+    const char* envAppIdPtr = getenv("TAF_DLT_APP_ID");
+    const char* envCtxIdPtr = getenv("TAF_DLT_CTX_ID");
+
+    // Override DLT appId/ctxId from envs.
+    if (envAppIdPtr != NULL)
+    {
+        le_utf8_Copy(DltAppId, envAppIdPtr, sizeof(DltAppId), NULL);
+    }
+    if (envCtxIdPtr != NULL)
+    {
+        le_utf8_Copy(DltCtxId, envCtxIdPtr, sizeof(DltCtxId), NULL);
+    }
+
+    // Register DLT APPID and CTXID with descriptions.
+    DLT_REGISTER_APP(DltAppId, "TelAF APP");
+    DLT_REGISTER_CONTEXT(TafDltCtx, DltCtxId, "TelAF Context");
+
+    // DLT logging gets initialized.
+    DltInitialized = true;
+
+#endif
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -751,8 +813,13 @@ void fa_log_Init
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("logControl");
 
-    // Set the syslog format.
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    // Set DLT as the log system if configured.
+    log_DltInit();
+#else
+    // Otherwise use syslogd as the default log system.
     openlog("TelAF", 0, LOG_USER);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -895,6 +962,43 @@ __attribute__((deprecated)) le_log_SessionRef_t log_RegComponent
 }
 
 #ifdef LEGATO_EMBEDDED
+
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+//--------------------------------------------------------------------------------------------------
+/**
+ * Converts the legato log levels to the DLT log levels.
+ *
+ * @return
+ *      DLT log level.
+ */
+//--------------------------------------------------------------------------------------------------
+static DltLogLevelType ConverToDltLevel
+(
+    le_log_Level_t legatoLevel
+)
+{
+    switch (legatoLevel)
+    {
+        case LE_LOG_DEBUG:
+        case LE_LOG_INFO:
+            return DLT_LOG_INFO;
+
+        case LE_LOG_WARN:
+            return DLT_LOG_WARN;
+
+        case LE_LOG_ERR:
+        case LE_LOG_CRIT:
+            return DLT_LOG_ERROR;
+
+        case LE_LOG_EMERG:
+            return DLT_LOG_FATAL;
+
+        default:
+            return DLT_LOG_DEFAULT;
+    }
+}
+#else
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Converts the legato log levels to the syslog priority levels.
@@ -928,6 +1032,28 @@ static int ConvertToSyslogLevel
         default:
             return LOG_EMERG;
     }
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logging to log system
+ */
+//--------------------------------------------------------------------------------------------------
+static void LogMessage
+(
+    le_log_Level_t legatoLevel,
+    const char* logMessagePtr
+)
+{
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    if (DltInitialized)
+    {
+        DLT_LOG(TafDltCtx, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
+    }
+#else
+    syslog(ConvertToSyslogLevel(legatoLevel), logMessagePtr);
+#endif
 }
 #endif
 
@@ -1019,18 +1145,20 @@ void fa_log_Send
     // If running on an embedded target, write the message out to the log.
 #ifdef LEGATO_EMBEDDED
 
+    char rawMsg[MAX_MSG_SIZE*2] = "";
     if (functionNamePtr == NULL)
     {
-        syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %d | %s\n",
-           levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
-           lineNumber, msg);
+        snprintf(rawMsg, sizeof(rawMsg), "%s | %s[%d]/%s T=%s | %s %d | %s\n",
+            levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
+            lineNumber, msg);
     }
     else
     {
-        syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
-           levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
-           functionNamePtr, lineNumber, msg);
+        snprintf(rawMsg, sizeof(rawMsg), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
+            levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
+            functionNamePtr, lineNumber, msg);
     }
+    LogMessage(level, rawMsg);
 
     // If running on a PC, write the message to standard error with a timestamp added.
 #else
@@ -1132,8 +1260,10 @@ void log_LogGenericMsg
     // Write the message out to the log.
 #ifdef LEGATO_EMBEDDED
 
-    syslog(ConvertToSyslogLevel(level), "%s | %s[%d] | %s\n",
-           log_GetSeverityStr(level), procNamePtr, pid, msgPtr);
+    char rawMsg[MAX_MSG_SIZE*2] = "";
+    snprintf(rawMsg, sizeof(rawMsg), "%s | %s[%d] | %s\n",
+             log_GetSeverityStr(level), procNamePtr, pid, msgPtr);
+    LogMessage(level, rawMsg);
 
 #else
 
