@@ -77,6 +77,8 @@ static bool ExitApp = true;
 char TokenArray[MAX_NUMBER_OF_INPUT][MAX_LEN_OF_EACH_INPUT];
 
 time_t StartTime, FinishTime;
+time_t FirstWatchReportTime = -1;
+uint32_t AcqRate;
 uint32_t WatchPeriod;
 
 //-------------------------------------------------------------------------------------------------
@@ -136,6 +138,12 @@ void PrintGnssHelp
          "\t\t\tConfigDR <rollOffset(double)> <yawOffset(double)> <pitchOffset(double)> <offsetUnc(double)>\n"
          "\t\t\t\t     <speedFactor(double)> <speedFactorUnc(double)> <gyroFactor(double)> <gyroFactorUnc(double>\n"
          "\t\t\t\t- Configure Dead Reckoning Engine Parameters to support QDR.\n\n"
+         "\t\t\tDRValidity <Mask value>\n"
+         "\t\t\t\t\t- 1->BODY_TO_SENSOR_MOUNT_PARAMS\n"
+         "\t\t\t\t\t- 2->VEHICLE_SPEED_SCALE_FACTOR\n"
+         "\t\t\t\t\t- 4->VEHICLE_SPEED_SCALE_FACTOR_UNC\n"
+         "\t\t\t\t\t- 8->GYRO_SCALE_FACTOR\n"
+         "\t\t\t\t\t- 16->GYRO_SCALE_FACTOR_UNC\n"
          "\t\t\tset configEng <EngineType> <EngineState>\n"
          "\t\t\t\t  Engine type be as follows:\n"
          "\t\t\t\t\t- 0 ---> UNKNOWN\n"
@@ -211,6 +219,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- altMSeaLevel  -->Gets the altitude with respect to mean sea level in meters\n"
          "\t\t\t\t\t- svIds         -->Gets the GNSS Satellite Vehicles used in position data.\n"
          "\t\t\t\t\t- gnssData      -->Gets the GNSS data mask,Jammer and AGC data\n"
+         "\t\t\t\t\t- gPTPTime      --> Get Gptp time stamp information\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
@@ -536,6 +545,9 @@ static int ConfigureDeadReckoning
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in Ready State\n");
+            break;
+        case LE_OUT_OF_RANGE:
+            printf("Dead reckoning parameters out of range\n");
             break;
         default:
             printf("Invalid status\n");
@@ -1050,6 +1062,43 @@ static int GetXtraStatus
 
     //release the memory
     le_mem_Release(XtraParamsPtr);
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function Gets Gptp time and its uncertainity.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGptpTimeInformation
+(
+    le_gnss_SampleRef_t positionSampleRef   ///< [IN] Position sample reference
+)
+{
+    uint64_t gPtpTime;
+    uint64_t gPtpTimeUnc;
+
+    le_result_t result = le_gnss_GetGptpTime(positionSampleRef,&gPtpTime,&gPtpTimeUnc);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Gptp Time(in ns) :%"PRIu64"\n",gPtpTime);
+            printf("Gptp Time Uncertainity(in ns) :%"PRIu64"\n",gPtpTimeUnc);
+            break;
+        case LE_FAULT:
+            printf("Failed to get gptp time Information\n");
+            break;;
+        default:
+            printf("Failed to get gptp time Information, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -1595,9 +1644,9 @@ static int GetTtff
     uint32_t ttff;
     le_result_t result;
 
-    if (LE_GNSS_STATE_ACTIVE != state)
+    if ((LE_GNSS_STATE_ACTIVE != state) && (LE_GNSS_STATE_READY != state))
     {
-        printf("GNSS is not in active state!\n");
+        printf("GNSS is not in active or ready state!\n");
         return EXIT_FAILURE;
     }
 
@@ -3890,6 +3939,14 @@ static int GetValidityInfo
         {
             printf("valid elapsed real time Uncertainity\n");
         }
+        if(validityMask & LE_GNSS_HAS_GPTP_TIME_BIT)
+        {
+            printf("valid gptp time\n");
+        }
+        if(validityMask & LE_GNSS_HAS_GPTP_TIME_UNC_BIT)
+        {
+            printf("valid gptp time Uncertainity\n");
+        }
         if(validityMask == 0)
         {
             printf("no Valid Mask\n");
@@ -4508,6 +4565,51 @@ static int GetGnssData
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+/**
+ * This function Sets the dead reckoning parameters validity mask.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetDRValidityMask
+(
+    const char* validityMaskPtr           ///< [IN] DR validity mask
+)
+{
+    char *end;
+    uint32_t mask = strtoul(validityMaskPtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad DR validity mask : %s\n", validityMaskPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetDRConfigValidity(mask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Successfully set DR engine parameters mask!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set DR engine parameters mask\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter to set DR engine parameters mask\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("The GNSS device is not ready state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 //-------------------------------------------------------------------------------------------------
 /**
  * Function to get all positional information of last updated sample.
@@ -4626,6 +4728,10 @@ static void PositionHandlerFunction
     if (strcmp(ParamsName, "watch") == 0)
     {
         printf("\n******** Detailed Location Information Report ********\n");
+        if (FirstWatchReportTime == -1)
+        {
+            time(&FirstWatchReportTime);
+        }
         GetPosInfo(positionSampleRef);
         GetSatelliteStatus(positionSampleRef);
         le_gnss_FixState_t state;
@@ -4654,11 +4760,28 @@ static void PositionHandlerFunction
         le_gnss_ReleaseSampleRef(positionSampleRef);
 
         time(&FinishTime);
-        if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+        int arrvFirstEventIn = (int) difftime(FirstWatchReportTime, StartTime);
+        int acqRateInSec = (int) AcqRate/1000;
+        int earlyArrvOfFirstReport = (acqRateInSec - arrvFirstEventIn) > 0 ? (acqRateInSec - arrvFirstEventIn) : 0;
+        int residualWchTimeSec = acqRateInSec > 1 ? WatchPeriod % acqRateInSec : 0;
+        int watchTimeSec = (int) difftime(FinishTime, StartTime);
+        LE_DEBUG("Watching for: %ds, arrvFirstEventIn: %ds so earlyArrvOfFirstReport: %ds, "
+                "acqRateInSec: %ds, residualWchTimeSec: %ds", watchTimeSec, arrvFirstEventIn,
+                earlyArrvOfFirstReport, acqRateInSec, residualWchTimeSec);
+        if (residualWchTimeSec > 0 && (earlyArrvOfFirstReport+residualWchTimeSec) > acqRateInSec)
+        {
+            earlyArrvOfFirstReport = (earlyArrvOfFirstReport+residualWchTimeSec) - acqRateInSec;
+            residualWchTimeSec = 0;
+        }
+        if (watchTimeSec >= (WatchPeriod - earlyArrvOfFirstReport - residualWchTimeSec))
         {
             if (PositionHandlerRef != NULL)
             {
                 le_gnss_RemovePositionHandler(PositionHandlerRef);
+            }
+            if (earlyArrvOfFirstReport+residualWchTimeSec > 0)
+            {
+                le_thread_Sleep(earlyArrvOfFirstReport+residualWchTimeSec);
             }
             GnssMainFunction();
         }
@@ -4833,6 +4956,10 @@ static void PositionHandlerFunction
         {
             status = GetGnssData(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "gPTPTime") == 0)
+        {
+            status = GetGptpTimeInformation(positionSampleRef);
+        }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         ExitApp = true;
         if (PositionHandlerRef != NULL)
@@ -4859,7 +4986,7 @@ static void CapabilityHandlerFunction
 
     time(&FinishTime);
 
-    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    if ((int) difftime(FinishTime, StartTime) >= WatchPeriod)
     {
         if (CapabilityHandlerRef != NULL)
         {
@@ -4893,7 +5020,7 @@ static void NmeaHandlerFunction
 
     time(&FinishTime);
 
-    if ((int) difftime(FinishTime, StartTime) > WatchPeriod)
+    if ((int) difftime(FinishTime, StartTime) >= WatchPeriod)
     {
         if (NmeaHandlerRef != NULL)
         {
@@ -4919,7 +5046,12 @@ static int WatchGnssInfo
 {
     WatchPeriod = watchPeriod;
 
+    FirstWatchReportTime = -1;
+
     time(&StartTime);
+
+    le_gnss_GetAcquisitionRate(&AcqRate);
+    LE_DEBUG("Watch Gnss info for %ds at interval of (AcqRate) %dms", WatchPeriod, AcqRate);
 
     // Add Position Handler
     PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
@@ -5127,7 +5259,8 @@ static void GetGnssParams
              (0 == strcmp(params, "altMSeaLevel"))||
              (0 == strcmp(params, "svIds"))||
              (0 == strcmp(params, "reportStatus"))||
-             (0 == strcmp(params, "gnssData")))
+             (0 == strcmp(params, "gnssData"))||
+             (0 == strcmp(params,"gPTPTime")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -5277,10 +5410,10 @@ void GnssMainFunction
 
     do
     {
-        memset(inputStr, 0, MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT);
+        memset(inputStr, '\0', MAX_NUMBER_OF_INPUT * MAX_LEN_OF_EACH_INPUT);
         for (int i = 0; i < MAX_NUMBER_OF_INPUT; i++)
         {
-            memset(TokenArray[i], 0, MAX_LEN_OF_EACH_INPUT);
+            memset(TokenArray[i], '\0', MAX_LEN_OF_EACH_INPUT);
         }
 
         le_gnss_State_t state = le_gnss_GetState();
@@ -5578,6 +5711,16 @@ void GnssMainFunction
                 continue;
             }
         }
+        else if (0 == strcmp(commandPtr, "DRValidity"))
+        {
+            const char *validityMaskPtr = TokenArray[1];
+            if (validityMaskPtr == NULL)
+            {
+                printf("DR parameters validityMaskPtr is NULL.\n");
+                continue;
+            }
+            SetDRValidityMask(validityMaskPtr);
+        }
         else if (strcmp(commandPtr, "stop") == 0)
         {
             Stop();
@@ -5703,11 +5846,20 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", watchPeriodPtr);
                     continue;
                 }
+                if (strcmp(watchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    watchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
-            if (watchPeriod == 0)
+            uint32_t acqRate;
+            result = le_gnss_GetAcquisitionRate(&acqRate);
+            if (watchPeriod == 0 || (LE_OK == result && acqRate > watchPeriod*1000))
             {
-                watchPeriod = DEFAULT_WATCH_PERIOD;
+                printf("Watch positioning data for %ds\n", watchPeriod);
+                le_thread_Sleep(watchPeriod);
+                continue;
             }
 
             // Copy the command
@@ -5737,15 +5889,20 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", capwatchPeriodPtr);
                     continue;
                 }
-            }
-
-            if (capwatchPeriod == 0)
-            {
-                capwatchPeriod = DEFAULT_WATCH_PERIOD;
+                if (strcmp(capwatchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    capwatchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
             // Copy the command
             le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            if (capwatchPeriod == 0)
+            {
+                printf("Watch GNSS capabilities data for %ds\n", capwatchPeriod);
+                continue;
+            }
             WatchGnssCapInfo(capwatchPeriod);
             ExitApp = false;
         }
@@ -5771,15 +5928,19 @@ void GnssMainFunction
                     fprintf(stderr, "Bad watch period value: %s\n", nmeawatchPeriodPtr);
                     continue;
                 }
-            }
-
-            if (nmeawatchPeriod == 0)
-            {
-                nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+                if (strcmp(nmeawatchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    nmeawatchPeriod = DEFAULT_WATCH_PERIOD;
+                }
             }
 
             // Copy the command
             le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            if (nmeawatchPeriod == 0) {
+                printf("Watch NMEA data for %ds\n", nmeawatchPeriod);
+                continue;
+            }
             WatchGnssNmeaInfo(nmeawatchPeriod);
             ExitApp = false;
         }
