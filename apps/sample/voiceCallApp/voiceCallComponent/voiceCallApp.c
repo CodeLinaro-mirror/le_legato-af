@@ -49,6 +49,9 @@ static char Path[PATH_MAX] = "/";
 * Audio safe references
 */
 //--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+static le_audio_RouteRef_t              routeRef = NULL;
+#endif
 static le_audio_StreamRef_t             MdmRxAudioRef;
 static le_audio_StreamRef_t             MdmTxAudioRef;
 static le_audio_StreamRef_t             FeInRef;
@@ -65,7 +68,9 @@ static le_audio_StreamRef_t             FileAudioRef = NULL;
 //--------------------------------------------------------------------------------------------------
 static const char                       AudioFilePathDefault[] = "/legato/systems/current/appsWriteable/voiceCallApp/record.wav";
 static char                             AudioFilePath[] = "/legato/systems/current/appsWriteable/voiceCallApp/record.wav"; //Default audio file, can be changed via command line
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
 static int                              AudioFileFd = -1;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -87,6 +92,7 @@ static void MyMediaEventHandler
         LE_INFO("File event is LE_AUDIO_MEDIA_ENDED.");
         if(FileAudioRef)
         {
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
             if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
             {
                 LE_ERROR("Open file %s failure: errno.%d (%s)",
@@ -98,6 +104,9 @@ static void MyMediaEventHandler
                 LE_INFO("Open file %s with AudioFileFd.%d",  AudioFilePath, AudioFileFd);
             }
             if (le_audio_PlayFile(FileAudioRef, AudioFileFd) != LE_OK)
+#else
+            if (le_audio_PlayFile(FileAudioRef, AudioFilePath) != LE_OK)
+#endif
             {
                 LE_ERROR("Failed to play the file");
                 return;
@@ -133,7 +142,11 @@ static void DisconnectAllAudio
 )
 {
     LE_INFO("DisconnectAllAudio");
-
+    if(MediaHandlerRef)
+    {
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
+    }
     if (AudioInputConnectorRef)
     {
         LE_INFO("Disconnect %p from connector.%p", FeInRef, AudioInputConnectorRef);
@@ -188,6 +201,7 @@ static void DisconnectAllAudio
         le_audio_DeleteConnector(AudioOutputConnectorRef);
         AudioOutputConnectorRef = NULL;
     }
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
     if(FeOutRef)
     {
         le_audio_Close(FeOutRef);
@@ -198,6 +212,7 @@ static void DisconnectAllAudio
         le_audio_Close(FeInRef);
         FeInRef = NULL;
     }
+#endif
     if(MdmRxAudioRef)
     {
         le_audio_Close(MdmRxAudioRef);
@@ -234,21 +249,37 @@ static le_result_t OpenAudioMic
     MdmRxAudioRef = le_audio_OpenModemVoiceRx(1); // SlotId input param
     LE_ERROR_IF((MdmRxAudioRef==NULL), "le_audio_OpenModemVoiceRx returns NULL!");
     LE_DEBUG("OpenAudio MdmRxAudioRef %p", MdmRxAudioRef);
+
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
     LE_INFO("Connect Speaker");
 
     // Redirect audio to Speaker.
     FeOutRef = le_audio_OpenSpeaker();
     LE_ERROR_IF((FeOutRef==NULL), "le_audio_OpenSpeaker returns NULL!");
+#endif
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
 
 #if LE_CONFIG_TARGET_SA525M
+
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+    if(!routeRef)
+    {
+        routeRef = le_audio_OpenRoute( LE_AUDIO_ROUTE_1, LE_AUDIO_VOICE_CALL,
+                &FeOutRef, &FeInRef);
+    }
+    MdmTxAudioRef =  le_audio_OpenModemVoiceTx(1, false);
+#else
     MdmTxAudioRef =  le_audio_OpenModemVoiceTx(1);
+#endif
+
     LE_ERROR_IF((MdmTxAudioRef==NULL), "le_audio_OpenModemVoiceTx returns NULL!");
     LE_DEBUG("OpenAudio MdmTxAudioRef %p", MdmTxAudioRef);
 
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
     FeInRef = le_audio_OpenMic();
     LE_ERROR_IF((FeInRef==NULL), "le_audio_OpenMic returns NULL!");
+#endif
     AudioInputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
 
@@ -267,6 +298,10 @@ static le_result_t OpenAudioMic
         res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+    res = le_audio_SetVolume(MdmRxAudioRef, 1);
+    LE_ERROR_IF((res!=LE_OK), "Failed to set volume on modem RX!");
+#endif
     return LE_OK;
 }
 //! [setup audio path]
@@ -285,12 +320,17 @@ static le_result_t OpenAudioFile
 {
     le_result_t res;
 
-
+#ifndef LE_CONFIG_REFRESH_AUDIO_SVC
     FeOutRef = le_audio_OpenSpeaker();
     LE_ERROR_IF((FeOutRef==NULL), "le_audio_OpenSpeaker returns NULL!");
+#endif
     AudioOutputConnectorRef  = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef ==NULL), "AudioOutputConnectorRef  is NULL!");
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+    FileAudioRef = le_audio_OpenPlayer(LE_AUDIO_RX);
+#else
     FileAudioRef = le_audio_OpenPlayer();
+#endif
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
@@ -303,6 +343,10 @@ static le_result_t OpenAudioFile
         res = le_audio_Connect(AudioOutputConnectorRef , FileAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect FilePlayback on input connector!");
 
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+        //To playfile audio file after connecting connectors
+        res = le_audio_PlayFile(FileAudioRef, AudioFilePath);
+#else
         if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
         {
             LE_ERROR("Open file %s failure: errno.%d (%s)",
@@ -316,7 +360,12 @@ static le_result_t OpenAudioFile
         }
 
         res = le_audio_PlayFile(FileAudioRef, AudioFileFd);
+#endif
         LE_ERROR_IF((res!=LE_OK), "Failed to play the file!");
+#ifdef LE_CONFIG_REFRESH_AUDIO_SVC
+        res = le_audio_SetVolume(FileAudioRef, 1);
+        LE_ERROR_IF((res!=LE_OK), "Failed to set volume on player!");
+#endif
     }
 
     return LE_OK;
