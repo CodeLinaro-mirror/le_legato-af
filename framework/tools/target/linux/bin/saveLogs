@@ -36,6 +36,7 @@ then
 else
     LOG_HOME=$RAM_LOC
     mkdir -p "$LOG_HOME"
+    chmod 0770 $LOG_HOME
 
     # Remove all but the 3 most recent of the core and syslog files.
     rm `ls -t "$LOG_HOME"/core-* 2> /dev/null | tail -n +4` 2> /dev/null
@@ -47,6 +48,8 @@ UNIX_TIME=`date +%s`
 
 # Dump the current syslog directly into our output directory.
 /sbin/logread > "$LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME"
+chmod 0660 $LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME
+
 
 # Given a list of core files, delete all of them but the first one.
 DeleteAllButFirst()
