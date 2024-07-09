@@ -48,13 +48,14 @@
  * {@
  */
 //-------------------------------------------------------------------------------------------------
-#define CONSTELLATION_GPS           0x1
-#define CONSTELLATION_GLONASS       0x2
-#define CONSTELLATION_BEIDOU        0x4
-#define CONSTELLATION_GALILEO       0x8
-#define CONSTELLATION_SBAS          0x10  //TelSDK supported this constellation
-#define CONSTELLATION_QZSS          0x20
-#define CONSTELLATION_NAVIC         0x40
+#define CONSTELLATION_DEFAULT       0x1
+#define CONSTELLATION_GPS           0x2
+#define CONSTELLATION_GLONASS       0x4
+#define CONSTELLATION_BEIDOU        0x8
+#define CONSTELLATION_GALILEO       0x10
+#define CONSTELLATION_SBAS          0x20  //TelSDK supported this constellation
+#define CONSTELLATION_QZSS          0x40
+#define CONSTELLATION_NAVIC         0x80
 // @}
 
 //-------------------------------------------------------------------------------------------------
@@ -253,13 +254,14 @@ void PrintGnssHelp
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
          "\t\t\t\t  ConstellationType can be as follows:\n"
-         "\t\t\t\t\t- 1 ---> GPS(Not Supported)\n"
-         "\t\t\t\t\t- 2 ---> GLONASS\n"
-         "\t\t\t\t\t- 4 ---> BEIDOU\n"
-         "\t\t\t\t\t- 8 ---> GALILEO\n"
-         "\t\t\t\t\t- 16 --> SBAS\n"
-         "\t\t\t\t\t- 32 --> QZSS\n"
-         "\t\t\t\t\t- 64 --> NAVIC\n"
+         "\t\t\t\t\t- 1 ---> DEFAULT\n"
+         "\t\t\t\t\t- 2 ---> GPS(Not Supported)\n"
+         "\t\t\t\t\t- 4 ---> GLONASS\n"
+         "\t\t\t\t\t- 8 ---> BEIDOU\n"
+         "\t\t\t\t\t- 16 ---> GALILEO\n"
+         "\t\t\t\t\t- 32 --> SBAS\n"
+         "\t\t\t\t\t- 64 --> QZSS\n"
+         "\t\t\t\t\t- 128 --> NAVIC\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t10 for GLONASS+GALILEO, 46 for GLONASS+BEIDOU+GALILEO+QZSS\n\n"
          "\t\t\tset acqRate <acqRate in milliseconds>\n"
@@ -1377,7 +1379,13 @@ static int SetConstellation
     }
 
     char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
-
+    if (constellationSum & CONSTELLATION_DEFAULT)
+    {
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_DEFAULT;
+        constellationSum -= CONSTELLATION_DEFAULT;
+        LE_INFO("constellation type is CONSTELLATION_DEFAULT");
+        le_utf8_Append(constellationStr, "DEFAULT ", sizeof(constellationStr), NULL);
+    }
     if (constellationSum & CONSTELLATION_GPS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GPS;
@@ -2254,6 +2262,10 @@ static int GetSupportedConstellations
             if (constMask & LE_GNSS_CONSTELLATION_QZSS)
             {
                 printf("\tQZSS is Supported\n");
+            }
+            if (constMask & LE_GNSS_CONSTELLATION_NAVIC)
+            {
+                printf("\tNAVIC is Supported\n");
             }
             break;
         case LE_FAULT:
