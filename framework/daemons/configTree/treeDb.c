@@ -3410,7 +3410,7 @@ void tdb_MergeTree
                 "An error occurred while closing the tree file: %s", LE_ERRNO_TXT(errno));
 
     sync();
-    LE_INFO("Changes have been merged to tree '%s' and committed to the filesystem.", filePath);
+    LE_DEBUG("Changes have been merged to tree '%s' and committed to the filesystem.", filePath);
 
     // Finally remove the old version of the tree file, if there is one.
     if (writeResult == LE_OK)
