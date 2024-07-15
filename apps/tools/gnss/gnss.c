@@ -652,9 +652,6 @@ static int Restart
         case LE_FAULT:
             printf("Failed to do '%s' restart. See logs for details\n", restartTypePtr);
             break;
-        case LE_UNSUPPORTED:
-            printf("Not Supported!\n");
-            break;
         default:
             printf("Invalid status\n");
             break;
@@ -696,9 +693,6 @@ static int SetAcquisitionRate
             break;
         case LE_FAULT:
             printf("Failed to Set acquisition rate\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Request is not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready \" state\n");
@@ -746,9 +740,6 @@ static int SetMinElevation
             break;
         case LE_FAULT:
             printf("Failed to set the minimum elevation\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Setting the minimum elevation is not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready\" state\n");
@@ -1448,9 +1439,6 @@ static int SetConstellation
         case LE_OK:
             printf("Success!\n");
             break;
-        case LE_UNSUPPORTED:
-            printf("Setting constellation %s is not supported\n", constellationStr);
-            break;
         case LE_NOT_PERMITTED:
             printf("The GNSS device is not initialized, disabled. See logs for  \
                     details\n");
@@ -1500,10 +1488,6 @@ static int SetConstellationArea
     {
         case LE_OK:
             printf("Success!\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Setting area %d for constellation %d is not supported\n",
-                   constArea, constellation);
             break;
         case LE_NOT_PERMITTED:
             printf("The GNSS device is not initialized, disabled or active. See logs for  \
@@ -1565,9 +1549,6 @@ static int SetAgpsMode
     {
         case LE_OK:
             printf("Success!\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("The request is not supported\n");
             break;
         case LE_TIMEOUT:
             printf("Timeout error\n");
@@ -1896,10 +1877,6 @@ static int GetConstellationArea
         {
             printf("%s area %d\n", tabConstellation[constType], constellationArea);
         }
-        else if (LE_UNSUPPORTED == result)
-        {
-            printf("%s unsupported area\n", tabConstellation[constType]);
-        }
         else
         {
             printf("Failed! See log for details!\n");
@@ -1974,9 +1951,6 @@ static int GetMinElevation
             break;
         case LE_FAULT:
             printf("Failed to get the minimum elevation. See logs for details\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Request not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready\" state\n");
@@ -2401,8 +2375,8 @@ static int Get2Dlocation
         printf("Latitude(positive->north) : %.6f\n"
                "Longitude(positive->east) : %.6f\n"
                "hAccuracy                 : %.2fm\n",
-                (float)latitude/1e6,
-                (float)longitude/1e6,
+                (double)latitude/1e6,
+                (double)longitude/1e6,
                 (float)hAccuracy/1e2);
     }
     else if(result == LE_OUT_OF_RANGE)
@@ -2727,10 +2701,6 @@ static int GetLeapSeconds
     else if (LE_TIMEOUT == result)
     {
         printf("Timeout for getting next leap second event.\n");
-    }
-    else if (LE_UNSUPPORTED == result)
-    {
-       printf("Not Supported !\n");
     }
     else
     {
