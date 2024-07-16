@@ -44,11 +44,11 @@
 {%- endif %}
 {%- endfor %}
 {%- for type in types %}
+{%- if apiBaseName != apiName %}
 
 //--------------------------------------------------------------------------------------------------
 {{type.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
-{%- if apiBaseName != apiName %}
 {%- if type is ReferenceType %}
 typedef {{apiBaseName}}_{{type.name}}Ref_t {{type|FormatType}};
 {%- elif type is HandlerType %}
