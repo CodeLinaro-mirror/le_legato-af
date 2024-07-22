@@ -38,6 +38,10 @@ void cm_mrc_PrintRadioHelp
             "\tcm radio getRAT \n\n"
             "To resume automatic RAT selection.\n"
             "\tcm radio rat AUTO\n\n"
+            "To set radio service domain prefererences\n"
+            "\tcm radio domain <[CS] [PS] [ALL]>\n\n"
+            "To get radio service domain prefererences\n"
+            "\tcm radio getDomain \n\n"
             );
 }
 
@@ -167,14 +171,9 @@ static le_result_t GetSignalQuality
 )
 {
     le_result_t res;
-    uint32_t signal;
+    uint32_t signal = 0;
 
     res = le_mrc_GetSignalQual(&signal, RADIO_DEFAULT_PHONE_ID);
-
-    if (res != LE_OK)
-    {
-        return res;
-    }
 
     switch (signal)
     {
@@ -308,6 +307,52 @@ static le_result_t GetServicesState
 }
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will attempt to get the service domain.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetServiceDomain
+(
+    void
+)
+{
+    le_result_t res;
+    le_mrc_ServiceDomainState_t domain = LE_MRC_SERVICE_DOMAIN_STATE_UNKNOWN;
+
+    res = le_mrc_GetServiceDomain(&domain, RADIO_DEFAULT_PHONE_ID);
+    if (res != LE_OK)
+    {
+        return res;
+    }
+
+    switch (domain)
+    {
+        case LE_MRC_SERVICE_DOMAIN_STATE_NO_SVC:
+            cm_cmn_FormatPrint("Service Domain", "No service (LE_MRC_SERVICE_DOMAIN_STATE_NO_SVC)");
+            break;
+        case LE_MRC_SERVICE_DOMAIN_STATE_CS_ONLY:
+            cm_cmn_FormatPrint("Service Domain", "Circuit-switched only (LE_MRC_SERVICE_DOMAIN_STATE_CS_ONLY)");
+            break;
+        case LE_MRC_SERVICE_DOMAIN_STATE_PS_ONLY:
+            cm_cmn_FormatPrint("Service Domain", "Packet-switched only (LE_MRC_SERVICE_DOMAIN_STATE_PS_ONLY)");
+            break;
+        case LE_MRC_SERVICE_DOMAIN_STATE_CS_AND_PS:
+            cm_cmn_FormatPrint("Service Domain", "Circuit-switched and packet-switched (LE_MRC_SERVICE_DOMAIN_STATE_CS_AND_PS)");
+            break;
+        case LE_MRC_SERVICE_DOMAIN_STATE_CAMPED:
+            cm_cmn_FormatPrint("Service Domain", "Camped on the network but not registered (LE_MRC_SERVICE_DOMAIN_STATE_CAMPED)");
+            break;
+        default:
+            cm_cmn_FormatPrint("Service Domain", "Unknown (LE_MRC_SERVICE_DOMAIN_STATE_UNKNOWN)");
+            break;
+    }
+
+    return LE_OK;
+}
+
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -390,6 +435,13 @@ int cm_mrc_GetModemStatus
     }
 
     res = GetCurrentRAT();
+
+    if (res != LE_OK)
+    {
+        exitStatus = EXIT_FAILURE;
+    }
+
+    res = GetServiceDomain();
 
     if (res != LE_OK)
     {
@@ -500,6 +552,65 @@ int cm_mrc_GetRat
 
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function sets the radio service domain preferences.
+ *
+ * @return
+ * - LE_OK    If the call was successful
+ * - LE_FAULT Otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_mrc_SetServiceDomain
+(
+    le_mrc_ServiceDomainState_t domain ///< [IN] Service domain
+)
+{
+    return le_mrc_SetServiceDomainPreferences(domain, RADIO_DEFAULT_PHONE_ID);
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the radio service domain preferences.
+ *
+ * @return
+ * - LE_OK    If the call was successful
+ * - LE_FAULT Otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_mrc_GetServiceDomain
+(
+    void
+)
+{
+    le_mrc_ServiceDomainState_t domain;
+
+    if (LE_OK != le_mrc_GetServiceDomainPreferences(&domain, RADIO_DEFAULT_PHONE_ID))
+    {
+        return LE_FAULT;
+    }
+
+    printf("Prefered Service Domain : ");
+    switch (domain)
+    {
+        case TAF_RADIO_SERVICE_DOMAIN_STATE_CS_ONLY:
+            printf("Circuit-Switched Only.\n");
+            break;
+        case TAF_RADIO_SERVICE_DOMAIN_STATE_PS_ONLY:
+            printf("Packet-Switched Only.\n");
+            break;
+        case TAF_RADIO_SERVICE_DOMAIN_STATE_CS_AND_PS:
+            printf("Circuit-Switched and Packet-Switched.\n");
+            break;
+        default:
+            printf("Unknown.\n");
+            break;
+    }
+    printf("\n");
+    return LE_OK;
+
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for radio service.
@@ -601,9 +712,55 @@ void cm_mrc_ProcessRadioCommand
         }
         exit(EXIT_FAILURE);
     }
+    else if (0 == strncmp(command, "domain", strlen("domain")))
+    {
+        if (cm_cmn_CheckEnoughParams(1, numArgs, "Service Domain value missing. e.g. cm radio"
+            " domain <CS> or <PS> or <ALL>"))
+        {
+            le_mrc_ServiceDomainState_t domain = TAF_RADIO_SERVICE_DOMAIN_STATE_UNKNOWN;
+            const char* domainStrPtr = le_arg_GetArg(2);
+            if (domainStrPtr == NULL)
+            {
+                LE_ERROR("Sevice Domain is NULL.");
+                exit(EXIT_FAILURE);
+            }
+
+            if (0 == strncmp(domainStrPtr, "CS", strlen("CS")))
+            {
+                domain = TAF_RADIO_SERVICE_DOMAIN_STATE_CS_ONLY;
+            }
+            else if (0 == strncmp(domainStrPtr, "PS", strlen("PS")))
+            {
+                domain = TAF_RADIO_SERVICE_DOMAIN_STATE_PS_ONLY;
+            }
+            else if (0 == strncmp(domainStrPtr, "ALL", strlen("ALL")))
+            {
+                domain = TAF_RADIO_SERVICE_DOMAIN_STATE_CS_AND_PS;
+            }
+            else
+            {
+                LE_ERROR("INVALID Service Domain option!!");
+                printf("INVALID Service Domain option!!\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (LE_OK == cm_mrc_SetServiceDomain(domain))
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            LE_ERROR("Failed to set Service Domain value");
+            printf("Failed to set Service Domain value\n");
+        }
+        exit(EXIT_FAILURE);
+    }
     else if (0 == strcmp(command, "getRAT"))
     {
         exit(cm_mrc_GetRat());
+    }
+    else if (0 == strncmp(command, "getDomain", strlen("getDomain")))
+    {
+        exit(cm_mrc_GetServiceDomain());
     }
     else
     {

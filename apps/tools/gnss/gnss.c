@@ -63,8 +63,8 @@
  */
 //-------------------------------------------------------------------------------------------------
 static le_gnss_PositionHandlerRef_t PositionHandlerRef;
-static taf_gnss_CapabilityChangeHandlerRef_t CapabilityHandlerRef;
-static taf_gnss_NmeaHandlerRef_t NmeaHandlerRef;
+static taf_locGnss_CapabilityChangeHandlerRef_t CapabilityHandlerRef;
+static taf_locGnss_NmeaHandlerRef_t NmeaHandlerRef;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -490,7 +490,7 @@ static int StartEngineType
 //-------------------------------------------------------------------------------------------------
 static int ConfigureLevArm
 (
-    taf_gnss_LeverArmParams_t* LeverArmParams         ///< [IN] Lever Arm Parameters
+    taf_locGnss_LeverArmParams_t* LeverArmParams         ///< [IN] Lever Arm Parameters
 )
 {
 
@@ -529,7 +529,7 @@ static int ConfigureLevArm
 //-------------------------------------------------------------------------------------------------
 static int ConfigureDeadReckoning
 (
-    taf_gnss_DrParams_t* DrParams         ///< [IN] Lever Arm Parameters
+    taf_locGnss_DrParams_t* DrParams         ///< [IN] Lever Arm Parameters
 )
 {
 
@@ -652,9 +652,6 @@ static int Restart
         case LE_FAULT:
             printf("Failed to do '%s' restart. See logs for details\n", restartTypePtr);
             break;
-        case LE_UNSUPPORTED:
-            printf("Not Supported!\n");
-            break;
         default:
             printf("Invalid status\n");
             break;
@@ -696,9 +693,6 @@ static int SetAcquisitionRate
             break;
         case LE_FAULT:
             printf("Failed to Set acquisition rate\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Request is not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready \" state\n");
@@ -746,9 +740,6 @@ static int SetMinElevation
             break;
         case LE_FAULT:
             printf("Failed to set the minimum elevation\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Setting the minimum elevation is not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready\" state\n");
@@ -846,64 +837,64 @@ static int GetMinGpsWeek
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-void DisplayCapabilities(taf_gnss_LocCapabilityType_t capabilityMask) {
+void DisplayCapabilities(taf_locGnss_LocCapabilityType_t capabilityMask) {
   printf("\n************* Capabilities Information *************\n");
   printf("The location capabilities bit mask: %xlu\n", capabilityMask);
-  if (capabilityMask & TAF_GNSS_TIME_BASED_TRACKING) {
+  if (capabilityMask & TAF_LOCGNSS_TIME_BASED_TRACKING) {
     printf("Time based tracking\n");
   }
-  if (capabilityMask & TAF_GNSS_DISTANCE_BASED_TRACKING) {
+  if (capabilityMask & TAF_LOCGNSS_DISTANCE_BASED_TRACKING) {
     printf("Distance based tracking\n");
   }
-  if (capabilityMask & TAF_GNSS_GNSS_MEASUREMENTS) {
+  if (capabilityMask & TAF_LOCGNSS_GNSS_MEASUREMENTS) {
     printf("GNSS Measurement\n");
   }
-  if (capabilityMask & TAF_GNSS_CONSTELLATION_ENABLEMENT) {
+  if (capabilityMask & TAF_LOCGNSS_CONSTELLATION_ENABLEMENT) {
     printf("Constellation enablement\n");
   }
-  if (capabilityMask & TAF_GNSS_CARRIER_PHASE) {
+  if (capabilityMask & TAF_LOCGNSS_CARRIER_PHASE) {
     printf("Carrier phase\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_GNSS_SINGLE_FREQUENCY) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_GNSS_SINGLE_FREQUENCY) {
     printf("QWES GNSS single frequency\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_GNSS_MULTI_FREQUENCY) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_GNSS_MULTI_FREQUENCY) {
     printf("QWES GNSS multi frequency\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_VPE) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_VPE) {
     printf("QWES VPE\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_CV2X_LOCATION_BASIC) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_CV2X_LOCATION_BASIC) {
     printf("QWES CV2X location basic\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_CV2X_LOCATION_PREMIUM) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_CV2X_LOCATION_PREMIUM) {
     printf("QWES CV2X location premium\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_PPE) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_PPE) {
     printf("QWES PPE\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_QDR2) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_QDR2) {
     printf("QWES QDR2\n");
   }
-  if (capabilityMask & TAF_GNSS_QWES_QDR3) {
+  if (capabilityMask & TAF_LOCGNSS_QWES_QDR3) {
     printf("QWES QDR3\n");
   }
-  if (capabilityMask & TAF_GNSS_TIME_BASED_BATCHING) {
+  if (capabilityMask & TAF_LOCGNSS_TIME_BASED_BATCHING) {
     printf("TIME_BASED_BATCHING\n");
   }
-  if (capabilityMask & TAF_GNSS_DISTANCE_BASED_BATCHING) {
+  if (capabilityMask & TAF_LOCGNSS_DISTANCE_BASED_BATCHING) {
     printf("DISTANCE_BASED_BATCHING\n");
   }
-  if (capabilityMask & TAF_GNSS_GEOFENCE) {
+  if (capabilityMask & TAF_LOCGNSS_GEOFENCE) {
     printf("GEOFENCE\n");
   }
-  if (capabilityMask & TAF_GNSS_OUTDOOR_TRIP_BATCHING) {
+  if (capabilityMask & TAF_LOCGNSS_OUTDOOR_TRIP_BATCHING) {
     printf("OUTDOOR_TRIP_BATCHING\n");
   }
-  if (capabilityMask & TAF_GNSS_SV_POLYNOMIAL) {
+  if (capabilityMask & TAF_LOCGNSS_SV_POLYNOMIAL) {
     printf("SV_POLYNOMIAL\n");
   }
-  if (capabilityMask & TAF_GNSS_NLOS_ML20) {
+  if (capabilityMask & TAF_LOCGNSS_NLOS_ML20) {
     printf("NLOS_ML20\n");
   }
   printf("****************************************************\n");
@@ -1008,11 +999,11 @@ static int GetXtraStatus
     void
 )
 {
-    taf_gnss_XtraStatusParams_t *XtraParamsPtr;
+    taf_locGnss_XtraStatusParams_t *XtraParamsPtr;
     le_result_t result = LE_FAULT;
     le_mem_PoolRef_t XtraFramePool = NULL;
-    XtraFramePool = le_mem_CreatePool("XtraFramePool", sizeof(taf_gnss_XtraStatusParams_t));
-    XtraParamsPtr = (taf_gnss_XtraStatusParams_t*) le_mem_ForceAlloc(XtraFramePool);
+    XtraFramePool = le_mem_CreatePool("XtraFramePool", sizeof(taf_locGnss_XtraStatusParams_t));
+    XtraParamsPtr = (taf_locGnss_XtraStatusParams_t*) le_mem_ForceAlloc(XtraFramePool);
     if(XtraParamsPtr != NULL)
     {
         result = le_gnss_GetXtraStatus(XtraParamsPtr);
@@ -1448,9 +1439,6 @@ static int SetConstellation
         case LE_OK:
             printf("Success!\n");
             break;
-        case LE_UNSUPPORTED:
-            printf("Setting constellation %s is not supported\n", constellationStr);
-            break;
         case LE_NOT_PERMITTED:
             printf("The GNSS device is not initialized, disabled. See logs for  \
                     details\n");
@@ -1500,10 +1488,6 @@ static int SetConstellationArea
     {
         case LE_OK:
             printf("Success!\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Setting area %d for constellation %d is not supported\n",
-                   constArea, constellation);
             break;
         case LE_NOT_PERMITTED:
             printf("The GNSS device is not initialized, disabled or active. See logs for  \
@@ -1565,9 +1549,6 @@ static int SetAgpsMode
     {
         case LE_OK:
             printf("Success!\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("The request is not supported\n");
             break;
         case LE_TIMEOUT:
             printf("Timeout error\n");
@@ -1896,10 +1877,6 @@ static int GetConstellationArea
         {
             printf("%s area %d\n", tabConstellation[constType], constellationArea);
         }
-        else if (LE_UNSUPPORTED == result)
-        {
-            printf("%s unsupported area\n", tabConstellation[constType]);
-        }
         else
         {
             printf("Failed! See log for details!\n");
@@ -1974,9 +1951,6 @@ static int GetMinElevation
             break;
         case LE_FAULT:
             printf("Failed to get the minimum elevation. See logs for details\n");
-            break;
-        case LE_UNSUPPORTED:
-            printf("Request not supported\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready\" state\n");
@@ -2401,8 +2375,8 @@ static int Get2Dlocation
         printf("Latitude(positive->north) : %.6f\n"
                "Longitude(positive->east) : %.6f\n"
                "hAccuracy                 : %.2fm\n",
-                (float)latitude/1e6,
-                (float)longitude/1e6,
+                (double)latitude/1e6,
+                (double)longitude/1e6,
                 (float)hAccuracy/1e2);
     }
     else if(result == LE_OUT_OF_RANGE)
@@ -2728,10 +2702,6 @@ static int GetLeapSeconds
     {
         printf("Timeout for getting next leap second event.\n");
     }
-    else if (LE_UNSUPPORTED == result)
-    {
-       printf("Not Supported !\n");
-    }
     else
     {
         printf("Failed! See log for details!\n");
@@ -2909,23 +2879,23 @@ static int GetCablibrationConfData
                                                 &calibPtr,&percentPtr);
     if (result == LE_OK)
     {
-        if(calibPtr & (1<<TAF_GNSS_DR_ROLL_CALIBRATION_NEEDED))
+        if(calibPtr & (1<<TAF_LOCGNSS_DR_ROLL_CALIBRATION_NEEDED))
         {
             printf("Roll calibration is needed\n");
         }
-        if(calibPtr & (1<<TAF_GNSS_DR_PITCH_CALIBRATION_NEEDED))
+        if(calibPtr & (1<<TAF_LOCGNSS_DR_PITCH_CALIBRATION_NEEDED))
         {
             printf("Pitch calibration is needed\n");
         }
-        if(calibPtr & (1<<TAF_GNSS_DR_YAW_CALIBRATION_NEEDED))
+        if(calibPtr & (1<<TAF_LOCGNSS_DR_YAW_CALIBRATION_NEEDED))
         {
             printf("Yaw calibration is needed\n");
         }
-        if(calibPtr & (1<<TAF_GNSS_DR_ODO_CALIBRATION_NEEDED))
+        if(calibPtr & (1<<TAF_LOCGNSS_DR_ODO_CALIBRATION_NEEDED))
         {
             printf("Odo calibration is needed\n");
         }
-        if(calibPtr & (1<<TAF_GNSS_DR_GYRO_CALIBRATION_NEEDED))
+        if(calibPtr & (1<<TAF_LOCGNSS_DR_GYRO_CALIBRATION_NEEDED))
         {
             printf("Gyro calibration is needed\n");
         }
@@ -3193,73 +3163,73 @@ static int GetDop
 
 void PrintGnssSignalType(uint32_t signalTypeMask) {
    printf("Signals: ");
-   if (signalTypeMask & TAF_GNSS_GPS_L1CA) {
+   if (signalTypeMask & TAF_LOCGNSS_GPS_L1CA) {
      printf("GPS L1CA, ");
    }
-   if (signalTypeMask & TAF_GNSS_GPS_L1C) {
+   if (signalTypeMask & TAF_LOCGNSS_GPS_L1C) {
      printf("GPS L1C, ");
    }
-   if (signalTypeMask & TAF_GNSS_GPS_L2) {
+   if (signalTypeMask & TAF_LOCGNSS_GPS_L2) {
      printf("GPS L2, ");
    }
-   if (signalTypeMask & TAF_GNSS_GPS_L5) {
+   if (signalTypeMask & TAF_LOCGNSS_GPS_L5) {
      printf("GPS L5, ");
    }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G1) {
+   if (signalTypeMask & TAF_LOCGNSS_GLONASS_G1) {
      printf("Glonass G1, ");
    }
-   if (signalTypeMask & TAF_GNSS_GLONASS_G2) {
+   if (signalTypeMask & TAF_LOCGNSS_GLONASS_G2) {
      printf("Glonass G2, ");
    }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E1) {
+   if (signalTypeMask & TAF_LOCGNSS_GALILEO_E1) {
      printf("Galileo E1, ");
    }
-   if (signalTypeMask & TAF_GNSS_GALILEO_E5A) {
+   if (signalTypeMask & TAF_LOCGNSS_GALILEO_E5A) {
      printf("Galileo E5A, ");
    }
-   if (signalTypeMask & TAF_GNSS_GALILIEO_E5B) {
+   if (signalTypeMask & TAF_LOCGNSS_GALILIEO_E5B) {
      printf("Galileo E5B, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B1) {
      printf("Beidou B1, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2) {
      printf("Beidou B2, ");
    }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1CA) {
+   if (signalTypeMask & TAF_LOCGNSS_QZSS_L1CA) {
      printf("QZSS L1CA, ");
    }
-   if (signalTypeMask & TAF_GNSS_QZSS_L1S) {
+   if (signalTypeMask & TAF_LOCGNSS_QZSS_L1S) {
      printf("QZSS L1S, ");
    }
-   if (signalTypeMask & TAF_GNSS_QZSS_L2) {
+   if (signalTypeMask & TAF_LOCGNSS_QZSS_L2) {
      printf("QZSS L2, ");
    }
-   if (signalTypeMask & TAF_GNSS_QZSS_L5) {
+   if (signalTypeMask & TAF_LOCGNSS_QZSS_L5) {
      printf("QZSS L5, ");
    }
-   if (signalTypeMask & TAF_GNSS_SBAS_L1) {
+   if (signalTypeMask & TAF_LOCGNSS_SBAS_L1) {
      printf("SBAS L1, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1I) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B1I) {
      printf("Beidou B1I, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B1C) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B1C) {
      printf("Beidou B1C, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2I) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2I) {
      printf("Beidou B2I, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AI) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2AI) {
      printf("Beidou B2AI, ");
    }
-   if (signalTypeMask & TAF_GNSS_NAVIC_L5) {
+   if (signalTypeMask & TAF_LOCGNSS_NAVIC_L5) {
      printf("Navic L5, ");
    }
-   if (signalTypeMask & TAF_GNSS_BEIDOU_B2AQ) {
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2AQ) {
      printf("Beidou B2AQ, ");
    }
-   if (signalTypeMask == TAF_GNSS_UNKNOWN_SIGNAL_MASK) {
+   if (signalTypeMask == TAF_LOCGNSS_UNKNOWN_SIGNAL_MASK) {
      printf("No signal, ");
    }
 }
@@ -3359,10 +3329,10 @@ static int GetSatelliteInfoEx
     int index = 0;
     le_result_t result;
 
-    for (int constellation = 1; constellation < TAF_GNSS_SV_CONSTELLATION_MAX; constellation++) {
+    for (int constellation = 1; constellation < TAF_LOCGNSS_SV_CONSTELLATION_MAX; constellation++) {
 
-      taf_gnss_SvInfo_t svInfo[TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS];
-      size_t svInfoLen = TAF_GNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS;
+      taf_locGnss_SvInfo_t svInfo[TAF_LOCGNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS];
+      size_t svInfoLen = TAF_LOCGNSS_SV_INFO_MAX_SATS_IN_CONSTELLATIONS;
 
       result = le_gnss_GetSatellitesInfoEx(positionSampleRef, constellation, svInfo, &svInfoLen);
 
@@ -3452,85 +3422,85 @@ static int GetKinematicsData
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    taf_gnss_KinematicsData_t *bodyFrameData;
+    taf_locGnss_KinematicsData_t *bodyFrameData;
     le_mem_PoolRef_t bodyFramePool = NULL;
-    bodyFramePool = le_mem_CreatePool("bodyFramePool", sizeof(taf_gnss_KinematicsData_t));
-    bodyFrameData = (taf_gnss_KinematicsData_t*) le_mem_ForceAlloc(bodyFramePool);
+    bodyFramePool = le_mem_CreatePool("bodyFramePool", sizeof(taf_locGnss_KinematicsData_t));
+    bodyFrameData = (taf_locGnss_KinematicsData_t*) le_mem_ForceAlloc(bodyFramePool);
 
     le_result_t result = le_gnss_GetBodyFrameData( positionSampleRef,
                                               bodyFrameData);
 
     if (result == LE_OK)
     {
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_LONG_ACCEL))
        {
            printf("**Kinematics data has Forward Accelaration**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_LAT_ACCEL))
        {
            printf("**Kinematics data has has Sideward Acceleration**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_VERT_ACCEL))
        {
            printf("**Kinematics data has Vertical Acceleration**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_YAW_RATE))
        {
            printf("**Kinematics has data has Heading Rate**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_PITCH))
        {
            printf("**Kinematics has body pitch**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LONG_ACCEL_UNC))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_LONG_ACCEL_UNC))
        {
            printf("**Kinematics data has has Forward Acceleration Uncertainty**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_LAT_ACCEL_UNC))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_LAT_ACCEL_UNC))
        {
            printf("**Kinematics data has has Sideward Acceleration Uncertainty**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_VERT_ACCEL_UNC))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_VERT_ACCEL_UNC))
        {
            printf("**Kinematics data has Vertical Acceleration Uncertainty**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_RATE_UNC))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_YAW_RATE_UNC))
        {
            printf("**Kinematics data Heading rate uncertainity**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_UNC))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_PITCH_UNC))
        {
            printf("**Kinematics has body pitch Uncertainity**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_PITCH_RATE_BIT))
        {
            printf("**Kinematics data has pitch rate**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_PITCH_RATE_UNC_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_PITCH_RATE_UNC_BIT))
        {
            printf("**Kinematics has pitch rate Uncertainity**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_ROLL_BIT))
        {
            printf("**Kinematics data has roll**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_UNC_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_ROLL_UNC_BIT))
        {
            printf("**Kinematics data has roll Uncertainity**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_ROLL_RATE_BIT))
        {
            printf("**Kinematics data has roll rate**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_ROLL_RATE_UNC_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_ROLL_RATE_UNC_BIT))
        {
            printf("**Kinematics data has roll rate Uncertainity**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_YAW_BIT))
        {
            printf("**Kinematics data has yaw**\n");
        }
-       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_GNSS_HAS_YAW_UNC_BIT))
+       if((bodyFrameData->bodyFrameDataMask) & (1<<TAF_LOCGNSS_HAS_YAW_UNC_BIT))
        {
            printf("**Kinematics data has yaw uncertainity**\n");
        }
@@ -3682,10 +3652,10 @@ static int GetSvData
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    taf_gnss_SvUsedInPosition_t *svData;
+    taf_locGnss_SvUsedInPosition_t *svData;
     le_mem_PoolRef_t svFramePool = NULL;
-    svFramePool = le_mem_CreatePool("svFramePool", sizeof(taf_gnss_SvUsedInPosition_t));
-    svData = (taf_gnss_SvUsedInPosition_t*) le_mem_ForceAlloc(svFramePool);
+    svFramePool = le_mem_CreatePool("svFramePool", sizeof(taf_locGnss_SvUsedInPosition_t));
+    svData = (taf_locGnss_SvUsedInPosition_t*) le_mem_ForceAlloc(svFramePool);
 
     le_result_t result = le_gnss_GetSvUsedInPosition( positionSampleRef,
                                                      svData);
@@ -4370,8 +4340,8 @@ static int GetGnssMeasurementInfo
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    taf_gnss_GnssMeasurementInfo_t measInfo[TAF_GNSS_MEASUREMENT_INFO_MAX];
-    size_t gnssMeasLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    taf_locGnss_GnssMeasurementInfo_t measInfo[TAF_LOCGNSS_MEASUREMENT_INFO_MAX];
+    size_t gnssMeasLen = TAF_LOCGNSS_MEASUREMENT_INFO_MAX;
     le_result_t result = le_gnss_GetMeasurementUsageInfo(positionSampleRef, measInfo, &gnssMeasLen);
 
     if (result != LE_OK)
@@ -4381,27 +4351,27 @@ static int GetGnssMeasurementInfo
     }
 
    for(uint16_t i = 0; i < gnssMeasLen; i++) {
-      taf_gnss_GnssSystem_t system = measInfo[i].gnssConstellation;
+      taf_locGnss_GnssSystem_t system = measInfo[i].gnssConstellation;
       printf("System: ");
-      if(system == TAF_GNSS_LOC_SV_SYSTEM_GPS) {
+      if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_GPS) {
          printf("GPS, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GALILEO) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_GALILEO) {
          printf("GALILEO, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_SBAS) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_SBAS) {
          printf("SBAS, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_GLONASS) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_GLONASS) {
          printf("GLONASS, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_BDS) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_BDS) {
          printf("BDS, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_QZSS) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_QZSS) {
          printf("QZSS, ");
       }
-      else if(system == TAF_GNSS_LOC_SV_SYSTEM_NAVIC) {
+      else if(system == TAF_LOCGNSS_LOC_SV_SYSTEM_NAVIC) {
          printf("NAVIC, ");
       }
       else {
@@ -4417,18 +4387,18 @@ static int GetGnssMeasurementInfo
    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-void printReportStatus(taf_gnss_ReportStatus_t status) {
+void printReportStatus(taf_locGnss_ReportStatus_t status) {
   printf("Report Status is: ");
-  if (status == TAF_GNSS_REPORT_STATUS_UNKNOWN) {
+  if (status == TAF_LOCGNSS_REPORT_STATUS_UNKNOWN) {
     printf("UNKNOWN\n");
   }
-  if (status == TAF_GNSS_REPORT_STATUS_SUCCESS) {
+  if (status == TAF_LOCGNSS_REPORT_STATUS_SUCCESS) {
     printf("SUCCESS\n");
   }
-  if (status == TAF_GNSS_REPORT_STATUS_INTERMEDIATE) {
+  if (status == TAF_LOCGNSS_REPORT_STATUS_INTERMEDIATE) {
     printf("INTERMEDIATE\n");
   }
-  if (status == TAF_GNSS_REPORT_STATUS_FAILURE) {
+  if (status == TAF_LOCGNSS_REPORT_STATUS_FAILURE) {
     printf("FAILURE\n");
   }
 }
@@ -4456,7 +4426,7 @@ static int GetReportStatus
       return EXIT_FAILURE;
     }
 
-    printReportStatus((taf_gnss_ReportStatus_t) reportStatus);
+    printReportStatus((taf_locGnss_ReportStatus_t) reportStatus);
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -4503,8 +4473,8 @@ static int GetSVIds
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    uint16_t svIds[TAF_GNSS_MEASUREMENT_INFO_MAX];
-    size_t svIdsLen = TAF_GNSS_MEASUREMENT_INFO_MAX;
+    uint16_t svIds[TAF_LOCGNSS_MEASUREMENT_INFO_MAX];
+    size_t svIdsLen = TAF_LOCGNSS_MEASUREMENT_INFO_MAX;
     le_result_t result = le_gnss_GetSVIds(positionSampleRef, svIds, &svIdsLen);
 
     if (result != LE_OK)
@@ -4527,8 +4497,8 @@ static int GetGnssData
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    size_t maxSigTypes = TAF_GNSS_NUMBER_OF_SIGNAL_TYPES_MAX;
-    taf_gnss_GnssData_t gnssDataPtr[TAF_GNSS_NUMBER_OF_SIGNAL_TYPES_MAX];
+    size_t maxSigTypes = TAF_LOCGNSS_NUMBER_OF_SIGNAL_TYPES_MAX;
+    taf_locGnss_GnssData_t gnssDataPtr[TAF_LOCGNSS_NUMBER_OF_SIGNAL_TYPES_MAX];
     le_result_t result = le_gnss_GetGnssData(positionSampleRef, gnssDataPtr, &maxSigTypes);
 
     if (result != LE_OK)
@@ -4541,7 +4511,7 @@ static int GetGnssData
     {
         printf("GetGnssData type :%d\n", i);
         printf("gnssDataMask:%d\n", gnssDataPtr[i].gnssDataMask);
-        if(gnssDataPtr[i].gnssDataMask & TAF_GNSS_HAS_JAMMER)
+        if(gnssDataPtr[i].gnssDataMask & TAF_LOCGNSS_HAS_JAMMER)
         {
             printf("jammerInd is present\n");
             printf("jammerInd: %lf\n",gnssDataPtr[i].jammerInd);
@@ -4550,7 +4520,7 @@ static int GetGnssData
         {
             printf("jammerInd is not present\n");
         }
-        if(gnssDataPtr[i].gnssDataMask & TAF_GNSS_HAS_AGC)
+        if(gnssDataPtr[i].gnssDataMask & TAF_LOCGNSS_HAS_AGC)
         {
             printf("Automatic Gain Control is present\n");
             printf("AGC: %lf\n",gnssDataPtr[i].agc);
@@ -4978,7 +4948,7 @@ static void PositionHandlerFunction
 //--------------------------------------------------------------------------------------------------
 static void CapabilityHandlerFunction
 (
-    taf_gnss_LocCapabilityType_t locCapability,
+    taf_locGnss_LocCapabilityType_t locCapability,
     void* contextPtr
 )
 {
@@ -5417,7 +5387,7 @@ void GnssMainFunction
         }
 
         le_gnss_State_t state = le_gnss_GetState();
-        if (TAF_GNSS_STATE_ACTIVE == state)
+        if (TAF_LOCGNSS_STATE_ACTIVE == state)
         {
             printf("\033[1;32mgnss> \033[0m"); // Color GREEN
         }
@@ -5696,7 +5666,7 @@ void GnssMainFunction
             }
 
             le_mem_PoolRef_t DrFramePool = NULL;
-            DrFramePool = le_mem_CreatePool("DrFramePool", sizeof(le_gnss_LeverArmParams_t));
+            DrFramePool = le_mem_CreatePool("DrFramePool", sizeof(le_gnss_DrParams_t));
             DrParamsPtr = (le_gnss_DrParams_t*) le_mem_ForceAlloc(DrFramePool);
             if (DrParamsPtr != NULL)
             {
@@ -5769,7 +5739,7 @@ void GnssMainFunction
             }
 
             le_gnss_State_t state = le_gnss_GetState();
-            if (TAF_GNSS_STATE_ACTIVE != state)
+            if (TAF_LOCGNSS_STATE_ACTIVE != state)
             {
                 printf("GNSS is not in active state!\n");
                 continue;
@@ -5959,7 +5929,7 @@ void GnssMainFunction
 
     if (ExitApp)
     {
-        if (TAF_GNSS_STATE_ACTIVE == le_gnss_GetState())
+        if (TAF_LOCGNSS_STATE_ACTIVE == le_gnss_GetState())
         {
             result = le_gnss_Stop();
         }

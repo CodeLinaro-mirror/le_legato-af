@@ -1346,7 +1346,7 @@ COMPONENT_INIT
         // mount R/W overlay for APP install folder
         (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (mount("overlay", "/legato/apps", "overlay", MS_SILENT,
+        if (mount("overlay", "/legato/apps", "overlay", MS_SILENT | MS_NODEV | MS_NOSUID,
                          "upperdir=" TELAF_APP_OVERLAYFS_UPPER_APPS_PATH ","
                          "lowerdir=/legato/apps,"
                          "workdir=" TELAF_APP_OVERLAYFS_WK_APPS_PATH) != 0)
@@ -1370,7 +1370,8 @@ COMPONENT_INIT
         if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH "/appsWriteable"))
         {
             // mount an R/W overlay
-            if (mount("overlay", CURRENT_SYSTEM_PATH "/appsWriteable", "overlay", MS_SILENT,
+            if (mount("overlay", CURRENT_SYSTEM_PATH "/appsWriteable", "overlay",
+                             MS_SILENT | MS_NODEV | MS_NOSUID,
                              "upperdir=/app/appsWriteable,"
                              "lowerdir=" CURRENT_SYSTEM_PATH "/appsWriteable,"
                              "workdir=/app/appsWriteable_wk") != 0)

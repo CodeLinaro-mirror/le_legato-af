@@ -2,9 +2,9 @@ requires:
 {
     api:
     {
-        le_gnss = taf_gnss.api
-        le_pos = taf_pos.api
-        le_posCtrl = taf_posCtrl.api
+        le_gnss = taf_locGnss.api
+        le_pos = taf_locPos.api
+        le_posCtrl = taf_locPosCtrl.api
     }
 }
 
