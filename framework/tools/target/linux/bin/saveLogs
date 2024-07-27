@@ -23,7 +23,7 @@ fi
 FLASH_LOC="/data/telaf_crash_logs"
 RAM_LOC="/tmp/telaf_crash_logs"
 
-if [ "$3" = "REBOOT" ]
+if [ "$4" = "REBOOT" ]
 then
     LOG_HOME=$FLASH_LOC
     mkdir -p "$LOG_HOME"
@@ -46,10 +46,13 @@ fi
 # Get the current time stamp.
 UNIX_TIME=`date +%s`
 
-# Dump the current syslog directly into our output directory.
-/sbin/logread > "$LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME"
-chmod 0660 $LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME
-
+# Do not dump the syslog crash file when DLT is enabled.
+if [ "$3" != "DLT" ]
+then
+    # Dump the current syslog directly into our output directory.
+    /sbin/logread > "$LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME"
+    chmod 0660 $LOG_HOME/syslog-$APP_NAME-$PROC_NAME-$UNIX_TIME
+fi
 
 # Given a list of core files, delete all of them but the first one.
 DeleteAllButFirst()

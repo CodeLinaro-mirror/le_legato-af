@@ -2068,11 +2068,17 @@ static void CaptureDebugData
 )
 {
     char command[LIMIT_MAX_PATH_BYTES];
+    bool isDltEnabled = false;
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    isDltEnabled = true;
+#endif
+
     int s = snprintf(command,
                      sizeof(command),
-                     "/legato/systems/current/bin/saveLogs %s %s %s",
+                     "/legato/systems/current/bin/saveLogs %s %s %s %s",
                      app_GetName(procRef->appRef),
                      procRef->namePtr,
+                     isDltEnabled ? "DLT" : "SYSLOG",
                      isRebooting ? "REBOOT" : "");
 
     if (s >= sizeof(command))

@@ -18,6 +18,7 @@
 #include "limit.h"
 #include "signals.h"
 #include "backtrace.h"
+#include "logPlatform.h"
 
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE 1
@@ -517,6 +518,15 @@ may result in unexpected behaviour.", sigNum, strsignal(sigNum));
     LE_ASSERT(sigemptyset(&sigSet) == 0);
     LE_ASSERT(sigaddset(&sigSet, sigNum) == 0);
     LE_ASSERT(pthread_sigmask(SIG_BLOCK, &sigSet, NULL) == 0);
+
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    // The DLT logging library will start additional working threads. However, the DLT logging gets
+    // initialized during legato library loading before main() function, the signal mask can not
+    // be applied to those DLT threads if the le_sig_Block() API is called later. This will cause
+    // unexpected result in signal handling. To reslove the issue we need to re-initialize the DLT
+    // logging so that the DLT threads can inherit the signal blocking mask set by this API.
+    log_DltInit();
+#endif
 }
 
 
