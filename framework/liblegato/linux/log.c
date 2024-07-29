@@ -1052,7 +1052,7 @@ static void LogMessage
         DLT_LOG(TafDltCtx, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
     }
 #else
-    syslog(ConvertToSyslogLevel(legatoLevel), logMessagePtr);
+    syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
 #endif
 }
 #endif
