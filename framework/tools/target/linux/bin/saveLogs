@@ -9,13 +9,10 @@
 APP_NAME=$1      # The name of the app that we're running for.
 PROC_NAME=$2     # The name of the process we're backing up logs for.
 
-# Location of the application/framework's home directory.
-if [ "$APP_NAME" = "framework" ]
-then
-    APP_HOME="/"
-else
-    APP_HOME="/legato/systems/current/appsWriteable/$APP_NAME"
-fi
+# Get the path of core dump.
+CORE_PATTERN=`sysctl -n kernel.core_pattern`
+APP_HOME=$(dirname "$CORE_PATTERN")
+
 
 # For apps, we save the logs in the tmp file-system, (normally a RAM disk.)  However, if the
 # system is about to be rebooted, then we backup any previously stored RAM based logs to flash.
@@ -89,7 +86,7 @@ MoveFirstCore()
 
 # Build a list of core files and drop the redundant ones, while moving the latest one to the
 # target directory.
-CORE_LIST=`ls -t "$APP_HOME/core-$PROC_NAME"-* 2> /dev/null`
+CORE_LIST=`ls -t $APP_HOME/core?$PROC_NAME* 2> /dev/null`
 
 DeleteAllButFirst $CORE_LIST
 MoveFirstCore $CORE_LIST

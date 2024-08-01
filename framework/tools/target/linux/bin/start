@@ -32,9 +32,17 @@ case "$1" in
     ;;
 
     "")
-        # Configure the Kernel to dump core files in the format: "core-<Exe Name>-<Unix Time-stamp>"
-        # Where the Unix time-stamp is the count in seconds since the Epoch.
-        echo "core-%e-%t" > /proc/sys/kernel/core_pattern
+        # Get the core dump setting.
+        CORE_PATTERN=`sysctl -n kernel.core_pattern`
+        if [ -z "$CORE_PATTERN" ]; then
+            # Configure the Kernel to dump core files in the format: "core.<Exe Name>"
+            CORE_DUMP_PATH="/tmp/coredump"
+            echo "$CORE_DUMP_PATH/core.%e" > /proc/sys/kernel/core_pattern
+        else
+            CORE_DUMP_PATH=$(dirname "$CORE_PATTERN")
+        fi
+        mkdir -p $CORE_DUMP_PATH
+        chmod 777 $CORE_DUMP_PATH
 
         # Configure the maximum messages size up to 260 Kbytes as some APIs may require big chunck
         # of data to pass.
