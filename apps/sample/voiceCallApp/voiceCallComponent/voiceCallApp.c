@@ -389,13 +389,17 @@ static void MyCallEventHandler
 
     LE_INFO("New Call event: %d for Call %p, from %s", callEvent, reference, identifier);
 
-    if (callEvent == LE_VOICECALL_EVENT_ALERTING)
+    if (callEvent == LE_VOICECALL_EVENT_DIALING)
+    {
+        LE_INFO("LE_VOICECALL_EVENT_DIALING");
+        LE_INFO("Destination phone is dialing...");
+    }
+    else if (callEvent == LE_VOICECALL_EVENT_ALERTING)
     {
         LE_INFO("LE_VOICECALL_EVENT_ALERTING");
         LE_INFO("Destination phone is ringing...");
         OpenAudioMic(reference);
     }
-
     else if (callEvent == LE_VOICECALL_EVENT_CONNECTED)
     {
         incomingFlag = false;
