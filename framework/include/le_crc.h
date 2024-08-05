@@ -1,7 +1,7 @@
 /**
  * @page c_crc CRC32 API
  *
- * @subpage le_crc.h "API Reference"
+ * @rst :ref:`API reference <File le_crc.h>` @endrst
  *
  * <HR>
  *
@@ -17,7 +17,7 @@
  * and a CRC32. When the CRC32 is expected to be first computed, the value @ref LE_CRC_START_CRC32
  * needs to be set as crc32 value.
  *
- * @note It is possible to compute a "global" CRC32 of a huge amount of data by splitting into small
+ * @b NOTE: It is possible to compute a "global" CRC32 of a huge amount of data by splitting into small
  * blocks and continue computing the CRC32 on each one.
  *
  * This code compute the whole CRC32 of amount of data splitted into an array of small blocks:

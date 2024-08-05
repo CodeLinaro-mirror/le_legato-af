@@ -2,7 +2,7 @@
  * @page c_hex Hex string API
  *
  *
- * @subpage le_hex.h "API Reference"
+ * @rst :ref:`API reference <File le_hex.h>` @endrst
  *
  * <HR>
  *
@@ -54,7 +54,7 @@
  *      - -1 if the binarySize is too small or stringLength is odd or stringPtr contains an invalid
  *        character
  *
- * @note The input string is not required to be NULL terminated.
+ * @b NOTE: The input string is not required to be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_StringToBinary
@@ -72,7 +72,7 @@ int32_t le_hex_StringToBinary
  * @return number of characters written to stringPtr or -1 if stringSize is too small for
  *         binarySize
  *
- * @note the string written to stringPtr will be NULL terminated.
+ * @b NOTE: the string written to stringPtr will be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_BinaryToString

@@ -1,7 +1,7 @@
 /**
  * @page c_pack Low-level Pack/Unpack API
  *
- * @subpage le_pack.h "API Reference"
+ * @rst :ref:`API reference <File le_pack.h>` @endrst
  *
  * <HR>
  *
@@ -91,7 +91,7 @@ typedef uint8_t TagID_t;
  * Pack a TagID into a buffer, incrementing the buffer pointer and decrementing the
  * available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ LE_DECLARE_INLINE bool le_pack_PackTagID
 /**
  * Pack a uint8_t into a buffer, incrementing the buffer pointer as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ LE_DECLARE_INLINE bool le_pack_PackUint8
  * Pack a uint8_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ LE_DECLARE_INLINE bool le_pack_PackUint16
  * Pack a uint16_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -224,7 +224,7 @@ LE_DECLARE_INLINE bool le_pack_PackUint32
  * Pack a uint32_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -269,7 +269,7 @@ LE_DECLARE_INLINE bool le_pack_PackUint64
  * Pack a uint64_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -311,7 +311,7 @@ LE_DECLARE_INLINE bool le_pack_PackInt8
  * Pack a int8_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -355,7 +355,7 @@ LE_DECLARE_INLINE bool le_pack_PackInt16
  * Pack a int16_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ LE_DECLARE_INLINE bool le_pack_PackInt32
  * Pack a int32_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -445,7 +445,7 @@ LE_DECLARE_INLINE bool le_pack_PackInt64
  * Pack a int64_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -470,7 +470,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedInt64
  * incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -504,7 +504,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedUint32Tuple
  * incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -536,7 +536,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedUint64Tuple
 /**
  * Pack a size_t into a buffer, incrementing the buffer pointer as appropriate.
  *
- * @note Packed sizes are limited to 2^32-1, regardless of platform
+ * @b NOTE: Packed sizes are limited to 2^32-1, regardless of platform
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE bool le_pack_PackSize
@@ -563,7 +563,7 @@ LE_DECLARE_INLINE bool le_pack_PackSize
  * Pack a size_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note Packed sizes are limited to 2^32-1, regardless of platform
+ * @b NOTE: Packed sizes are limited to 2^32-1, regardless of platform
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE bool le_pack_PackTaggedSize
@@ -610,7 +610,7 @@ LE_DECLARE_INLINE bool le_pack_PackBool
  * Pack a bool into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -655,7 +655,7 @@ LE_DECLARE_INLINE bool le_pack_PackChar
  * Pack a char into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -699,7 +699,7 @@ LE_DECLARE_INLINE bool le_pack_PackDouble
  * Pack a double into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -744,7 +744,7 @@ LE_DECLARE_INLINE bool le_pack_PackResult
  * Pack a le_result_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -789,7 +789,7 @@ LE_DECLARE_INLINE bool le_pack_PackOnOff
  * Pack le_onoff_t into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -877,7 +877,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedReference
 /**
  * Pack a string into a buffer, incrementing the buffer pointer.
  *
- * @note Will assert if provided string is larger than maximum allowable string.
+ * @b NOTE: Will assert if provided string is larger than maximum allowable string.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE bool le_pack_PackString
@@ -944,7 +944,7 @@ LE_DECLARE_INLINE bool le_pack_PackString
  * Pack a string into a buffer using the specified TagID, incrementing the buffer pointer
  * and decrementing the available size.
  *
- * @note Always decrements available size according to the max possible size used, not actual size
+ * @b NOTE: Always decrements available size according to the max possible size used, not actual size
  * used.  Will assert if provided string is larger than maximum allowable string.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1004,7 +1004,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedString
 /**
  * Pack the size information for an array into a buffer, incrementing the buffer pointer.
  *
- * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
+ * @b NOTE: Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
  * packs the array data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1039,7 +1039,7 @@ LE_DECLARE_INLINE bool le_pack_PackArrayHeader
  * Pack the size information for an array into a buffer using the specified TagID,
  * incrementing the buffer pointer and decrementing the available size.
  *
- * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
+ * @b NOTE: Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
  * packs the array data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1070,7 +1070,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedArrayHeader
 /**
  * Pack an array into a buffer, incrementing the buffer pointer.
  *
- * @note Will assert if the resulted array exceeds the maximum size allowed.
+ * @b NOTE: Will assert if the resulted array exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_PACKARRAY(bufferPtr,                                    \
@@ -1098,7 +1098,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedArrayHeader
 /**
  * Pack an array of struct into a buffer, incrementing the buffer pointer.
  *
- * @note Will assert if the resulted array of struct exceeds the maximum size allowed.
+ * @b NOTE: Will assert if the resulted array of struct exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_PACKSTRUCTARRAY(bufferPtr,                              \
@@ -1140,7 +1140,7 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedArrayHeader
  * Unpack a TagID from a buffer, incrementing the buffer pointer and decrementing the
  * available size, as appropriate.
  *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * @b NOTE: By making this an inline function, gcc can often optimize out the size check if the buffer
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1383,7 +1383,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint64Tuple
 /**
  * Pack a size_t into a buffer, incrementing the buffer pointer as appropriate.
  *
- * @note Packed sizes are limited to 2^32-1, regardless of platform
+ * @b NOTE: Packed sizes are limited to 2^32-1, regardless of platform
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE bool le_pack_UnpackSize
@@ -1609,7 +1609,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackString
 /**
  * Pack the size information for an array into a buffer, incrementing the buffer pointer.
  *
- * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
+ * @b NOTE: Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
  * packs the array data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1643,7 +1643,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackArrayHeader
  * Unpack an array into from buffer, incrementing the buffer pointer and decrementing the available
  * size.
  *
- * @note Always decrements available size according to the max possible size used, not actual size
+ * @b NOTE: Always decrements available size according to the max possible size used, not actual size
  * used.  Will assert if the resulted array exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------

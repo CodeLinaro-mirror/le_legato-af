@@ -2,7 +2,7 @@
 /**
  * @page c_updateCtrl Update Control API
  *
- * @ref le_updateCtrl_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_updateCtrl_interface.h>` @endrst
  *
  * <HR>
  *
@@ -62,7 +62,7 @@
  * le_updateCtrl_MarkGood() to end the probation period before trying to apply the new
  * system update.
  *
- * @note If a reboot occurs during the probation period, the probation period will start over.
+ * @b NOTE: If a reboot occurs during the probation period, the probation period will start over.
  * But, if the system reboots more than a few times without reaching the end of its probation
  * period first, then the system will be rolled-back to the last known "good" system.
  *
@@ -124,7 +124,7 @@ FUNCTION bool LockProbation();
 /**
  * Cancels a call to LockProbation(), allow the probation period to end.
  *
- * @note Must match previous successful call to LockProbation().
+ * @b NOTE: Must match previous successful call to LockProbation().
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION UnlockProbation();
@@ -150,7 +150,7 @@ FUNCTION le_result_t MarkGood
 /**
  * Marks the system "bad" and triggers a roll-back to a "good" system.
  *
- * @note Ignored if the probation period has already ended.  Also, the roll-back may be delayed if
+ * @b NOTE: Ignored if the probation period has already ended.  Also, the roll-back may be delayed if
  * someone is deferring updates using le_updateCtrl_Defer().
  */
 //--------------------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ FUNCTION FailProbation();
 /**
  * Get the current system state.
  *
- * @note Can only be called if updates have been deferred or if a probation lock is held.
+ * @b NOTE: Can only be called if updates have been deferred or if a probation lock is held.
  * Otherwise the system state could change between the time this function is called and when
  * the return value is checked.
  */

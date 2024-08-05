@@ -1,7 +1,7 @@
 /**
  * @page c_mutex Mutex API
  *
- * @subpage le_mutex.h "API Reference"
+ * @rst :ref:`API reference <File le_mutex.h>` @endrst
  *
  * <HR>
  *
@@ -9,7 +9,7 @@
  * These mutexes can be shared by threads within the same process, but can't
  * be shared by threads in different processes.
  *
- * @warning  Multithreaded programming is an advanced subject with many pitfalls.
+ * @b WARNING:  Multithreaded programming is an advanced subject with many pitfalls.
  * A general discussion of why and how mutexes are used in multithreaded programming is beyond
  * the scope of this documentation.  If you are not familiar with these concepts @e please seek
  * out training and mentorship before attempting to work on multithreaded production code.
@@ -105,7 +105,7 @@ typedef struct le_mutex* le_mutex_Ref_t;
  *
  *  @return  Returns a reference to the mutex.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_mutex_Ref_t le_mutex_CreateRecursive
@@ -129,7 +129,7 @@ le_mutex_Ref_t _le_mutex_CreateRecursive(void);
  *
  *  @return  Returns a reference to the mutex.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
@@ -152,7 +152,7 @@ LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
  *
  *  @return  Returns a reference to the mutex.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_mutex_Ref_t le_mutex_CreateNonRecursive
@@ -176,7 +176,7 @@ le_mutex_Ref_t _le_mutex_CreateNonRecursive(void);
  *
  *  @return  Returns a reference to the mutex.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateNonRecursive

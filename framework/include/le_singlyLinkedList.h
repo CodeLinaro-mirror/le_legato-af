@@ -1,7 +1,7 @@
 /**
  * @page c_singlyLinkedList Singly Linked List API
  *
- * @subpage le_singlyLinkedList.h "API Reference"
+ * @rst :ref:`API reference <File le_singlyLinkedList.h>` @endrst
  *
  * <HR>
  *
@@ -180,7 +180,7 @@
  * multiple lists simultaneously.  This link object must be initialized by assigning
  * LE_SLS_LINK_INIT to it.
  *
- * @warning The user MUST NOT access the contents of this structure directly.
+ * @b WARNING: The user MUST NOT access the contents of this structure directly.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sls_Link
@@ -195,7 +195,7 @@ le_sls_Link_t;
  * This is the list object.  Create this list object and initialize it by assigning
  * LE_SLS_LIST_INIT to it.
  *
- * @warning DON'T access the contents of this structure directly.
+ * @b WARNING: DON'T access the contents of this structure directly.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct

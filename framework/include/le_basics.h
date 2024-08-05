@@ -37,7 +37,7 @@
 /**
  * Standard result codes.
  *
- * @note All error codes are negative integers. They allow functions with signed
+ * @b NOTE: All error codes are negative integers. They allow functions with signed
  *       integers to return non-negative values when successful or standard error codes on failure.
  * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed.
  */
@@ -77,7 +77,7 @@ le_result_t;
 /**
  * Standard exit codes.
  *
- * @note The value follow standardize exit codes of BSD(Berkeley software distribution),
+ * @b NOTE: The value follow standardize exit codes of BSD(Berkeley software distribution),
  * detail in file <sysexits.h>.
  *
  * Present exit status of process that is stopped by loss of a service or resource.
@@ -137,7 +137,7 @@ le_onoff_t;
 /**
  * Computes  number of members in an array at compile time.
  *
- * @warning Does NOT work for pointers to arrays.
+ * @b WARNING: Does NOT work for pointers to arrays.
  *
  * Here's a code sample:
  *

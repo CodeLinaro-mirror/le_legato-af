@@ -1,7 +1,7 @@
 /**
  * @page c_dir Directory API
  *
- * @subpage le_dir.h "API Reference"
+ * @rst :ref:`API reference <File le_dir.h>` @endrst
  *
  * @section c_dir_create Creating Directories
  *
@@ -44,7 +44,7 @@
 /**
  * Creates a directory with permissions specified in mode.
  *
- * @note Permissions for the created directory will depend on the calling process' umask.
+ * @b NOTE: Permissions for the created directory will depend on the calling process' umask.
  *
  * @return
  *      LE_OK if successful.
@@ -65,7 +65,7 @@ le_result_t le_dir_Make
  * those directories are left as is.  All created directories have the same permissions
  * (specified in mode).
  *
- * @note Permissions for the created directories will depend on the calling process'
+ * @b NOTE: Permissions for the created directories will depend on the calling process'
  *       umask.
  *
  * @return

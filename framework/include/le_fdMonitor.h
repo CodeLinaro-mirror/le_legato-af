@@ -1,7 +1,7 @@
 /**
  * @page c_fdMonitor File Descriptor Monitor API
  *
- * @subpage le_fdMonitor.h "API Reference"
+ * @rst :ref:`API reference <File le_fdMonitor.h>` @endrst
  *
  * <HR>
  *
@@ -37,7 +37,7 @@
 
  * @endcode
  *
- * @warning Always delete the Monitor object for an fd <b> before closing the fd </b>. After an
+ * @b WARNING: Always delete the Monitor object for an fd <b> before closing the fd </b>. After an
  *          fd is closed, it could get reused for something completely different. If monitoring of
  *          the new fd incarnation is started before the old Monitor object is deleted, deleting
  *          the old Monitor will cause monitoring of the new incarnation to fail.
@@ -57,7 +57,7 @@
  * These are bitmask values and can be combined using the bit-wise OR operator ('|') and tested
  * for using the bit-wise @e and ('&') operator.
  *
- * @note @c POLLRDHUP, @c POLLERR and @c POLLHUP can't be disabled.
+ * @b NOTE: @c POLLRDHUP, @c POLLERR and @c POLLHUP can't be disabled.
  * Monitoring these events is always enabled as soon as the File Descriptor
  * Monitor is created regardless of the set of events given to le_fdMonitor_Create().
  *
@@ -377,7 +377,7 @@ typedef void (*le_fdMonitor_HandlerFunc_t)
  * @return
  *      Reference to the object, which is needed for later deletion.
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ * @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_fdMonitor_Ref_t le_fdMonitor_Create
@@ -433,7 +433,7 @@ le_fdMonitor_Ref_t _le_fdMonitor_Create
  * @return
  *      Reference to the object, which is needed for later deletion.
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ * @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
@@ -531,7 +531,7 @@ void le_fdMonitor_SetContextPtr
  * @return  The context pointer set using le_fdMonitor_SetContextPtr(), or NULL if it hasn't been
  *          set.
  *
- * @note    This only works inside the handler function.  The difference between this function and
+ * @b NOTE:    This only works inside the handler function.  The difference between this function and
  *          le_event_GetContextPtr() is that le_fdMonitor_GetContextPtr() will double check that
  *          it's being called inside of a File Descriptor Monitor's handler function.
  */
@@ -561,7 +561,7 @@ int le_fdMonitor_GetFd
  *
  * @return  File Descriptor Monitor reference.
  *
- * @note    This only works inside the handler function.
+ * @b NOTE:    This only works inside the handler function.
  **/
 //--------------------------------------------------------------------------------------------------
 le_fdMonitor_Ref_t le_fdMonitor_GetMonitor

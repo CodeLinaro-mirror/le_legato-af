@@ -1,7 +1,7 @@
 /**
  * @page c_tty tty API
  *
- * @subpage le_tty.h "API Reference"
+ * @rst :ref:`API reference <File le_tty.h>` @endrst
  *
  * <HR>
  *
@@ -135,7 +135,7 @@ tty_Speed_t;
  *  - Serial port file descriptor number on success.
  *  - -1 on failure.
  *
- *  @note
+ *  @b NOTE:
  *  Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
  *  to successfully open; now either a file descriptor is returned or -1 on failure.
  *

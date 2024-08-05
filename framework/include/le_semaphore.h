@@ -1,6 +1,6 @@
 /** @page c_semaphore Semaphore API
  *
- * @subpage le_semaphore.h "API Reference"
+ * @rst :ref:`API reference <File le_semaphore.h>` @endrst
  *
  * <HR>
  * This API provides standard semaphore functionality, but with added diagnostic capabilities.
@@ -76,7 +76,7 @@ typedef struct le_sem_t* le_sem_Ref_t;
  *  @param[in]  name            Name of the semaphore.
  *  @param[in]  initialCount    Initial number of semaphore.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_sem_Ref_t le_sem_Create
@@ -100,7 +100,7 @@ le_sem_Ref_t _le_sem_Create(int32_t initialCount);
  *  @param[in]  name            Name of the semaphore.
  *  @param[in]  initialCount    Initial number of semaphore.
  *
- *  @note Terminates the process on failure, no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_sem_Ref_t le_sem_Create
@@ -200,7 +200,7 @@ le_result_t le_sem_TryWait
  *      - LE_OK         The function succeed
  *      - LE_TIMEOUT    timeToWait elapsed
  *
- * @note When LE_TIMEOUT occurs the semaphore is not decremented.
+ * @b NOTE: When LE_TIMEOUT occurs the semaphore is not decremented.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sem_WaitWithTimeOut

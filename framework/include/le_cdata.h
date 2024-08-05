@@ -1,7 +1,7 @@
 /**
  * @page c_cdata Component Data API
  *
- * @subpage le_cdata.h "API Reference" <br>
+ * @rst :ref:`API reference <File le_cdata.h>` @endrst
  * <hr>
  *
  * In some contexts (e.g. on real-time operating systems) a single process may contain multiple
@@ -84,7 +84,7 @@ typedef const _le_cdata_MapEntry_t _le_cdata_ThreadRec_t;
 /**
  * Get this component instance.
  *
- * @note This should typically not be used by a user application; use LE_CDATA_THIS instead.
+ * @b NOTE: This should typically not be used by a user application; use LE_CDATA_THIS instead.
  */
 unsigned int le_cdata_GetInstance(unsigned int componentKey);
 

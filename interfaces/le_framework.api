@@ -2,7 +2,7 @@
 /**
  * @page c_framework Framework Control API
  *
- * @ref le_framework_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_framework_interface.h>` @endrst
  *
  * API for controlling the framework. This API should only be made available to privileged users.
  *

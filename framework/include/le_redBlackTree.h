@@ -1,7 +1,7 @@
 /**
  * @page c_redBlackTree Red/Black Tree API
  *
- * @ref le_redBlackTree.h "API Reference"
+ * @rst :ref:`API reference <File le_redBlackTree.h>` @endrst
  *
  * <HR>
  *
@@ -202,7 +202,7 @@ typedef int (*le_rbtree_CompareFunc_t)
 /**
  * This is the RBTree object. User must initialize it by calling le_rbtree_InitTree.
  *
- * @warning User MUST NOT access the contents of this structure directly.
+ * @b WARNING: User MUST NOT access the contents of this structure directly.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_rbtree_Tree

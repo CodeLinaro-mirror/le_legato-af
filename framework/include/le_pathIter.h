@@ -3,7 +3,7 @@
 /**
  * @page c_pathIter Path Iterator API
  *
- * @subpage le_pathIter.h "API Reference"
+ * @rst :ref:`API reference <File le_pathIter.h>` @endrst
  *
  * <HR>
  *
@@ -78,7 +78,7 @@
  *
  * @endcode
  *
- * @note @c le_pathIter_GetNextNode() and @c le_pathIter_GetPreviousNode() treat consecutive
+ * @b NOTE: @c le_pathIter_GetNextNode() and @c le_pathIter_GetPreviousNode() treat consecutive
  *       separators as a single separator.
  *
  * @section c_pathIter_absoluteRelative Absolute versus Relative Paths
@@ -379,15 +379,15 @@ void le_pathIter_Truncate
 /**
  * Take the new string path and combine it with the object's existing path.
  *
- * @note This function looks for the current and parent node strings and treats them specially.
+ * @b NOTE: This function looks for the current and parent node strings and treats them specially.
  *       So, (assuming defaults,) combining the path "/a/b" with the path "../x" will give you the
  *       combined path of: "/a/x".
  *
- * @note Appending a non-relative path onto an existing path effectivly replaces the current path,
+ * @b NOTE: Appending a non-relative path onto an existing path effectivly replaces the current path,
  *       for example, appending /a/rooted/path, onto the existing /a/seperate/path will given you
  *       the path: /a/rooted/path.
  *
- * @note This will automatically reset the internal iterator to point at the end of the newly formed
+ * @b NOTE: This will automatically reset the internal iterator to point at the end of the newly formed
  *       path.  Also, this function always appends to the end of a path, ignoring the current
  *       position of the iterator.
  *

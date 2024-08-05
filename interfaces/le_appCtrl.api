@@ -2,18 +2,18 @@
 /**
  * @page c_appCtrl App Control API
  *
- * @ref le_appCtrl_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_appCtrl_interface.h>` @endrst
  *
  * API for controlling (starting, stopping, and debugging) apps.
  *
- * @warning This API should only be made available to privileged users because it allows
- *          denial of service and arbitrary program execution in other apps.  It also gives the
- *          user the ability to grant themselves access to any file, socket or device on the
- *          target system.
+ * @b WARNING: This API should only be made available to privileged users because it allows
+ *             denial of service and arbitrary program execution in other apps.  It also gives the
+ *             user the ability to grant themselves access to any file, socket or device on the
+ *             target system.
  *
  * @section le_appCtrlApi_binding Binding
  *
- * You can use a definition @c .adef file to bind your client-side app and component to the
+ * You can use a definition <tt>.adef</tt> file to bind your client-side app and component to the
  * server-side App Control service.
  *
  * This code sample shows how to bind an app to this service:
@@ -282,7 +282,7 @@ FUNCTION SetDebug
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
  *
- * @note If the caller is passing an invalid reference to the app, it is a fatal error,
+ * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
  *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -303,7 +303,7 @@ FUNCTION le_result_t Import
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
  *
- * @note If the caller is passing an invalid reference to the app, it is a fatal error,
+ * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
  *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -346,7 +346,7 @@ EVENT TraceAttach
  * Unblocks the traced process.  This should normally be done once the tracer has successfully
  * attached to the process.
  *
- * @note If the caller is passing an invalid reference to the app, it is a fatal error,
+ * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
  *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------

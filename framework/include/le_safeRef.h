@@ -1,7 +1,7 @@
 /**
  * @page c_safeRef Safe References API
  *
- * @subpage le_safeRef.h "API Reference"
+ * @rst :ref:`API reference <File le_safeRef.h>` @endrst
  *
  * <HR>
  *
@@ -223,7 +223,7 @@ struct le_ref_Block;
 /**
  *  Reference Map object, which stores mappings from Safe References to pointers.
  *
- *  @note This should not be used directly.
+ *  @b NOTE: This should not be used directly.
  */
 //--------------------------------------------------------------------------------------------------
 struct le_ref_Map

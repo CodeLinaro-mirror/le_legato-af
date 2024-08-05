@@ -1,7 +1,7 @@
 /**
  * @page c_args Command Line Arguments API
  *
- * @subpage le_args.h "API Reference"
+ * @rst :ref:`API reference <File le_args.h>` @endrst
  *
  * <HR>
  *
@@ -36,7 +36,7 @@ $ foo bar baz
  *  - le_arg_GetIntOption() - Searches for a given option with an integer value.
  *  - le_arg_GetStringOption() - Searches for a given option with a string value.
  *
- * @note A "-" or "--" by itself is not considered an option.  These are treated as positional
+ * @b NOTE: A "-" or "--" by itself is not considered an option.  These are treated as positional
  *       arguments.
  *
  * @section c_args_positional Positional Arguments
@@ -254,7 +254,7 @@ const char* le_arg_GetArg
  *  - LE_NOT_FOUND if not found,
  *  - LE_FORMAT_ERROR if found but has a value (e.g., <c>--flag=foo</c>).
  *
- * @note    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
+ * @b NOTE:    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
  **/
 //--------------------------------------------------------------------------------------------------
 le_result_t le_arg_GetFlagOption
@@ -276,7 +276,7 @@ le_result_t le_arg_GetFlagOption
  *  - LE_FORMAT_ERROR if the option wasn't provided with an integer value.
  *  - LE_OUT_OF_RANGE - Magnitude of integer value too big to be stored in an int.
  *
- * @note    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
+ * @b NOTE:    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
  **/
 //--------------------------------------------------------------------------------------------------
 le_result_t le_arg_GetIntOption
@@ -293,7 +293,7 @@ le_result_t le_arg_GetIntOption
  * (e.g., <c>-f foo</c>) or a long name (e.g., <c>--file=foo</c>) form of the same option at the
  * same time.
  *
- * @note <c>--file=</c> is a valid string option with an empty string ("") value.  The equivalent
+ * @b NOTE: <c>--file=</c> is a valid string option with an empty string ("") value.  The equivalent
  *       short name version of that option would be something like <c>-f ""</c>.
  *
  * @return
@@ -301,7 +301,7 @@ le_result_t le_arg_GetIntOption
  *  - LE_NOT_FOUND if not found.
  *  - LE_FORMAT_ERROR if the option wasn't provided with a value.
  *
- * @note    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
+ * @b NOTE:    If both shortName and longName are NULL, LE_NOT_FOUND will be returned.
  **/
 //--------------------------------------------------------------------------------------------------
 le_result_t le_arg_GetStringOption
@@ -610,7 +610,7 @@ void le_arg_Scan
 /**
  * Passes argc and argv to the argument parser for later use by le_arg_Scan().
  *
- * @note    This function is normally called by main().  If the Legato application framework is
+ * @b NOTE:    This function is normally called by main().  If the Legato application framework is
  *          automatically generating main() for you, then you can just ignore this function.
  */
 //--------------------------------------------------------------------------------------------------

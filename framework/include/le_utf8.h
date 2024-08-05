@@ -1,7 +1,7 @@
 /**
  * @page c_utf8 UTF-8 String Handling API
  *
- * @subpage le_utf8.h "API Reference"
+ * @rst :ref:`API reference <File le_utf8.h>` @endrst
  *
  * <HR>
  *
@@ -344,7 +344,7 @@ le_result_t le_utf8_ParseInt
  *      - LE_OVERFLOW if the out buffer is not large enough to store the UTF-8 encoding of the code
  *        point
  *
- * @note
+ * @b NOTE:
  *      Not all code point values are valid unicode. This function does not validate whether the
  *      code point is valid unicode.
  */
@@ -372,7 +372,7 @@ le_result_t le_utf8_EncodeUnicodeCodePoint
  *        the end of the string as specified by byteLength.
  *      - LE_FORMAT_ERROR if src is not valid UTF-8 encoded string data.
  *
- * @note
+ * @b NOTE:
  *      Not all code point values are valid unicode. This function does not validate whether the
  *      code point is valid unicode.
  */

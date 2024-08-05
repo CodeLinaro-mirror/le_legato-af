@@ -1,7 +1,7 @@
 /**
  * @page c_print Print APIs
  *
- * @subpage le_print.h "API Reference"
+ * @rst :ref:`API reference <File le_print.h>` @endrst
  *
  * <HR>
  *
