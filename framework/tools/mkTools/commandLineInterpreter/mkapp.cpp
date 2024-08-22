@@ -339,6 +339,14 @@ static void GetCommandLineArgs
     BuildParams.componentDirs.push_back(aDefFileDir);
     BuildParams.sourceDirs.push_back(aDefFileDir);
     BuildParams.interfaceDirs.push_back(aDefFileDir);
+
+    char* telafIfDir = getenv("TELAF_INTERFACES");
+    if(telafIfDir)
+        BuildParams.interfaceDirs.push_back(telafIfDir);
+
+    char* telafMngdIfDir = getenv("TELAF_MNGD_INTERFACES");
+    if(telafMngdIfDir)
+        BuildParams.interfaceDirs.push_back(telafMngdIfDir);
 }
 
 
