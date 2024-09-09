@@ -1,7 +1,7 @@
 /**
  * @page c_fs File System service
  *
- * @subpage le_fs.h
+ * @rst :ref:`API reference <File le_fs.h>` @endrst
  *
  * <HR>
  *
@@ -34,7 +34,7 @@
 /**
  * Define the maximal bit mask for file access mode.
  *
- * @note This maximal value should be coherent with @ref le_fs_AccessMode_t
+ * @b NOTE: This maximal value should be coherent with @ref le_fs_AccessMode_t
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_FS_ACCESS_MODE_MAX 127

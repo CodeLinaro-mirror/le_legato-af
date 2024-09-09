@@ -2,7 +2,7 @@
  * @page c_memory Dynamic Memory Allocation API
  *
  *
- * @subpage le_mem.h "API Reference"
+ * @rst :ref:`API reference <File le_mem.h>` @endrst
  *
  * <HR>
  *
@@ -175,7 +175,7 @@
  *
  * Another great advantage of reference counting is it enables @ref mem_destructors.
  *
- * @note le_mem_GetRefCount() can be used to check the current reference count on an object.
+ * @b NOTE: le_mem_GetRefCount() can be used to check the current reference count on an object.
  *
  * @section mem_destructors Destructors
  *
@@ -492,7 +492,7 @@ typedef void (*le_mem_Destructor_t)
 /**
  * Definition of a memory pool.
  *
- * @note This should not be used directly.  To create a memory pool use either le_mem_CreatePool()
+ * @b NOTE: This should not be used directly.  To create a memory pool use either le_mem_CreatePool()
  *       or LE_MEM_DEFINE_STATIC_POOL()/le_mem_InitStaticPool().
  */
 //--------------------------------------------------------------------------------------------------
@@ -665,7 +665,7 @@ le_mem_PoolRef_t _le_mem_CreatePool
  * @return
  *      Reference to the memory pool object.
  *
- * @note
+ * @b NOTE:
  *      On failure, the process exits, so you don't have to worry about checking the returned
  *      reference for validity.
  */
@@ -700,7 +700,7 @@ le_mem_PoolRef_t _le_mem_CreatePool
  * @return
  *      Reference to the memory pool object.
  *
- * @note
+ * @b NOTE:
  *      On failure, the process exits, so you don't have to worry about checking the returned
  *      reference for validity.
  */
@@ -720,7 +720,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
 /**
  * Number of words in a memory pool, given number of blocks and object size.
  *
- * @note Only used internally
+ * @b NOTE: Only used internally
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_MEM_POOL_WORDS(numBlocks, objSize)                           \
@@ -815,7 +815,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
  * @return
  *      Reference to the memory pool object.
  *
- * @note
+ * @b NOTE:
  *      This function cannot fail.
  */
 //--------------------------------------------------------------------------------------------------
@@ -839,7 +839,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
  *
  * @return  Reference to the memory pool object (the same value passed into it).
  *
- * @note    On failure, the process exits, so you don't have to worry about checking the returned
+ * @b NOTE:    On failure, the process exits, so you don't have to worry about checking the returned
  *          reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
@@ -889,7 +889,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
      *
      * @return Pointer to the allocated object.
      *
-     * @note    On failure, the process exits, so you don't have to worry about checking the
+     * @b NOTE:    On failure, the process exits, so you don't have to worry about checking the
      *          returned pointer for validity.
      */
     //----------------------------------------------------------------------------------------------
@@ -920,7 +920,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
      *
      * @return  Pointer to the allocated object.
      *
-     * @note    On failure, the process exits, so you don't have to worry about checking the
+     * @b NOTE:    On failure, the process exits, so you don't have to worry about checking the
      *          returned pointer for validity.
      */
     //----------------------------------------------------------------------------------------------
@@ -983,7 +983,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
      *
      * @return Pointer to the allocated object.
      *
-     * @note    On failure, the process exits, so you don't have to worry about checking the
+     * @b NOTE:    On failure, the process exits, so you don't have to worry about checking the
      *          returned pointer for validity.
      */
     //----------------------------------------------------------------------------------------------
@@ -1016,7 +1016,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
      *
      * @return  Pointer to the allocated object.
      *
-     * @note    On failure, the process exits, so you don't have to worry about checking the
+     * @b NOTE:    On failure, the process exits, so you don't have to worry about checking the
      *          returned pointer for validity.
      */
     //----------------------------------------------------------------------------------------------
@@ -1088,7 +1088,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
  * @return
  *      Nothing.
  *
- * @note
+ * @b NOTE:
  *      The default value is one.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1109,7 +1109,7 @@ void le_mem_SetNumObjsToForce
      * @return
      *      Nothing.
      *
-     * @warning
+     * @b WARNING:
      *      - <b>Don't EVER access an object after releasing it.</b>  It might not exist anymore.
      *      - If the object has a destructor accessing a data structure shared by multiple
      *        threads, ensure you hold the mutex (or take other measures to prevent races) before
@@ -1185,7 +1185,7 @@ size_t le_mem_GetBlockSize
  *
  * See @ref mem_ref_counting for more information.
  *
- * @warning If using this in a multi-threaded application that shares memory pool objects
+ * @b WARNING: If using this in a multi-threaded application that shares memory pool objects
  *          between threads, steps must be taken to coordinate the threads (e.g., using a mutex)
  *          to ensure that the reference count value fetched remains correct when it is used.
  *

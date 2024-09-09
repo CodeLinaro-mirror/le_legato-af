@@ -1,7 +1,7 @@
 /**
  * @page c_signals Signals API
  *
- * @subpage le_signals.h "API Reference"
+ * @rst :ref:`API reference <File le_signals.h>` @endrst
  *
  * <HR>
  *
@@ -133,7 +133,7 @@
  * to reliably know how many signals arrived.
  *
  *
- * @warning Signals are difficult to deal with in general because of their asynchronous nature and
+ * @b WARNING: Signals are difficult to deal with in general because of their asynchronous nature and
  * although, Legato has simplified the situation with signal events certain limitations still exist.
  * If possible, avoid using them.
  *
@@ -221,7 +221,7 @@ typedef void (*le_sig_EventHandlerFunc_t)
  * ensure that the signals are blocked in all threads call this function in the process' first
  * thread, all subsequent threads will inherit the signal mask.
  *
- * @note Does not return on failure.
+ * @b NOTE: Does not return on failure.
  */
 //--------------------------------------------------------------------------------------------------
 void le_sig_Block
@@ -236,10 +236,10 @@ void le_sig_Block
  * handler per thread.  The most recent event handler set will be called when the signal is
  * received.  sigEventHandler can be set to NULL to remove a previously set handler.
  *
- * @note sigNum Cannot be SIGKILL or SIGSTOP or any program error signals: SIGFPE, SIGILL,
+ * @b NOTE: sigNum Cannot be SIGKILL or SIGSTOP or any program error signals: SIGFPE, SIGILL,
  * SIGSEGV, SIGBUS, SIGABRT, SIGIOT, SIGTRAP, SIGEMT, SIGSYS.
  *
- * @note Does not return on failure.
+ * @b NOTE: Does not return on failure.
  */
 //--------------------------------------------------------------------------------------------------
 void le_sig_SetEventHandler

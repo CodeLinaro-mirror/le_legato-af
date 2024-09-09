@@ -1,7 +1,7 @@
 /**
  * @page c_atomic Atomic Operation API
  *
- * @subpage le_atomic.ch "API Reference"
+ * @rst :ref:`API reference <File le_atomic.h>` @endrst
  *
  * <HR>
  *

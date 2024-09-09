@@ -1,7 +1,7 @@
 /**
  * @page c_rand Random Number API
  *
- * @subpage le_rand.h "API Reference"
+ * @rst :ref:`API reference <File le_rand.h>` @endrst
  *
  * <HR>
  *
@@ -32,7 +32,7 @@
 /**
  * Get a random number within the specified range, min to max inclusive.
  *
- * @warning The max value must be greater than the min value, if not this function will log the
+ * @b WARNING: The max value must be greater than the min value, if not this function will log the
  *          error and kill the calling process.
  *
  * @return  The random number.

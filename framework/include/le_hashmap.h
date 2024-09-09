@@ -1,7 +1,7 @@
 /**
  * @page c_hashmap HashMap API
  *
- * @subpage le_hashmap.h "API Reference"
+ * @rst :ref:`API reference <File le_hashmap.h>` @endrst
  *
  * <HR>
  *
@@ -108,7 +108,7 @@
  * be called before accessing any elements. You can then retrieve pointers to
  * the key and value by using le_hashmap_GetKey() and le_hashmap_GetValue().
  *
- * @note There is only one iterator per hashtable. Calling le_hashmap_GetIterator()
+ * @b NOTE: There is only one iterator per hashtable. Calling le_hashmap_GetIterator()
  * will simply re-initialize the current iterator
  *
  * It is possible to add and remove items during this style of iteration.  When
@@ -255,7 +255,7 @@ typedef bool (*le_hashmap_ForEachHandler_t)
 /**
  * A struct to hold the data in the table
  *
- * @note This is an internal structure which should not be instantiated directly
+ * @b NOTE: This is an internal structure which should not be instantiated directly
  */
 typedef struct le_hashmap_Entry
 {
@@ -268,7 +268,7 @@ le_hashmap_Entry_t;
 /**
  * A hashmap iterator
  *
- * @note This is an internal structure which should not be instantiated directly
+ * @b NOTE: This is an internal structure which should not be instantiated directly
  */
 typedef struct le_hashmap_It
 {
@@ -280,7 +280,7 @@ le_hashmap_HashmapIt_t;
 /**
  *  The hashmap itself
  *
- * @note This is an internal structure which should not be instantiated directly
+ * @b NOTE: This is an internal structure which should not be instantiated directly
  */
 typedef struct le_hashmap
 {
@@ -317,7 +317,7 @@ le_hashmap_Hashmap_t;
  *
  *  @return  Returns a reference to the map.
  *
- *  @note Terminates the process on failure, so no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, so no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_hashmap_Ref_t le_hashmap_Create
@@ -355,7 +355,7 @@ le_hashmap_Ref_t _le_hashmap_Create
  *
  *  @return  Returns a reference to the map.
  *
- *  @note Terminates the process on failure, so no need to check the return value for errors.
+ *  @b NOTE: Terminates the process on failure, so no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
@@ -382,7 +382,7 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
  * function which is rather unlikely. Also, ensure that the capacity is
  * at least 3 which avoids strange issues in the hashing algorithm
  *
- * @note Used internally to calculate static hashmap sizes.  Should not be used by users
+ * @b NOTE: Used internally to calculate static hashmap sizes.  Should not be used by users
  * of liblegato.  Caps out at 65536 entries
  */
 //--------------------------------------------------------------------------------------------------
@@ -412,7 +412,7 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
  * to be obtained by examining the linker map, and ensures initializing the static map
  * will not fail at run-time.
  *
- * @note Dynamic hash maps set initial pool to bucket count/2, static hash maps set
+ * @b NOTE: Dynamic hash maps set initial pool to bucket count/2, static hash maps set
  * pool size to capacity to avoid overflowing the pool.
  */
 //--------------------------------------------------------------------------------------------------
@@ -430,7 +430,7 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
  *  Essentially a "__attribute__((section("sectionName")))"  will be added after the variable
  *  declaration.
  *
- * @note Dynamic hash maps set initial pool to bucket count/2, static hash maps set
+ * @b NOTE: Dynamic hash maps set initial pool to bucket count/2, static hash maps set
  * pool size to capacity to avoid overflowing the pool.
  */
 //--------------------------------------------------------------------------------------------------
@@ -487,7 +487,7 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
 /**
  * Internal function to initialize a statically-defined hashmap
  *
- * @note use le_hashmap_InitStatic() macro instead
+ * @b NOTE: use le_hashmap_InitStatic() macro instead
  */
 //--------------------------------------------------------------------------------------------------
 le_hashmap_Ref_t _le_hashmap_InitStatic

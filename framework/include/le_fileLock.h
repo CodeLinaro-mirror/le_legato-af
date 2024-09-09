@@ -1,7 +1,7 @@
 /**
  * @page c_flock File Locking API
  *
- * @subpage le_fileLock.h "API Reference"
+ * @rst :ref:`API reference <File le_fileLock.h>` @endrst
  *
  * <HR>
  *
@@ -168,7 +168,7 @@
 /**
  * File access modes.
  *
- * @note When writing to a file, the writes are always appended to the end of the file by default.
+ * @b NOTE: When writing to a file, the writes are always appended to the end of the file by default.
  *       When reading from a file, the reads always starts at the beginning of the file by default.
  */
 //--------------------------------------------------------------------------------------------------

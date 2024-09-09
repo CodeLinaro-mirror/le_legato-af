@@ -699,6 +699,9 @@ static int SetAcquisitionRate
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in \"Ready \" state\n");
             break;
+        case LE_OUT_OF_RANGE:
+            printf("Out of range! Acq rate is less than 100ms \n");
+            break;
         case LE_TIMEOUT:
             printf("Timeout error\n");
             break;
@@ -2067,6 +2070,10 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_GBGSV)
             {
                 printf("\tGBGSV enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GIGSV)
+            {
+                printf("\tGIGSV enabled\n");
             }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GARMC)
             {

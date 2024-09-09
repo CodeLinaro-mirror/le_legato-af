@@ -2,7 +2,7 @@
 /**
  * @page c_config Config Tree API
  *
- * @ref le_cfg_interface.h "API Reference" <br>
+ * @rst :ref:`API reference <File le_cfg_interface.h>` @endrst
  *
  * The Config Tree is a non-volatile noSQL database that stores configuration values for apps.
  * By default each app is given read access to a single tree that has the same name as the app.
@@ -13,7 +13,7 @@
  * The apps tree will be named the same as the name of the app. It is possible for apps to be given
  * access to other apps tree's or for multiple apps to share one tree.
  *
- * @note If your app is running as root then the configuration will get added to the
+ * @b NOTE: If your app is running as root then the configuration will get added to the
  * System Tree by default. System utilities also use the Config Tree and store their
  * configurations in the @c system tree.
  *
@@ -54,7 +54,7 @@
  * secondTree:/path/to/secondTree/value    # references the second tree
  * @endverbatim
  *
- * @note It's recommended to store anything complex using stems and leaves, this enhances
+ * @b NOTE: It's recommended to store anything complex using stems and leaves, this enhances
  * readability and debugging. It also helps to sidestep nasty cross platform alignment issues.
  *
  * Apps must explicitly give permissions to other apps before they can access their Config Tree data.
@@ -106,7 +106,7 @@
  * - perform only Get operations,
  * - cancel the transaction
  *
- * @note It's safer to use a read transaction when there is no intention to change the tree.
+ * @b NOTE: It's safer to use a read transaction when there is no intention to change the tree.
  *
  * Transactions must not be kept open for extended periods of time.  If a transaction is kept open
  * for longer than the transaction time limit (default is 30 seconds), then the Config Tree will
@@ -217,7 +217,7 @@
  * }
  * @endcode
  *
- * @note Any writes done will be discarded at the end of the read transaction.
+ * @b NOTE: Any writes done will be discarded at the end of the read transaction.
  *
  * @subsection cfg_write Write Transactions
  *
@@ -289,7 +289,7 @@
  * }
  * @endcode
  *
- * @note Creating write transactions creates a temporary working copy of the tree for use within the
+ * @b NOTE: Creating write transactions creates a temporary working copy of the tree for use within the
  * transaction. All read transactions running in the meantime see the committed state, without any
  * of the changes that have been made within the write transaction.
  *
@@ -369,7 +369,7 @@
  * }
  * @endcode
  *
- * @warning Because each quick function is independent, there's no guarantee of consistency between
+ * @b WARNING: Because each quick function is independent, there's no guarantee of consistency between
  * them.  If another process changes one of the values while you read/write the other,
  * the two values could be read out of sync.
  *
@@ -454,7 +454,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
  * Once the read timeout expires, all active read iterators on that tree will be
  * expired and their clients will be killed.
  *
- * @note A tree transaction is global to that tree; a long-held read transaction will block other
+ * @b NOTE: A tree transaction is global to that tree; a long-held read transaction will block other
  *        user's write transactions from being committed.
  *
  * @return This will return the newly created iterator reference.
@@ -474,7 +474,7 @@ FUNCTION Iterator CreateReadTxn
  * longer than the configured write transaction timeout, the iterator will cancel the
  * transaction. Other reads will fail to return data, and all writes will be thrown away.
  *
- * @note A tree transaction is global to that tree; a long-held write transaction will block
+ * @b NOTE: A tree transaction is global to that tree; a long-held write transaction will block
  *       other user's write transactions from being started. Other trees in the system
  *       won't be affected.
  *
@@ -492,7 +492,7 @@ FUNCTION Iterator CreateWriteTxn
  * Closes the write iterator and commits the write transaction. This updates the config tree
  * with all of the writes that occurred within the iterator.
  *
- * @note This operation will also delete the iterator object.
+ * @b NOTE: This operation will also delete the iterator object.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION CommitTxn
@@ -507,7 +507,7 @@ FUNCTION CommitTxn
  * will be canceled. If the iterator is a read iterator, the transaction will be closed. No data is
  * written to the tree
  *
- * @note This operation will also delete the iterator object.
+ * @b NOTE: This operation will also delete the iterator object.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION CancelTxn
@@ -868,7 +868,7 @@ FUNCTION le_result_t GetBinary
  *
  *  If the path is empty, the iterator's current node will be set.
  *
- *  @note Binary data cannot be written to the 'system' tree.
+ *  @b NOTE: Binary data cannot be written to the 'system' tree.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetBinary
@@ -930,7 +930,7 @@ FUNCTION SetInt
  *
  * If the path is empty, the iterator's current node will be read.
  *
- * @note Floating point values will only be stored up to 6 digits of precision.
+ * @b NOTE: Floating point values will only be stored up to 6 digits of precision.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION double GetFloat
@@ -950,7 +950,7 @@ FUNCTION double GetFloat
  *
  * If the path is empty, the iterator's current node will be set.
  *
- * @note Floating point values will only be stored up to 6 digits of precision.
+ * @b NOTE: Floating point values will only be stored up to 6 digits of precision.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetFloat
@@ -1126,7 +1126,7 @@ FUNCTION QuickSetInt
  *
  * If the value is empty or the node doesn't exist, the default value is returned.
  *
- * @note Floating point values will only be stored up to 6 digits of precision.
+ * @b NOTE: Floating point values will only be stored up to 6 digits of precision.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION double QuickGetFloat
@@ -1140,7 +1140,7 @@ FUNCTION double QuickGetFloat
 /**
  * Writes a 64-bit floating point value to the config tree.
  *
- * @note Floating point values will only be stored up to 6 digits of precision.
+ * @b NOTE: Floating point values will only be stored up to 6 digits of precision.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION QuickSetFloat

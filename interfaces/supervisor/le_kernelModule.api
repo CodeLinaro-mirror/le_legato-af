@@ -2,7 +2,7 @@
 /**
  * @page c_kernelModule Linux Kernel Module API
  *
- * @ref le_kernelModule_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_kernelModule_interface.h>` @endrst
  *
  * This API provides a way for applications to manually load and unload modules that were bundled
  * with their system.

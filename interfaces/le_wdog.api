@@ -2,7 +2,7 @@
 /**
  * @page c_wdog Watchdog Service
  *
- * @ref le_wdog_interface.h "Type/Function Reference"
+ * @rst :ref:`API reference <File le_wdog_interface.h>` @endrst
  *
  * @section Watchdog Service
  *
@@ -22,7 +22,7 @@
  * longer than the timeout given in @c maxWatchdogTimeout.  This ensures the service is
  * always running as long as the system is running.
  *
- * @note If maxWatchdogTimeout is not set, no more action is taken if performing the process'
+ * @b NOTE: If maxWatchdogTimeout is not set, no more action is taken if performing the process'
  * @c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the
  * system will be rebooted if the process does not recover.
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_fd File Descriptor API
  *
- * @subpage le_fd.h "API Reference"
+ * @rst :ref:`API refernce <File le_fd.h>` @endrst
  *
  * <HR>
  *

@@ -2,7 +2,7 @@
 /**
  * @page c_configAdmin Config Tree Admin API
  *
- * @ref le_cfgAdmin_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_cfgAdmin_interface.h>` @endrst
  *
  * The Config Tree Admin API is intended to provide tools help with administration of Trees.  These
  * administration functions are provided as a separate API for security reasons. The Admin API needs
@@ -101,6 +101,7 @@
  *     "type": "string",
  *     "value": "aNewValue"
  * }
+ * @endcode
  *
  * - Integer
  *

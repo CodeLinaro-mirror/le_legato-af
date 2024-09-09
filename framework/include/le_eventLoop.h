@@ -1,7 +1,7 @@
 /**
  * @page c_eventLoop Event Loop API
  *
- * @subpage le_eventLoop.h "API Reference"
+ * @rst :ref:`API reference <File le_eventLoop.h>` @endrst
  *
  * <HR>
  *
@@ -16,7 +16,7 @@
  * Every event loop has an <b>event queue</b>, which is a queue of events waiting to be handled by
  * that event loop.
  *
- * @note When the process dies, all events, event loops, queues, reports, and handlers will be
+ * @b NOTE: When the process dies, all events, event loops, queues, reports, and handlers will be
  * automatically cleared.
  *
  * The following different usage patterns are supported by the Event Loop API:
@@ -195,7 +195,7 @@
  * Any thread within the process with an Event ID can register a handler or report
  * events.
  *
- * @note These Event IDs are only valid within the process where they were created. The
+ * @b NOTE: These Event IDs are only valid within the process where they were created. The
  *       Event Loop API can't be used for inter-process communication (IPC).
  *
  * @code
@@ -220,7 +220,7 @@
  *
  * To register a handler, the subscriber calls @c le_event_AddHandler().
  *
- * @note    It's okay to have a payload size of zero, in which case NULL can be passed into
+ * @b NOTE:    It's okay to have a payload size of zero, in which case NULL can be passed into
  *          le_event_Report().
  *
  * @code
@@ -282,7 +282,7 @@
  * If a handler is removed after the report for that event has been added to the event queue, but
  * before the report reaches the head of the queue, then the handler will not be called.
  *
- * @note To prevent race conditions, it's not permitted for one thread to remove another thread's
+ * @b NOTE: To prevent race conditions, it's not permitted for one thread to remove another thread's
  * handlers.
  *
  * @section c_event_layeredPublishSubscribe Layered Publish-Subscribe Handlers
@@ -578,7 +578,7 @@ typedef struct le_event_Id* le_event_Id_t;
  *
  * @param reportPtr [in] Pointer to the event report payload.
  *
- * @warning The reportPtr is only valid until the handler function returns.
+ * @b WARNING: The reportPtr is only valid until the handler function returns.
  */
 //--------------------------------------------------------------------------------------------------
 typedef void (*le_event_HandlerFunc_t)
@@ -596,7 +596,7 @@ typedef void (*le_event_HandlerFunc_t)
  *
  * @param secondLayerFunc [in] Address of the second layer handler function.
  *
- * @warning The reportPtr is only valid until the handler function returns.
+ * @b WARNING: The reportPtr is only valid until the handler function returns.
  */
 //--------------------------------------------------------------------------------------------------
 typedef void (*le_event_LayeredHandlerFunc_t)
@@ -643,7 +643,7 @@ typedef struct le_event_Handler* le_event_HandlerRef_t;
  *
  *  @return Event ID.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_event_Id_t le_event_CreateId
@@ -669,7 +669,7 @@ le_event_Id_t _le_event_CreateId(size_t payloadSize);
  *
  *  @return Event ID.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
@@ -694,7 +694,7 @@ LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
  *
  *  @return Event ID.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_event_Id_t le_event_CreateIdWithRefCounting
@@ -719,7 +719,7 @@ le_event_Id_t _le_event_CreateIdWithRefCounting(void);
  *
  *  @return Event ID.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
@@ -749,7 +749,7 @@ LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
  *      Handler reference, only needed to remove the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_event_HandlerRef_t le_event_AddHandler
@@ -782,7 +782,7 @@ le_event_HandlerRef_t _le_event_AddHandler(le_event_Id_t eventId, le_event_Handl
  *      Handler reference, only needed to remove the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
@@ -817,7 +817,7 @@ LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
  *      Handler reference, only needed for later removal of the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_event_HandlerRef_t le_event_AddLayeredHandler
@@ -856,7 +856,7 @@ le_event_HandlerRef_t _le_event_AddLayeredHandler(le_event_Id_t eventId,
  *      Handler reference, only needed for later removal of the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @b NOTE: Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
@@ -892,7 +892,7 @@ void le_event_RemoveHandler
  *
  * Queues an Event Report to any and all event loops that have handlers for that event.
  *
- * @note Copies the event report payload, so it is safe to release or reuse the buffer that
+ * @b NOTE: Copies the event report payload, so it is safe to release or reuse the buffer that
  *       payloadPtr points to as soon as le_event_Report() returns.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1028,7 +1028,7 @@ le_result_t le_event_QueueFunctionToThreadUnique
  * Can only be called once for each thread, and must never be called in
  * the process's main thread.
  *
- * @note
+ * @b NOTE:
  *      Function never returns.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1044,7 +1044,7 @@ __attribute__ ((noreturn));
  * Fetches a file descriptor that will appear readable to poll(), select(), epoll_wait(), etc.
  * when the calling thread's Event Loop needs servicing (via a call to le_event_ServiceLoop()).
  *
- * @warning Only intended for use when integrating with legacy POSIX-based software
+ * @b WARNING: Only intended for use when integrating with legacy POSIX-based software
  * that cannot be easily refactored to use the Legato Event Loop.  The preferred approach is
  * to call le_event_RunLoop().
  *
@@ -1061,7 +1061,7 @@ LE_FULL_API int le_event_GetFd
 /**
  * Services the calling thread's Event Loop.
  *
- * @warning Only intended for use when integrating with legacy POSIX-based software
+ * @b WARNING: Only intended for use when integrating with legacy POSIX-based software
  * that can't be easily refactored to use the Legato Event Loop.  The preferred approach is
  * to call le_event_RunLoop().
  *

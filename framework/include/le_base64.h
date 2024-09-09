@@ -1,7 +1,7 @@
 /**
  * @page c_base64 Base64 encoding/decoding API
  *
- * @subpage le_base64.h "API Reference"
+ * @rst :ref:`API reference <File le_base64.h>` @endrst
  *
  * <HR>
  *

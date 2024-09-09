@@ -1,7 +1,7 @@
 /**
  * @page c_logging Logging API
  *
- * @subpage le_log.h "API Reference" <br>
+ * @rst :ref:`API reference <File le_log.h>` @endrst <br>
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
  * informational, and debugging messages. These messages can be turned on or off remotely and pushed or pulled
@@ -239,7 +239,7 @@ $ log stoptrace foo myProc/myComp
  *
  * @subsection c_log_control_config Log Control Configuration Settings
  *
- * @note The configuration settings haven't been implemented yet.
+ * @b NOTE: The configuration settings haven't been implemented yet.
  *
  * @todo Write @ref c_log_control_config section.
  *
@@ -291,7 +291,7 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
  * le_log_GetFilterLevel() gets the log filter level.
  *
  * Trace keywords can be enabled and disabled programmatically by calling
- * @subpage le_log_EnableTrace() and @ref le_log_DisableTrace().
+ * @rst :ref:`API reference <File le_log_EnableTrace() and @ref le_log_DisableTrace().
  *
  *
  * @section c_log_format Log Formats
@@ -389,7 +389,7 @@ le_log_Level_t;
 /**
  * Compile-time filtering level.
  *
- * @note Logs below this filter level will be removed at compile-time and cannot be enabled
+ * @b NOTE: Logs below this filter level will be removed at compile-time and cannot be enabled
  *       at runtime.
  */
 //--------------------------------------------------------------------------------------------------
@@ -490,7 +490,7 @@ void _le_log_SetFilterLevel
 /**
  * Filtering session reference for the current source file.
  *
- * @note The real name of this is passed in by the build system. This way it can be a unique
+ * @b NOTE: The real name of this is passed in by the build system. This way it can be a unique
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
@@ -500,7 +500,7 @@ extern LE_SHARED le_log_SessionRef_t LE_LOG_SESSION;
 /**
  * Filtering level for the current source file.
  *
- * @note The real name of this is passed in by the build system. This way it can be a unique
+ * @b NOTE: The real name of this is passed in by the build system. This way it can be a unique
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
@@ -649,7 +649,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Sets the log filter level for the calling component.
  *
- * @note    Normally not necessary as the log filter level can be controlled at
+ * @b NOTE:    Normally not necessary as the log filter level can be controlled at
  *          runtime using the log control tool, and can be persistently configured.
  *          See @ref c_log_controlling.
  *
@@ -673,7 +673,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Enables a trace.
  *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ * @b NOTE:    Normally, this is not necessary, since traces can be enabled at runtime using the
  *          log control tool and can be persistently configured.  See @ref c_log_controlling.
  *
  * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
@@ -688,7 +688,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Disables a trace.
  *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ * @b NOTE:    Normally, this is not necessary, since traces can be enabled at runtime using the
  *          log control tool and can be persistently configured.  See @ref c_log_controlling.
  *
  * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
@@ -740,7 +740,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Sets the log filter level for the calling component.
  *
- * @note    Normally not necessary as the log filter level can be controlled at
+ * @b NOTE:    Normally not necessary as the log filter level can be controlled at
  *          runtime using the log control tool, and can be persistently configured.
  *          See @ref c_log_controlling.
  *
@@ -818,7 +818,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Enables a trace.
  *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ * @b NOTE:    Normally, this is not necessary, since traces can be enabled at runtime using the
  *          log control tool and can be persistently configured.  See @ref c_log_controlling.
  *
  * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
@@ -832,7 +832,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /**
  * Disables a trace.
  *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ * @b NOTE:    Normally, this is not necessary, since traces can be enabled at runtime using the
  *          log control tool and can be persistently configured.  See @ref c_log_controlling.
  *
  * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()

@@ -1,7 +1,7 @@
 /**
  * @page c_messaging Low-level Messaging API
  *
- * @subpage le_messaging.h "API Reference"
+ * @rst :ref:`API reference <File le_messaging.h>` @endrst
  *
  * <HR>
  *
@@ -82,7 +82,7 @@
  * protocolRef = le_msg_GetProtocolRef(MY_PROTOCOL_ID, sizeof(myproto_Msg_t));
  * @endcode
  *
- * @note In this example, the protocol identifier (which is a string uniquely identifying a
+ * @b NOTE: In this example, the protocol identifier (which is a string uniquely identifying a
  *       specific version of a specific protocol) and the message structure
  *       would be defined elsewhere, in a header file shared between the client and the
  *       server.  The structure @c myproto_Msg_t contains a
@@ -173,7 +173,7 @@
  *     responseMsgRef = le_msg_RequestSyncResponse(msgRef);
  * @endcode
  *
- * @warning If the client and server are running in the same thread, and the
+ * @b WARNING: If the client and server are running in the same thread, and the
  * client calls le_msg_RequestSyncResponse(), it will return an error immediately, instead of
  * blocking the thread.  If the thread were blocked in this scenario, the server would also be
  * blocked and would therefore be unable to receive the request and respond to it, resulting in
@@ -193,7 +193,7 @@
  * registered using le_msg_SetSessionRecvHandler().  In fact, this is the only kind of message
  * that will result in that receive handler being called.
  *
- * @note Some protocols don't include any messages that are not responses to client requests,
+ * @b NOTE: Some protocols don't include any messages that are not responses to client requests,
  * which is why it's optional to register a receive handler on the client side.
  *
  * The payload of a received message can be accessed using le_msg_GetPayloadPtr(), and the client
@@ -247,7 +247,7 @@
  *     le_msg_DeleteSession(sessionRef);
  * @endcode
  *
- * @note If a client process dies while it has a session open, that session will be
+ * @b NOTE: If a client process dies while it has a session open, that session will be
  * automatically closed and deleted by the Legato framework, so there's no need to register process
  * clean-up handlers or anything like that for this purpose.
  *
@@ -267,7 +267,7 @@
  * reason other than the client calling le_msg_CloseSession(), then the client process
  * will be terminated.
  *
- * @note If the client closes the session, the client-side session close handler will not be called,
+ * @b NOTE: If the client closes the session, the client-side session close handler will not be called,
  * even if one is registered.
  *
  * @subsection c_messagingClientMultithreading Multithreading
@@ -495,10 +495,10 @@
  * }
  * @endcode
  *
- * @warning Of course, once you've started writing the response payload into the buffer, the request payload
+ * @b WARNING: Of course, once you've started writing the response payload into the buffer, the request payload
  * is no longer available, so if you still need it, copy it somewhere else first.
  *
- * @note The server doesn't have to send the response back to the client right away.  It could
+ * @b NOTE: The server doesn't have to send the response back to the client right away.  It could
  *       hold onto the request for an indefinite amount of time, for whatever reason.
  *
  * Whenever any message is received from a client, the message is associated with the session
@@ -563,7 +563,7 @@
  * session reference, so the server can check its internal data structures and clean up anything
  * that it has previously tagged with that same session reference.
  *
- * @note    Servers don't delete sessions.  On the server side, sessions are automatically deleted
+ * @b NOTE:    Servers don't delete sessions.  On the server side, sessions are automatically deleted
  *          when they close.
  *
  * @subsection c_messagingRemovingService Removing Service
@@ -572,7 +572,7 @@
  * le_msg_HideService().  This will not terminate any sessions that are already open, but it
  * will prevent clients from opening new sessions until it's advertised again.
  *
- * @warning Watch out for race conditions here. It's possible that a client is in the process
+ * @b WARNING: Watch out for race conditions here. It's possible that a client is in the process
  * of opening a session when you decide to hide your service.  In this case, a new session may
  * open after you hid the service.  Be prepared to handle that gracefully.
  *
@@ -763,7 +763,7 @@
  * the message is released.  The fd can only be extracted from the message once.  Subsequent
  * calls to le_msg_GetFd() will return -1.
  *
- * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  They can be exploited and used to break out of
+ * @b WARNING: DO NOT SEND DIRECTORY FILE DESCRIPTORS.  They can be exploited and used to break out of
  * chroot() jails.
  *
  * @section c_messagingFutureEnhancements Future Enhancements
@@ -979,7 +979,7 @@ typedef struct
  *
  * Create an instance of this object for each local service used by your program.
  *
- * @note  This structure should never be accessed directly; instead access through le_msg_...()
+ * @b NOTE:  This structure should never be accessed directly; instead access through le_msg_...()
  *        functions.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1075,7 +1075,7 @@ LE_FULL_API size_t le_msg_GetProtocolMaxMsgSize
  * Creates a session that will make use of a protocol to talk to a service on a given client
  * interface.
  *
- * @note    This doesn't actually attempt to open the session.  It just creates the session
+ * @b NOTE:    This doesn't actually attempt to open the session.  It just creates the session
  *          object, allowing the client the opportunity to register handlers for the session
  *          before attempting to open it using le_msg_OpenSession().
  *
@@ -1138,7 +1138,7 @@ LE_FULL_API void* le_msg_GetSessionContextPtr
  * with it.  Any pending request-response transactions in this session will be terminated.
  * If the far end has registered a session close handler callback, it will be called.
  *
- * @note    Function is only used by clients.  On the server side, sessions are automatically
+ * @b NOTE:    Function is only used by clients.  On the server side, sessions are automatically
  *          deleted when they close.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1156,7 +1156,7 @@ void le_msg_DeleteSession
  * The handler function will be called by the Legato event loop of the thread that created
  * the session.
  *
- * @note    This is a client-only function.  Servers are expected to use
+ * @b NOTE:    This is a client-only function.  Servers are expected to use
  *          le_msg_SetServiceRecvHandler() instead.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1176,7 +1176,7 @@ void le_msg_SetSessionRecvHandler
  * The handler function will be called by the Legato event loop of the thread that created
  * the session.
  *
- * @note
+ * @b NOTE:
  * - If this isn't set on the client side, the framework assumes the client is not designed
  *   to recover from the server terminating the session, and the client process will terminate
  *   if the session is terminated by the server.
@@ -1214,10 +1214,10 @@ void le_msg_GetSessionCloseHandler
  *
  * Asynchronous sessions are not supported by mailbox sessions.
  *
- * @note    Only clients open sessions.  Servers must patiently wait for clients to open sessions
+ * @b NOTE:    Only clients open sessions.  Servers must patiently wait for clients to open sessions
  *          with them.
  *
- * @warning If the client and server don't agree on the maximum message size for the protocol,
+ * @b WARNING: If the client and server don't agree on the maximum message size for the protocol,
  *          a fatal error will be logged and the client process will be killed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1236,10 +1236,10 @@ void le_msg_OpenSession
  *
  * This function logs a fatal error and terminates the calling process if unsuccessful.
  *
- * @note    Only clients open sessions.  Servers must patiently wait for clients to open sessions
+ * @b NOTE:    Only clients open sessions.  Servers must patiently wait for clients to open sessions
  *          with them.
  *
- * @warning If the client and server do not agree on the maximum message size for the protocol,
+ * @b WARNING: If the client and server do not agree on the maximum message size for the protocol,
  *          a fatal error will be logged and the client process will be killed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1268,10 +1268,10 @@ void le_msg_OpenSessionSync
  *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
  *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  *
- * @note    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
+ * @b NOTE:    Only clients open sessions.  Servers' must patiently wait for clients to open sessions
  *          with them.
  *
- * @warning If the client and server do not agree on the maximum message size for the protocol,
+ * @b WARNING: If the client and server do not agree on the maximum message size for the protocol,
  *          a fatal error will be logged and the client process will be killed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1332,7 +1332,7 @@ LE_FULL_API le_msg_InterfaceRef_t le_msg_GetSessionInterface
 /**
  * Fetches the user ID of the client at the far end of a given IPC session.
  *
- * @warning This function can only be called for the server-side of a session.
+ * @b WARNING: This function can only be called for the server-side of a session.
  *
  * @return LE_OK if successful.
  *         LE_CLOSED if the session has closed.
@@ -1348,7 +1348,7 @@ le_result_t le_msg_GetClientUserId
 /**
  * Fetches the user PID of the client at the far end of a given IPC session.
  *
- * @warning This function can only be called for the server-side of a session.
+ * @b WARNING: This function can only be called for the server-side of a session.
  *
  * @return LE_OK if successful.
  *         LE_CLOSED if the session has closed.
@@ -1364,7 +1364,7 @@ le_result_t le_msg_GetClientProcessId
 /**
  * Fetches the user credentials of the client at the far end of a given IPC session.
  *
- * @warning This function can only be called for the server-side of a session.
+ * @b WARNING: This function can only be called for the server-side of a session.
  *
  * @return LE_OK if successful.
  *         LE_CLOSED if the session has closed.
@@ -1389,7 +1389,7 @@ le_result_t le_msg_GetClientUserCreds
  *
  * @return  Message reference.
  *
- * @note
+ * @b NOTE:
  * - Function never returns on failure, there's no need to check the return code.
  * - If you see warnings on message pools expanding, then you may be forgetting to
  *   release the messages you have received.
@@ -1430,7 +1430,7 @@ void le_msg_ReleaseMsg
 /**
  * Checks whether a message requires a response or not.
  *
- * @note    This is intended for use on the server side only.
+ * @b NOTE:    This is intended for use on the server side only.
  *
  * @return
  *  - TRUE if the message needs to be responded to using le_msg_Respond().
@@ -1450,7 +1450,7 @@ bool le_msg_NeedsResponse
  *
  * @return Pointer to the payload buffer.
  *
- * @warning Be careful not to overflow this buffer.
+ * @b WARNING: Be careful not to overflow this buffer.
  */
 //--------------------------------------------------------------------------------------------------
 void* le_msg_GetPayloadPtr
@@ -1535,7 +1535,7 @@ le_msg_SessionRef_t le_msg_GetSession
  *
  * Async response not supported with mailbox API
  *
- * @note
+ * @b NOTE:
  *     - The thread attached to the session (i.e., thread created by the session)
  *       will trigger the callback from its main event loop.  This means if
  *       that thread doesn't run its main event loop, it won't trigger the callback.
@@ -1559,14 +1559,14 @@ void le_msg_RequestResponse
  * @return  Reference to the response message, or NULL if the transaction terminated without a
  *          response.
  *
- * @note
+ * @b NOTE:
  *        - To prevent deadlocks, this function can only be used on the client side of a session.
  *          Servers can't use this function.
  *        - To prevent race conditions, only the client thread attached to the session
  *          (the thread that created the session) is allowed to perform a synchronous
  *          request-response transaction.
  *
- * @warning
+ * @b WARNING:
  *        - The calling (client) thread will be blocked until the server responds, so no other
  *          event handling will happen in that client thread until the response is received (or the
  *          server dies).  This function should only be used when the server is certain
@@ -1594,7 +1594,7 @@ le_msg_MessageRef_t le_msg_RequestSyncResponse
  * The messaging system will delete the message automatically when it's finished sending
  * the response.
  *
- * @note    Function can only be used on the server side of a session.
+ * @b NOTE:    Function can only be used on the server side of a session.
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_Respond
@@ -1643,7 +1643,7 @@ le_msg_ServiceRef_t le_msg_InitLocalService
 /**
  * Deletes a service. Any open sessions will be terminated.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void le_msg_DeleteService
@@ -1655,7 +1655,7 @@ LE_FULL_API void le_msg_DeleteService
 /**
  * Registers a function to be called when clients open sessions with this service.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
@@ -1670,7 +1670,7 @@ LE_FULL_API le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
  * Registers a function to be called whenever one of this service's sessions is closed by
  * the client.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
@@ -1685,7 +1685,7 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
  * Remove a function previously registered by le_msg_AddServiceOpenHandler or
  * le_msg_AddServiceCloseHandler.
  *
- * @note    This is a server-only function.
+ * @b NOTE:    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void le_msg_RemoveServiceHandler
@@ -1699,7 +1699,7 @@ LE_FULL_API void le_msg_RemoveServiceHandler
  * Registers a function to be called when messages are received from clients via sessions
  * that they have open with this service.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_SetServiceRecvHandler
@@ -1715,7 +1715,7 @@ void le_msg_SetServiceRecvHandler
  * Associates an opaque context value (void pointer) with a given service that can be retrieved
  * later using le_msg_GetServiceContextPtr().
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void le_msg_SetServiceContextPtr
@@ -1735,7 +1735,7 @@ LE_FULL_API void le_msg_SetServiceContextPtr
  * @return  Context pointer value, or NULL if le_msg_SetServiceContextPtr() was never called
  *          for this service.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void* le_msg_GetServiceContextPtr
@@ -1748,7 +1748,7 @@ LE_FULL_API void* le_msg_GetServiceContextPtr
 /**
  * Makes a given service available for clients to find.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 void le_msg_AdvertiseService
@@ -1762,7 +1762,7 @@ void le_msg_AdvertiseService
  * Makes a specified service unavailable for clients to find without terminating any ongoing
  * sessions.
  *
- * @note    Server-only function.
+ * @b NOTE:    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void le_msg_HideService
@@ -1777,7 +1777,7 @@ LE_FULL_API void le_msg_HideService
  *
  * @return Pointer to a null-terminated string.
  *
- * @warning Pointer returned will remain valid only until the interface is deleted.
+ * @b WARNING: Pointer returned will remain valid only until the interface is deleted.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API const char* le_msg_GetInterfaceName

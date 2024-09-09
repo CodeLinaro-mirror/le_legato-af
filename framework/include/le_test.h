@@ -1,7 +1,7 @@
 /**
  * @page c_test Unit Testing API
  *
- * @subpage le_test.h "API Reference"
+ * @rst :ref:`API reference <File le_test.h>` @endrst
  *
  * <HR>
  *
@@ -89,7 +89,7 @@
  * The LE_TEST_EXIT macro will cause the process to exit with the number of failed tests as the exit
  * code.
  *
- * @note The log message format depends on the current log settings.
+ * @b NOTE: The log message format depends on the current log settings.
  *
  * @section c_test_multiThread Multi-Threaded Tests
  *

@@ -79,9 +79,9 @@ void cm_info_PrintImei
     bool withHeaders
 )
 {
-    char imei[LE_INFO_IMEI_MAX_BYTES] = {0};
+    char imei[LE_DEVINFO_IMEI_MAX_BYTES] = {0};
 
-    le_info_GetImei(imei, sizeof(imei));
+    le_devInfo_GetImei(imei, sizeof(imei));
 
     if(withHeaders)
     {

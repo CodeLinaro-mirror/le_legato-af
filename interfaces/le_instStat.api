@@ -2,7 +2,7 @@
 /**
  * @page c_le_instStat Install Status API
  *
- * @ref le_instStat_interface.h "API Reference"
+ * @rst :ref:`API reference <File le_instStat_interface.h>` @endrst
  *
  * This API provides notifications when apps are installed and uninstalled.
  *

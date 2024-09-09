@@ -2,12 +2,7 @@
 /**
  * @page c_update Update API
  *
- * @ref le_update_interface.h "API Reference" <br>
- * @ref legatoServicesUpdate <br>
- * @ref legatoServicesUpdatePack <br>
- * @ref conceptsUpdates <br>
- * @ref getStartedUpdate
- *
+ * @rst :ref:`API reference <File le_update_interface.h>` @endrst
  *
  * This API uses @ref legatoServicesUpdatePack to update a target device software/firmware.
  *
@@ -17,7 +12,9 @@
  * From the client view, the update service follows this state machine
  * while doing an update:
  *
- *@image html updateApi.png
+ * @rstblock
+ * .. image:: /rst/flow_diagrams/updateApi.jpg
+ * @endrst
  *
  * @section API_Usage_Guideline API Usage Guidelines
  *
@@ -173,7 +170,7 @@ ENUM State
 /**
  * Error code used to provide diagnostic information after a failed update.
  *
- * @note
+ * @b NOTE:
  *     Additional information may also be available in the target device's system log.
  */
 //--------------------------------------------------------------------------------------------------

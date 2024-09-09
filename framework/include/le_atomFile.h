@@ -1,7 +1,7 @@
 /**
  * @page c_atomFile Atomic File Operation API
  *
- * @subpage le_atomFile.h "API Reference"
+ * @rst :ref:`API reference <File le_atomFile.h>` @endrst
  *
  * <HR>
  *
@@ -276,7 +276,7 @@
  *      LE_NOT_FOUND if the file does not exist.
  *      LE_FAULT if there was an error.
  *
- * @note
+ * @b NOTE:
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
@@ -309,7 +309,7 @@ int le_atomFile_Open
  *      LE_DUPLICATE if the file already exists and LE_FLOCK_FAIL_IF_EXIST is specified in createMode
  *      LE_FAULT if there was an error.
  *
- * @note
+ * @b NOTE:
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
@@ -334,7 +334,7 @@ int le_atomFile_Create
  *      LE_WOULD_BLOCK if there is already an incompatible lock on the file.
  *      LE_FAULT if there was an error.
  *
- * @note
+ * @b NOTE:
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
@@ -356,7 +356,7 @@ int le_atomFile_TryOpen
  *      LE_WOULD_BLOCK if there is already an incompatible lock on the file.
  *      LE_FAULT if there was an error.
  *
- * @note
+ * @b NOTE:
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
@@ -415,7 +415,7 @@ le_result_t le_atomFile_Close
  *      Buffered file stream handle to the file if successful.
  *      NULL if there was an error.
  *
- * @note
+ * @b NOTE:
  *     Stream must be closed using le_atomFile_CloseStream() or le_atomFile_CancelStream()
  *     function.
  */
@@ -454,7 +454,7 @@ FILE* le_atomFile_OpenStream
  *      Buffered file stream handle to the file if successful.
  *      NULL if there was an error.
  *
- * @note
+ * @b NOTE:
  *     Stream must be closed using le_atomFile_CloseStream() or le_atomFile_CancelStream()
  *     function.
  */
@@ -485,7 +485,7 @@ FILE* le_atomFile_CreateStream
  *      Buffered file stream handle to the file if successful.
  *      NULL if there was an error.
  *
- * @note
+ * @b NOTE:
  *     Stream must be closed using le_atomFile_CloseStream() or le_atomFile_CancelStream()
  *     function.
  */
@@ -512,7 +512,7 @@ FILE* le_atomFile_TryOpenStream
  *      Buffered file stream handle to the file if successful.
  *      NULL if there was an error.
  *
- * @note
+ * @b NOTE:
  *     Stream must be closed using le_atomFile_CloseStream() or le_atomFile_CancelStream()
  *     function.
  */

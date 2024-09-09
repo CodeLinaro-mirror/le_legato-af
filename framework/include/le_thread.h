@@ -1,7 +1,7 @@
 /**
  * @page c_threading Thread Control API
  *
- * @subpage le_thread.h "API Reference"
+ * @rst :ref:`API reference <File le_thread.h>` @endrst
  *
  * <HR>
  *
@@ -39,7 +39,7 @@
  * le_thread_Create() ).  When all attributes have been set, the thread can be started by calling
  * le_thread_Start().
  *
- * @warning It is assumed that if a thread @e T1 creates another thread @e T2 then @b only thread
+ * @b WARNING: It is assumed that if a thread @e T1 creates another thread @e T2 then @b only thread
  *          @e T1 will set the attributes and start thread @e T2.  No other thread should try
  *          to set any attributes of @e T2 or try to start it.
  *
@@ -104,7 +104,7 @@
  * lack of synchronization.  If threads share data, they @b MUST be synchronized with each other to
  * avoid destroying that data and incorrect thread behaviour.
  *
- * @warning This documentation assumes that the reader is familiar with multi-thread synchronization
+ * @b WARNING: This documentation assumes that the reader is familiar with multi-thread synchronization
  * techniques and mechanisms.
  *
  * The Legato C APIs provide the following thread synchronization mechanisms:
@@ -174,7 +174,7 @@
 /**
  * Reference to a thread of execution.
  *
- * @note NULL can be used as an invalid value.
+ * @b NOTE: NULL can be used as an invalid value.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_thread* le_thread_Ref_t;
@@ -190,7 +190,7 @@ typedef struct le_thread* le_thread_Ref_t;
  * level does not block, no other thread at a lower priority level will run, so be careful with
  * these.
  *
- * @note Higher numbers are higher priority.
+ * @b NOTE: Higher numbers are higher priority.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
@@ -333,7 +333,7 @@ le_result_t le_thread_SetPriority
 /**
  * Sets the stack size of a thread.
  *
- * @note It's generally not necessary to set the stack size.  Some reasons why you might are:
+ * @b NOTE: It's generally not necessary to set the stack size.  Some reasons why you might are:
  *         - to increase it beyond the system's default stack size to prevent overflow
  *              for a thread that makes extremely heavy use of the stack;
  *         - to decrease it to save memory when:
@@ -460,9 +460,9 @@ void le_thread_Start
  *      - LE_NOT_POSSIBLE if the other thread can't be joined with.
  * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
  *
- * @warning The other thread must be "joinable".  See le_thread_SetJoinable();
+ * @b WARNING: The other thread must be "joinable".  See le_thread_SetJoinable();
  *
- * @warning It's an error for two or more threads try to join with the same thread.
+ * @b WARNING: It's an error for two or more threads try to join with the same thread.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_thread_Join
@@ -492,7 +492,7 @@ void le_thread_Exit
  * Tells another thread to terminate.  Returns immediately, but the termination of the
  * thread happens asynchronously and is not guaranteed to occur when this function returns.
  *
- * @note This function is not available on RTOS.
+ * @b NOTE: This function is not available on RTOS.
 
  *
  * @return
@@ -514,7 +514,7 @@ LE_FULL_API le_result_t le_thread_Cancel
  *      -  0 if the sleep is successful.
  *      - -1 if the call is interrupted by a signal handler or encounters an error.
  *
- * @note This function is not a full equivalence of nanosleep() as the remaining sleep time will not
+ * @b NOTE: This function is not a full equivalence of nanosleep() as the remaining sleep time will not
  *       be available to the caller if nanosleep() returns due to being interrupted by a signal.
  */
 //--------------------------------------------------------------------------------------------------
@@ -675,7 +675,7 @@ void _le_thread_SetCDataInstancePtr
  *
  *  @param[in]  name    A name for the thread (will be copied, so can be temporary).
  *
- *  @note This is not needed if the thread was started using le_thread_Start().
+ *  @b NOTE: This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
 void le_thread_InitLegatoThreadData
@@ -700,7 +700,7 @@ void _le_thread_InitLegatoThreadData(void);
  *
  *  @param[in]  name    A name for the thread (will be copied, so can be temporary).
  *
- *  @note This is not needed if the thread was started using le_thread_Start().
+ *  @b NOTE: This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE void le_thread_InitLegatoThreadData
@@ -720,7 +720,7 @@ LE_DECLARE_INLINE void le_thread_InitLegatoThreadData
  * To prevent memory leaks, this must be called by the thread when it dies (unless the whole
  * process is dying).
  *
- * @note This is not needed if the thread was started using le_thread_Start().
+ * @b NOTE: This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
 void le_thread_CleanupLegatoThreadData

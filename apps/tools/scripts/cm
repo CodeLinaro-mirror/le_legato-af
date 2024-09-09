@@ -16,6 +16,7 @@
 CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
 IP=${IP:="/sbin/ip"}
 IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
+N_IFCONFIG=${N_IFCONFIG:="/bin/ifconfig"}
 CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/var/log/cm"}
@@ -33,7 +34,11 @@ ip() {
 }
 
 ifconfig() {
-    $IFCONFIG $@
+    if [ -e /sbin/ifconfig ]; then
+        $IFCONFIG $@
+    else
+        $N_IFCONFIG $@
+    fi
 }
 
 curl() {

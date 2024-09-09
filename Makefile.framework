@@ -237,6 +237,10 @@ START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
               $(LINUX_SRC_DIR)/common/ima.c
 START_OBJ_DIR := $(BUILD_DIR)/startSystem
 START_OBJS := $(patsubst %.c,$(START_OBJ_DIR)/%.o,$(notdir $(START_SRCS)))
+START_LDFLAGS := -ldl -lpthread
+ifeq ($(LE_CONFIG_ENABLE_DLT_LOGGING),y)
+START_LDFLAGS += -ldlt
+endif
 
 # 3rd-party libraries
 
@@ -416,7 +420,7 @@ $(START_OBJ_DIR)/%.o: $(LINUX_SRC_DIR)/common/%.c | $(START_OBJ_DIR)
 $(BIN_DIR)/startSystem: $(START_OBJS) | liblegato $(PA_START_LIB) $(BIN_DIR)
 	$(L) LD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
-		$(STATIC_LIB_DIR)/liblegato.a $(IMA_LIBS) -ldl -lpthread
+		$(STATIC_LIB_DIR)/liblegato.a $(IMA_LIBS) $(START_LDFLAGS)
 
 $(BIN_DIR)/supervisor: liblegato $(BIN_DIR)
 	$(L) MKEXE $@

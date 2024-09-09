@@ -2,9 +2,9 @@
 /**
  * @page c_json JSON Parsing API
  *
- * @warning This API is experimental, and is therefore likely to change.
+ * @b WARNING: This API is experimental, and is therefore likely to change.
  *
- * @subpage le_json.h "API Reference" <br>
+ * @rst :ref:`API reference <File le_json.h>` @endrst <br>
  *
  * <hr>
  *
@@ -34,7 +34,7 @@
  *
  * To stop parsing early, call le_json_Cleanup() early.
  *
- * @warning Be sure to stop parsing before closing the file descriptor.
+ * @b WARNING: Be sure to stop parsing before closing the file descriptor.
  *
  *  @section c_json_events Event Handling
  *
@@ -240,7 +240,7 @@ le_json_ParsingSessionRef_t le_json_ParseString
 /**
  * Stops parsing and cleans up memory allocated by the parser.
  *
- * @warning Be sure to stop parsing before closing the file descriptor.
+ * @b WARNING: Be sure to stop parsing before closing the file descriptor.
  */
 //--------------------------------------------------------------------------------------------------
 void le_json_Cleanup
@@ -253,7 +253,7 @@ void le_json_Cleanup
 /**
  * Set the current context's event handler function.
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 void le_json_SetEventHandler
@@ -288,7 +288,7 @@ le_json_ContextType_t;
  *
  * @return The context type.
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 le_json_ContextType_t le_json_GetContextType
@@ -301,7 +301,7 @@ le_json_ContextType_t le_json_GetContextType
 /**
  * Set the opaque pointer attached to the parser.
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 void le_json_SetOpaquePtr
@@ -317,7 +317,7 @@ void le_json_SetOpaquePtr
  * @return The pointer previously set by le_json_Parse() or a subsequent call to
  *         le_json_SetOpaquePtr().
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 void* le_json_GetOpaquePtr
@@ -330,7 +330,7 @@ void* le_json_GetOpaquePtr
 /**
  * Set the error handler function
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 void le_json_SetErrorHandler
@@ -345,7 +345,7 @@ void le_json_SetErrorHandler
  *
  * This pointer is only valid until the event handler returns.
  *
- * @warning This function can only be called inside event handlers when LE_JSON_OBJECT_MEMBER
+ * @b WARNING: This function can only be called inside event handlers when LE_JSON_OBJECT_MEMBER
  *          or LE_JSON_STRING events are being handled.
  */
 //--------------------------------------------------------------------------------------------------
@@ -359,7 +359,7 @@ const char* le_json_GetString
 /**
  * Fetches the value of a parsed number.
  *
- * @warning This function can only be called inside event handlers when LE_JSON_NUMBER events are
+ * @b WARNING: This function can only be called inside event handlers when LE_JSON_NUMBER events are
  *          being handled.
  */
 //--------------------------------------------------------------------------------------------------
@@ -409,7 +409,7 @@ size_t le_json_GetBytesRead
  *
  * @return The session reference of the JSON parsing session.
  *
- * @warning This function can only be called inside event or error handlers.
+ * @b WARNING: This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
 le_json_ParsingSessionRef_t le_json_GetSession

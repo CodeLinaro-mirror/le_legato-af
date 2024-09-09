@@ -3,7 +3,7 @@
 /**
  * @page c_path Path API
  *
- * @subpage le_path.h "API Reference"
+ * @rst :ref:`API reference <File le_path.h>` @endrst
  *
  * <HR>
  *
@@ -99,7 +99,7 @@ char* le_path_GetBasenamePtr
  * that will fit in the buffer will be copied and LE_OVERFLOW will be returned.  Partial UTF-8
  * characters and partial separators will never be copied.
  *
- * @warning  The (char*)NULL at the end of the list of path segments is mandatory.  If this NULL is
+ * @b WARNING:  The (char*)NULL at the end of the list of path segments is mandatory.  If this NULL is
  *           omitted the behaviour is undefined.
  *
  * @return

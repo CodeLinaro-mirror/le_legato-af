@@ -1,7 +1,7 @@
 /**
  * @page c_clock System Clock API
  *
- * @subpage le_clock.h "API Reference"
+ * @rst :ref:`API reference <File le_clock.h>` @endrst
  *
  * <HR>
  *
@@ -63,7 +63,7 @@
  * The absolute time can be set with a formatted string in UTC time, using
  * le_clk_SetUTCDateTimeString().
  *
- * @note The additional format specifications %%J and %%K are not supported by
+ * @b NOTE: The additional format specifications %%J and %%K are not supported by
  * le_clk_SetUTCDateTimeString().
  *
  * @todo
@@ -126,7 +126,7 @@ typedef struct
  * @return
  *      Relative time in seconds/microseconds
  *
- * @note
+ * @b NOTE:
  *      Relative time includes any time that the processor is suspended.
  */
 //--------------------------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ le_clk_Time_t le_clk_GetRelativeTime(void);
  * @return
  *      Absolute time in seconds/microseconds
  *
- * @note
+ * @b NOTE:
  *      Absolute time includes any time that the processor is suspended.
  */
 //--------------------------------------------------------------------------------------------------
@@ -350,7 +350,7 @@ le_result_t le_clk_ConvertToLocalTimeString
 /**
  * Set absolute time since the Epoch, 1970-01-01 00:00:00 +0000 (UTC).
  *
- * @note Only unsandboxed application can set the date/time.
+ * @b NOTE: Only unsandboxed application can set the date/time.
  *
  * @return
  *      - LE_OK if the function succeeded
@@ -389,7 +389,7 @@ LE_FULL_API le_result_t le_clk_ConvertToTime
 /**
  * Set the UTC date/time as a formatted string.
  *
- * @note Only unsandboxed application can set the date/time.
+ * @b NOTE: Only unsandboxed application can set the date/time.
  *
  * @return
  *      - LE_OK if the time is correctly set

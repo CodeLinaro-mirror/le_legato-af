@@ -1,7 +1,7 @@
 /**
  * @page c_doublyLinkedList Doubly Linked List API
  *
- * @subpage le_doublyLinkedList.h "API Reference"
+ * @rst :ref:`API reference <File le_doublyLinkedList.h>` @endrst
  *
  * <HR>
  *
@@ -194,7 +194,7 @@
  * multiple lists simultaneously.  This link object must be initialized by assigning
  * LE_DLS_LINK_INIT to it.
  *
- * @warning The structure's content MUST NOT be accessed directly.
+ * @b WARNING: The structure's content MUST NOT be accessed directly.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_dls_Link
@@ -210,7 +210,7 @@ le_dls_Link_t;
  * This is the list object.  User must create this list object and initialize it by assigning
  * LE_DLS_LIST_INIT to it.
  *
- * @warning User MUST NOT access the contents of this structure directly.
+ * @b WARNING: User MUST NOT access the contents of this structure directly.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct

@@ -1,13 +1,13 @@
 /**
  * @page c_timer Timer API
  *
- * @subpage le_timer.h "API Reference"
+ * @rst :ref:`API reference <File le_timer.h>` @endrst
  *
  * <HR>
  *
  * This module provides an API for managing and using timers.
  *
- * @note
+ * @b NOTE:
  * This is an initial version of the API that only provides support for relative timers (e.g., expires
  * in 10 seconds).  Absolute timers allow a specific time/date to be used, and will be supported in a
  * future version of this API.
@@ -209,7 +209,7 @@ LE_DECLARE_INLINE le_timer_Ref_t le_timer_Create
 /**
  * Delete the timer object.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ void le_timer_Delete
  *      - LE_OK on success
  *      - LE_BUSY if the timer is currently running
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -252,7 +252,7 @@ le_result_t le_timer_SetHandler
  * @return
  *      - LE_OK on success
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ le_result_t le_timer_SetInterval
  * @return
  *      The timer interval.  If it hasn't been set yet, {0, 0} will be returned.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -292,7 +292,7 @@ le_clk_Time_t le_timer_GetInterval
  * @return
  *      - LE_OK on success
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ le_result_t le_timer_SetMsInterval
  * @return
  *      The timer interval (ms).  If it hasn't been set yet, 0 will be returned.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -331,7 +331,7 @@ uint32_t le_timer_GetMsInterval
  *      - LE_OK on success
  *      - LE_BUSY if the timer is currently running
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -350,7 +350,7 @@ le_result_t le_timer_SetRepeat
  *      - LE_OK on success
  *      - LE_BUSY if the timer is currently running
  *
- * @note
+ * @b NOTE:
  *      The default timer expiry behaviour will wake up the system.
  *      If an invalid timer object is given, the process exits.
  */
@@ -372,7 +372,7 @@ le_result_t le_timer_SetWakeup
  *      - LE_OK on success
  *      - LE_BUSY if the timer is currently running
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ le_result_t le_timer_SetContextPtr
  * @return
  *      Context pointer, which could be NULL if it was not set.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -412,7 +412,7 @@ void* le_timer_GetContextPtr
  * @return
  *      Expiry count, or zero if the timer has never expired.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -430,7 +430,7 @@ uint32_t le_timer_GetExpiryCount
  *      Time remaining.
  *      {0, 0} if the timer is stopped or if it has reached its expiry time.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -448,7 +448,7 @@ le_clk_Time_t le_timer_GetTimeRemaining
  *      Time remaining (in milliseconds).
  *      0 if the timer is stopped or if it has reached its expiry time.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -468,7 +468,7 @@ uint32_t le_timer_GetMsTimeRemaining
  *      - LE_OK on success
  *      - LE_BUSY if the timer is already running
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -488,7 +488,7 @@ le_result_t le_timer_Start
  *      - LE_OK on success
  *      - LE_FAULT if the timer is not currently running
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -505,7 +505,7 @@ le_result_t le_timer_Stop
  * Start the given timer. If the timer is currently running, it will be stopped and then started.
  * If the timer is not currently running, it will be started.
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
@@ -519,7 +519,7 @@ void le_timer_Restart
 /**
  * Is the timer currently running?
  *
- * @note
+ * @b NOTE:
  *      If an invalid timer object is given, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
