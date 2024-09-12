@@ -39,7 +39,7 @@ if [ "${LE_CONFIG_DEBUG}" = y ]; then
     # If not stripping the staging tree, add debug for the debug build.
     # If stripping the staging tree this isn't needed as debug is always generated
     # as a separate file on the host.
-    if [ $(LE_CONFIG_STRIP_STAGING_TREE) != y ]; then
+    if [ "${LE_CONFIG_STRIP_STAGING_TREE}" != y ]; then
         CFLAGS="$CFLAGS -g"
     fi
 else
