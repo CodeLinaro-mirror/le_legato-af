@@ -637,6 +637,7 @@ static le_result_t CreateSupplementaryGroups
 
     // Read the supplementary group names from the config.
     size_t i;
+    gid_t gid;
     for (i = 0; i < LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS; i++)
     {
         // Read the supplementary group name from the config.
@@ -649,7 +650,6 @@ static le_result_t CreateSupplementaryGroups
         }
 
         // Create the group.
-        gid_t gid;
         if (user_CreateGroup(groupName, &gid) == LE_FAULT)
         {
             LE_ERROR("Could not create supplementary group '%s' for app '%s'.",
@@ -674,6 +674,19 @@ static le_result_t CreateSupplementaryGroups
             return LE_FAULT;
         }
     }
+
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    if (user_CreateGroup("dlt", &gid) != LE_OK)
+    {
+        LE_ERROR("Could not create supplementary group '%s' for app '%s'.",
+                 "dlt",
+                 appRef->name);
+    }
+    else if (i < LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS-1)
+    {
+        appRef->supplementGids[++i] = gid;
+    }
+#endif
 
     appRef->numSupplementGids = i + 1;
 
