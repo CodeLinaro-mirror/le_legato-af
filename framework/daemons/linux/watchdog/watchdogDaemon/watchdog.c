@@ -1057,12 +1057,12 @@ static void ResetClientWatchdog
             timeoutValue = MakeTimerInterval(timeout);
             if (le_clk_GreaterThan(timeoutValue, watchDogPtr->maxKickTimeoutInterval))
             {
-                LE_WARN("Capping watchdog timeout for process [%d] to maximum of %lu.%lds"
-                        " (was %lu.%lds).",
+                LE_WARN("Capping watchdog timeout for process [%d] to maximum of %lld.%lds"
+                        " (was %lld.%lds).",
                         watchDogPtr->procId,
-                        watchDogPtr->maxKickTimeoutInterval.sec,
+                        (long long)watchDogPtr->maxKickTimeoutInterval.sec,
                         watchDogPtr->maxKickTimeoutInterval.usec,
-                        timeoutValue.sec,
+                        (long long)timeoutValue.sec,
                         timeoutValue.usec);
 
                 timeoutValue = watchDogPtr->maxKickTimeoutInterval;
