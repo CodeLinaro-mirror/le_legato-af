@@ -654,6 +654,9 @@ static int Restart
         case LE_FAULT:
             printf("Failed to do '%s' restart. See logs for details\n", restartTypePtr);
             break;
+        case LE_UNSUPPORTED:
+            printf("Not supported\n");
+            break;
         default:
             printf("Invalid status\n");
             break;

@@ -275,7 +275,7 @@ static void Error
 //--------------------------------------------------------------------------------------------------
 {
     // Add the line number to the error message
-    char errorMessage[256];
+    char errorMessage[512];
     snprintf(errorMessage, sizeof(errorMessage), "%s (at line %" PRIuS ")", msg, parserPtr->line);
 
     StopParsing(parserPtr);

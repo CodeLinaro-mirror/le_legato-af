@@ -157,7 +157,12 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
 endif
 
 export GCC_PREFIX := $(GCC_PREFIX)
+$(eval $(if $($(TARGET_CAPS)_CFLAGS),,$(TARGET_CAPS)_CFLAGS := $(CFLAGS)))
+
+# Export for "Makefile.framework" and "framework/liblegato/ninja-generator"
+export $(TARGET_CAPS)_CFLAGS
 export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
+
 ifeq ($(TARGET),sa525m)
   ifneq ($(findstring oemllib32, $(GCC_PREFIX)),)# sa525m-32bit
     MKTOOLS_FLAGS += -C -march=armv7-a -C -mfloat-abi=hard -C -mfpu=neon
@@ -727,7 +732,8 @@ build/$(TARGET)/Makefile:
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
-			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-j$(nproc)
 
 # Rule building the C tests for a given target
 .PHONY: tests_c
