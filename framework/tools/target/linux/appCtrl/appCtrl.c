@@ -19,6 +19,9 @@
 /// Pointer to application name argument from command line.
 static const char* AppNamePtr = NULL;
 
+/// Pointer to group number argument from command line.
+static const char* GroupNumPtr = NULL;
+
 /// Pointer to process name argument from command line.
 static const char* ProcNamePtr = NULL;
 
@@ -95,6 +98,15 @@ typedef void (*PrintAppFunc_t)(const char* appNamePtr);
 //--------------------------------------------------------------------------------------------------
 #define EST_MAX_NUM_PROC                        29
 
+#define CFG_NODE_APPS_LIST                  "apps"
+
+static le_mem_PoolRef_t appCtrlNameListPool;
+typedef struct
+{
+    char            appName[LIMIT_MAX_APP_NAME_BYTES];
+    int             startGroup;
+    le_dls_Link_t   link;
+} appName_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -206,6 +218,8 @@ static void PrintHelp
         "    app remove <appName>\n"
         "    app stopLegato\n"
         "    app restartLegato\n"
+        "    app startGroup [<number>]\n"
+        "    app stopGroup  [<number>]\n"
         "    app list\n"
         "    app status [<appName>]\n"
         "    app version <appName>\n"
@@ -244,6 +258,18 @@ static void PrintHelp
         "\n"
         "    app restartLegato\n"
         "       Restarts the Legato framework.\n"
+        "\n"
+        "    app startGroup [<number>]\n"
+        "       Starts the application group.\n"
+        "       If no number is given, start all applications except those with a start group\n"
+        "       number that does not exceed the value defined in the macro LIMIT_APP_START_GROUP\n"
+        "       If a number is given, start the application in that group number.\n"
+        "\n"
+        "    app stopGroup [<number>]\n"
+        "       Stops the application group.\n"
+        "       If no number is given, stop all applications except those with a start group\n"
+        "       number that does not exceed the value defined in the macro LIMIT_APP_START_GROUP\n"
+        "       If a number is given, stop the application in that group number.\n"
         "\n"
         "    app list\n"
         "       List all installed applications.\n"
@@ -1789,6 +1815,20 @@ static void RunProc
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called by le_arg_Scan() when it encounters an group number argument on the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GroupArgHandler
+(
+    const char* groupNum
+)
+{
+    GroupNumPtr = groupNum;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1876,6 +1916,352 @@ static void DebugProcNameArgHandler
 }
 
 
+bool RecordGreaterThan(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
+{
+    appName_t  *aPtr = CONTAINER_OF(aLinkPtr, appName_t , link);
+    appName_t  *bPtr = CONTAINER_OF(bLinkPtr, appName_t , link);
+
+    return (aPtr->startGroup < bPtr->startGroup);
+}
+
+bool RecordSmallerThan(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
+{
+    appName_t  *aPtr = CONTAINER_OF(aLinkPtr, appName_t , link);
+    appName_t  *bPtr = CONTAINER_OF(bLinkPtr, appName_t , link);
+
+    return (aPtr->startGroup > bPtr->startGroup);
+}
+
+static int GetappStartGroupOrder
+(
+    le_cfg_IteratorRef_t appstartCfg,  // The iterator to use to read the configured start order.
+    const char* nodeName,           // The name of the node in the config tree that holds the value.
+    int defaultValue                // The default value to use if the config value is invalid.
+)
+{
+    // No open config -- just use default value
+    if (!appstartCfg)
+    {
+        return defaultValue;
+    }
+
+    if (!le_cfg_NodeExists(appstartCfg, nodeName))
+    {
+        printf("Configured app start order  %s is not available.  Using the default value %d.\n",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    if (le_cfg_IsEmpty(appstartCfg, nodeName))
+    {
+        printf("Configured app start order %s is empty.  Using the default value %d.\n",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    int startorderValue = le_cfg_GetInt(appstartCfg, nodeName, defaultValue);
+
+    if (startorderValue < 0 || startorderValue > LIMIT_MAX_START_GROUP_NUM)
+    {
+        printf("Configured app start order %s is invalid.  Using the default value %d.\n",
+                 nodeName, defaultValue);
+
+        return defaultValue;
+    }
+
+    return startorderValue;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requests the Supervisor to start the application in some groups.
+ *
+ * @note This function does not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void __attribute__((noreturn)) StartAppGroup
+(
+    void
+)
+{
+    le_cfg_ConnectService();
+
+    // Read the list of applications from the config tree.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
+    appName_t            *appNameLink;
+    le_dls_List_t        appNameList = LE_DLS_LIST_INIT;
+    int tmpStartGroupNum = -1;
+    int tmpNum = 0;/* Don't change this default value - 0 */
+
+    if (GroupNumPtr != NULL)
+    {
+        tmpStartGroupNum = atoi(GroupNumPtr);
+        if (tmpStartGroupNum > LIMIT_MAX_START_GROUP_NUM ||
+            tmpStartGroupNum < 0)
+        {
+            LE_ERROR("Inputted group num '%d' is not correct", tmpStartGroupNum);
+            le_cfg_CancelTxn(appCfg);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
+    {
+        LE_ERROR("No applications installed.\n");
+
+        le_cfg_CancelTxn(appCfg);
+        exit(EXIT_SUCCESS);
+    }
+
+    le_appInfo_ConnectService();
+    do
+    {
+        // Check the start mode for this application.
+        if (!le_cfg_GetBool(appCfg, "startManual", false))
+        {
+            // Get the app name.
+            char appName[LIMIT_MAX_APP_NAME_BYTES];
+            if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
+            {
+                LE_WARN("AppName buffer was too small, name truncated to '%s'.  "
+                         "Max app name in bytes, %d.  Application not launched.\n",
+                         appName, LIMIT_MAX_APP_NAME_BYTES);
+            }
+            else
+            {
+                if(IsAppRunning(appName))
+                {
+                    LE_INFO("Skip running App %s", appName);
+                    continue;
+                }
+
+                int appStartOrder =
+                   GetappStartGroupOrder(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
+                LE_INFO("App '%s' start order: %d, request order: %d\n",
+                    appName, appStartOrder, tmpStartGroupNum);
+
+                if (tmpStartGroupNum != -1)
+                {
+                  // A group number is given, start the application in that group number.
+                  // $ app startGroup num
+                    if (appStartOrder != tmpStartGroupNum)
+                    {
+                        LE_INFO("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
+                        continue;
+                    }
+                }
+                else
+                {
+                  // No group number is given, start all applications except those with
+                  // a start group number that does not exceed the value defined in the
+                  // macro LE_CONFIG_LIMIT_APP_START_GROUP.
+                  // $ app startGroup
+        #ifdef LE_CONFIG_LIMIT_APP_START_GROUP
+                    tmpNum = LE_CONFIG_LIMIT_APP_START_GROUP;
+        #endif
+                    if (appStartOrder <= tmpNum)
+                    {
+                        LE_INFO("Skip app %s not in start scop\n", appName);
+                        continue;
+                    }
+                }
+
+                // In order to decrease the usage time of cfg tree, get app name and
+                // put it into app name list immediately.
+                appNameLink = (appName_t *)le_mem_ForceAlloc(appCtrlNameListPool);
+                appNameLink->link = LE_DLS_LINK_INIT;
+                le_utf8_Copy(appNameLink->appName, appName, LIMIT_MAX_APP_NAME_BYTES, NULL);
+                appNameLink->startGroup = appStartOrder;
+                le_dls_Queue(&appNameList, &(appNameLink->link));
+            }
+        }
+    }
+    while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+    le_cfg_CancelTxn(appCfg);
+    le_cfg_DisconnectService();
+
+    // Sort the list descending
+    le_dls_Sort(&appNameList, RecordGreaterThan);
+
+    le_appCtrl_ConnectService();
+    le_dls_Link_t* linkPtr = le_dls_Pop(&appNameList);
+    while (linkPtr)
+    {
+        appNameLink = CONTAINER_OF(linkPtr, appName_t, link);
+        linkPtr = le_dls_Pop(&appNameList);
+        // Start the application in the linkPtr.
+        switch (le_appCtrl_Start(appNameLink->appName))
+        {
+            case LE_OK:
+                LE_INFO("App '%s' has launched....\n", appNameLink->appName);
+                break;
+
+            case LE_DUPLICATE:
+                LE_INFO("App '%s' is already running\n", appNameLink->appName);
+                break;
+
+            case LE_NOT_FOUND:
+                LE_INFO("App '%s' is not installed\n", appNameLink->appName);
+                break;
+
+            case LE_BUSY:
+                LE_INFO("App '%s' is going to be updated/removed.\n", appNameLink->appName);
+                break;
+
+            default:
+                LE_ERROR("There was an error.  App '%s' could not be started.\n"
+                        "Check the system log for error messages.\n",
+                        appNameLink->appName);
+                break;
+        }
+        le_mem_Release(appNameLink);
+    }
+    exit(EXIT_SUCCESS);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requests the supervisor to stop the application in some groups.
+ *
+ * @note This function does not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void __attribute__((noreturn)) StopAppGroup
+(
+    void
+)
+{
+    le_cfg_ConnectService();
+
+    // Read the list of applications from the config tree.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
+    appName_t            *appNameLink;
+    le_dls_List_t        appNameList = LE_DLS_LIST_INIT;
+    int tmpStartGroupNum = -1;
+    int tmpNum = 0;/* Don't change this default value - 0 */
+
+    if (GroupNumPtr != NULL)
+    {
+        tmpStartGroupNum = atoi(GroupNumPtr);
+        if (tmpStartGroupNum > LIMIT_MAX_START_GROUP_NUM ||
+            tmpStartGroupNum < 0)
+        {
+            LE_ERROR("Inputted group num '%d' is not correct", tmpStartGroupNum);
+            le_cfg_CancelTxn(appCfg);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
+    {
+        LE_ERROR("No applications installed.\n");
+
+        le_cfg_CancelTxn(appCfg);
+        exit(EXIT_SUCCESS);
+    }
+
+    le_appInfo_ConnectService();
+    do
+    {
+        // Check the start mode for this application.
+        if (!le_cfg_GetBool(appCfg, "startManual", false))
+        {
+            // Get the app name.
+            char appName[LIMIT_MAX_APP_NAME_BYTES];
+            if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
+            {
+                LE_WARN("AppName buffer was too small, name truncated to '%s'.  "
+                         "Max app name in bytes, %d.  Application not launched.\n",
+                         appName, LIMIT_MAX_APP_NAME_BYTES);
+            }
+            else
+            {
+                if(!IsAppRunning(appName))
+                {
+                    LE_INFO("Skip stopped App %s", appName);
+                    continue;
+                }
+
+                int appStartOrder =
+                  GetappStartGroupOrder(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
+                LE_INFO("App '%s' start order: %d, request order: %d\n",
+                    appName, appStartOrder, tmpStartGroupNum);
+
+                if (tmpStartGroupNum != -1)
+                {
+                  // A group number is given, stop the application in that group number.
+                  // $ app stopGroup num
+                    if (appStartOrder != tmpStartGroupNum)
+                    {
+                        LE_INFO("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
+                        continue;
+                    }
+                }
+                else
+                {
+                  // No group number is given, stop all applications except those with
+                  // a start group number that does not exceed the value defined in the
+                  // macro LE_CONFIG_LIMIT_APP_START_GROUP.
+                  // $ app stopGroup
+        #ifdef LE_CONFIG_LIMIT_APP_START_GROUP
+                    tmpNum = LE_CONFIG_LIMIT_APP_START_GROUP;
+        #endif
+                    if (appStartOrder <= tmpNum)
+                    {
+                        LE_INFO("Skip app %s not in stop scop\n", appName);
+                        continue;
+                    }
+                }
+
+                // In order to decrease the usage time of cfg tree, get app name and
+                // put it into app name list immediately.
+                appNameLink = (appName_t *)le_mem_ForceAlloc(appCtrlNameListPool);
+                appNameLink->link = LE_DLS_LINK_INIT;
+                le_utf8_Copy(appNameLink->appName, appName, LIMIT_MAX_APP_NAME_BYTES, NULL);
+                appNameLink->startGroup = appStartOrder;
+                le_dls_Queue(&appNameList, &(appNameLink->link));
+            }
+        }
+    }
+    while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+    le_cfg_CancelTxn(appCfg);
+    le_cfg_DisconnectService();
+
+    // Sort the list ascending order
+    le_dls_Sort(&appNameList, RecordSmallerThan);
+
+    le_appCtrl_ConnectService();
+
+    le_dls_Link_t* linkPtr = le_dls_Pop(&appNameList);
+    while (linkPtr)
+    {
+        appNameLink = CONTAINER_OF(linkPtr, appName_t, link);
+        linkPtr = le_dls_Pop(&appNameList);
+
+        // Stop the application in the linkPtr.
+        switch (le_appCtrl_Stop(appNameLink->appName))
+        {
+            case LE_OK:
+                LE_INFO("App '%s' was stopped successfully.\n", appNameLink->appName);
+                break;
+
+            case LE_NOT_FOUND:
+                LE_INFO("App '%s' was not running.\n", appNameLink->appName);
+                break;
+
+            default:
+                INTERNAL_ERR("Unexpected response from the Supervisor.");
+        }
+        le_mem_Release(appNameLink);
+    }
+    exit(EXIT_SUCCESS);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function that gets called by le_arg_Scan() when it encounters the command argument on the
@@ -1926,6 +2312,18 @@ static void CommandArgHandler
     {
         CommandFunc = RestartLegato;
     }
+    else if (strcmp(command, "startGroup") == 0)
+    {
+        CommandFunc = StartAppGroup;
+        le_arg_AddPositionalCallback(GroupArgHandler);
+        le_arg_AllowLessPositionalArgsThanCallbacks();
+    }
+    else if (strcmp(command, "stopGroup") == 0)
+    {
+        CommandFunc = StopAppGroup;
+        le_arg_AddPositionalCallback(GroupArgHandler);
+        le_arg_AllowLessPositionalArgsThanCallbacks();
+    }
     else if (strcmp(command, "list") == 0)
     {
         CommandFunc = ListApps;
@@ -1973,6 +2371,7 @@ COMPONENT_INIT
                                    le_hashmap_EqualsUInt32);
 
     const char* arg = le_arg_GetArg(0);
+    appCtrlNameListPool = le_mem_CreatePool("appCtrlNameList", sizeof(appName_t));
 
     // Parse arguments.
     if ( (le_arg_NumArgs() >= 2) && arg != NULL && (strcmp(arg, "runProc") == 0) )
