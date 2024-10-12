@@ -1450,7 +1450,7 @@ void apps_SetShutdownHandler
 
 static int GetappStartGroupOrder
 (
-    le_cfg_IteratorRef_t appstartCfg,  // The iterator to use to read the configured start order.  T
+    le_cfg_IteratorRef_t appstartCfg,  // The iterator to use to read the configured start order.
     const char* nodeName,           // The name of the node in the config tree that holds the value.
     int defaultValue                // The default value to use if the config value is invalid.
 )
@@ -1479,7 +1479,7 @@ static int GetappStartGroupOrder
 
     int startorderValue = le_cfg_GetInt(appstartCfg, nodeName, defaultValue);
 
-    if (startorderValue < 0 || startorderValue > 31)
+    if (startorderValue < 0 || startorderValue > LIMIT_MAX_START_GROUP_NUM)
     {
         LE_ERROR("Configured app start order %s is invalid.  Using the default value %d.",
                  nodeName, defaultValue);
@@ -1530,10 +1530,6 @@ void apps_AutoStart
         {
             // Get the app name.
             char appName[LIMIT_MAX_APP_NAME_BYTES];
-
-            int appStartOrder = GetappStartGroupOrder(appCfg, "startGroup", 31);
-            LE_INFO("App start order is: %d", appStartOrder);
-
             if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
             {
                 LE_ERROR("AppName buffer was too small, name truncated to '%s'.  "
@@ -1542,6 +1538,27 @@ void apps_AutoStart
             }
             else
             {
+                int appStartOrder =
+                     GetappStartGroupOrder(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
+                if (appStartOrder > LIMIT_MAX_START_GROUP_NUM)
+                {
+                    LE_WARN("App %s startGroup '%d' is bigger than '%d'",
+                        appName, appStartOrder, LIMIT_MAX_START_GROUP_NUM);
+                }
+
+        #ifdef LE_CONFIG_LIMIT_APP_START_GROUP
+                //The supervisor only starts the app with a start group number that does not exceed
+                //the value defined in the macro LE_CONFIG_LIMIT_APP_START_GROUP.
+                if (appStartOrder > LE_CONFIG_LIMIT_APP_START_GROUP)
+                {
+                    LE_INFO("App '%s' was ignore, order is: %d", appName, appStartOrder);
+                    continue;
+                }
+                else
+        #endif
+                {
+                    LE_INFO("App '%s' start order is: %d", appName, appStartOrder);
+                }
                 // In order to decrease the usage time of cfg tree, get app name and
                 // put it into app name list immediately.
                 appNameLink = (appName_t *)le_mem_ForceAlloc(appNameListPool);
@@ -1551,10 +1568,12 @@ void apps_AutoStart
                 le_dls_Queue(&appNameList, &(appNameLink->link));
             }
         }
-        // Sort the list descending
-        le_dls_Sort(&appNameList, RecordGreaterThan);
     }
     while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+    // Sort the list descending
+    le_dls_Sort(&appNameList, RecordGreaterThan);
+
     le_cfg_CancelTxn(appCfg);
 
     le_dls_Link_t* linkPtr = le_dls_Pop(&appNameList);
