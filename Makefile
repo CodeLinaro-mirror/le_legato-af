@@ -157,11 +157,17 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
 endif
 
 export GCC_PREFIX := $(GCC_PREFIX)
-$(eval $(if $($(TARGET_CAPS)_CFLAGS),,$(TARGET_CAPS)_CFLAGS := $(CFLAGS)))
+
+ifneq ($(findstring -D_TIME_BITS=64,$(CFLAGS)),)
+$(TARGET_CAPS)_CFLAGS += -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64
+$(TARGET_CAPS)_CXXFLAGS += -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64
+endif
 
 # Export for "Makefile.framework" and "framework/liblegato/ninja-generator"
 export $(TARGET_CAPS)_CFLAGS
+export $(TARGET_CAPS)_CXXFLAGS
 export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
+export MKTOOLS_FLAGS +=$(addprefix --cxxflags=,$($(TARGET_CAPS)_CXXFLAGS))
 
 ifeq ($(TARGET),sa525m)
   ifneq ($(findstring oemllib32, $(GCC_PREFIX)),)# sa525m-32bit
