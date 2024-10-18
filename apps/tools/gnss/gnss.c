@@ -3251,6 +3251,15 @@ void PrintGnssSignalType(uint32_t signalTypeMask) {
    if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2AQ) {
      printf("Beidou B2AQ, ");
    }
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2BI) {
+     printf("Beidou B2BI, ");
+   }
+   if (signalTypeMask & TAF_LOCGNSS_BEIDOU_B2BQ) {
+     printf("Beidou B2BQ, ");
+   }
+   if (signalTypeMask & TAF_LOCGNSS_NAVIC_L1) {
+     printf("Navic L1, ");
+   }
    if (signalTypeMask == TAF_LOCGNSS_UNKNOWN_SIGNAL_MASK) {
      printf("No signal, ");
    }
@@ -4531,7 +4540,98 @@ static int GetGnssData
 
     for(uint8_t i = 0; i < maxSigTypes; i++)
     {
-        printf("GetGnssData type :%d\n", i);
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GPS_L1CA)
+        {
+            printf("Signal type is :GPS L1CA\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GPS_L1C)
+        {
+            printf("Signal type is :GPS L1C\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GPS_L2C_L)
+        {
+            printf("Signal type is :GPS L2\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GPS_L5_Q)
+        {
+            printf("Signal type is :GPS L5\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GLONASS_G1)
+        {
+            printf("Signal type is :GLONASS G1\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GLONASS_G2)
+        {
+            printf("Signal type is :GLONASS G2\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GALILEO_E1_C)
+        {
+            printf("Signal type is :GALILEO E1\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GALILEO_E5A_Q)
+        {
+            printf("Signal type is :GALILEO E5A\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_GALILEO_E5B_Q)
+        {
+            printf("Signal type is :GALILEO E5B\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B1_I)
+        {
+            printf("Signal type is :BEIDOU B1_I\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B1C)
+        {
+            printf("Signal type is :BEIDOU B1_C\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B2_I)
+        {
+            printf("Signal type is :BEIDOU B2_I\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B2A_I)
+        {
+            printf("Signal type is :BEIDOU B2_AI\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_QZSS_L1CA)
+        {
+            printf("Signal type is :QZSS L1CA\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_QZSS_L1S)
+        {
+            printf("Signal type is :QZSS L1S\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_QZSS_L2C_L)
+        {
+            printf("Signal type is :QZSS L2CL\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_QZSS_L5_Q)
+        {
+            printf("Signal type is :QZSS L5Q\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_SBAS_L1_CA)
+        {
+            printf("Signal type is :SBAS L1CA\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_NAVIC_L5)
+        {
+            printf("Signal type is :NAVIC L5\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B2A_Q)
+        {
+            printf("Signal type is :BEIDOU B2AQ\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B2BI)
+        {
+            printf("Signal type is :BEIDOU B2BI\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_BEIDOU_B2BQ)
+        {
+            printf("Signal type is :BEIDOU B2BQ\n");
+        }
+        if(i == TAF_LOCGNSS_DATA_SIGNAL_TYPE_NAVIC_L1)
+        {
+            printf("Signal type is :NAVIC L1\n");
+        }
         printf("gnssDataMask:%d\n", gnssDataPtr[i].gnssDataMask);
         if(gnssDataPtr[i].gnssDataMask & TAF_LOCGNSS_HAS_JAMMER)
         {
