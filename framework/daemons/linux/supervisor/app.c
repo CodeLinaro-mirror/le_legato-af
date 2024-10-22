@@ -246,6 +246,9 @@ static const FileLinkObj_t DefaultLinks[] =
 //--------------------------------------------------------------------------------------------------
 static const FileLinkObj_t DefaultTmpLinks[] =
 {
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    {.src = "/tmp/dlt", .dest = "/tmp/"},
+#endif
     {.src = LE_SVCDIR_SERVER_SOCKET_NAME, .dest = "/tmp/legato/"},
     {.src = LE_SVCDIR_CLIENT_SOCKET_NAME, .dest = "/tmp/legato/"}
 };
@@ -326,6 +329,9 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libdl.so.2", .dest = "/lib/"},
     {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
     {.src = "/lib/libm.so.6", .dest = "/lib/"},
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    {.src = "/usr/lib/libdlt.so.2", .dest = "/lib/"},
+#endif
     {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
 };
 
@@ -365,6 +371,9 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libdl.so.2", .dest = "/lib/"},
     {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
     {.src = "/lib/libm.so.6", .dest = "/lib/"},
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    {.src = "/usr/lib/libdlt.so.2", .dest = "/lib/"},
+#endif
     {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
 };
 
@@ -621,6 +630,18 @@ static le_result_t CreateSupplementaryGroups
     app_Ref_t appRef        // The app to create groups for.
 )
 {
+    appRef->numSupplementGids = 0;
+
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    // Create the default supplementary group when DLT is enabled.
+    gid_t dltGid;
+    if (user_CreateGroup("dlt", &dltGid) != LE_FAULT)
+    {
+        appRef->supplementGids[0] = dltGid;
+        appRef->numSupplementGids = 1;
+    }
+#endif
+
     // Get an iterator to the supplementary groups list in the config.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
 
@@ -628,7 +649,6 @@ static le_result_t CreateSupplementaryGroups
 
     if (le_cfg_GoToFirstChild(cfgIter) != LE_OK)
     {
-        appRef->numSupplementGids = 0;
         LE_DEBUG("No supplementary groups for app '%s'.", appRef->name);
         le_cfg_CancelTxn(cfgIter);
 
@@ -638,7 +658,7 @@ static le_result_t CreateSupplementaryGroups
     // Read the supplementary group names from the config.
     size_t i;
     gid_t gid;
-    for (i = 0; i < LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS; i++)
+    for (i = appRef->numSupplementGids; i < LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS; i++)
     {
         // Read the supplementary group name from the config.
         char groupName[LIMIT_MAX_USER_NAME_BYTES];
@@ -674,19 +694,6 @@ static le_result_t CreateSupplementaryGroups
             return LE_FAULT;
         }
     }
-
-#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
-    if (user_CreateGroup("dlt", &gid) != LE_OK)
-    {
-        LE_ERROR("Could not create supplementary group '%s' for app '%s'.",
-                 "dlt",
-                 appRef->name);
-    }
-    else if (i < LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS-1)
-    {
-        appRef->supplementGids[++i] = gid;
-    }
-#endif
 
     appRef->numSupplementGids = i + 1;
 
