@@ -158,16 +158,15 @@ endif
 
 export GCC_PREFIX := $(GCC_PREFIX)
 
-ifneq ($(findstring -D_TIME_BITS=64,$(CFLAGS)),)
-$(TARGET_CAPS)_CFLAGS += -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64
-$(TARGET_CAPS)_CXXFLAGS += -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64
-endif
+# Separate the C and C++ flags
+C_FLAGS=$(shell echo $(MKTOOLS_X_C_FLAGS) | grep -oP '(?<=-C )[^ ]+')
+X_FLAGS=$(shell echo $(MKTOOLS_X_C_FLAGS) | grep -oP '(?<=-X )[^ ]+')
 
 # Export for "Makefile.framework" and "framework/liblegato/ninja-generator"
-export $(TARGET_CAPS)_CFLAGS
-export $(TARGET_CAPS)_CXXFLAGS
-export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
-export MKTOOLS_FLAGS +=$(addprefix --cxxflags=,$($(TARGET_CAPS)_CXXFLAGS))
+export $(TARGET_CAPS)_CFLAGS += $(C_FLAGS)
+export $(TARGET_CAPS)_CXXFLAGS += $(X_FLAGS)
+MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
+MKTOOLS_FLAGS +=$(addprefix --cxxflags=,$($(TARGET_CAPS)_CXXFLAGS))
 
 ifeq ($(TARGET),sa525m)
   ifneq ($(findstring oemllib32, $(GCC_PREFIX)),)# sa525m-32bit
