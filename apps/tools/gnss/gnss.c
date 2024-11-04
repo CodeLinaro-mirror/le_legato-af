@@ -201,7 +201,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- secondBandConst --> Secondary band Constellations\n"
          "\t\t\t\t\t- robustloc     --> Robust location information\n"
          "\t\t\t\t\t- magDev        --> Magnitude deviation\n"
-         "\t\t\t\t\t- elliUnc       --> Elliptical Uncertainity\n"
+         "\t\t\t\t\t- elliUnc       --> Elliptical Uncertainty\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
          "\t\t\t\t\t- vrpLLA        --> VRP based latitude, longitude, altitude\n"
@@ -231,6 +231,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
          "\t\t\t\t\t- timeAcc       --> Time accuracy in nanoseconds\n"
          "\t\t\t\t\t- LeapSeconds   --> Current and next leap seconds\n"
+         "\t\t\t\t\t- LeapSecondsUnc --> Leap Seconds Uncertainty\n"
          "\t\t\t\t\t- GpsLeapSeconds --> UTC leap seconds in advance in seconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
          "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
@@ -2781,6 +2782,41 @@ static int GetLeapSeconds
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets leap seconds uncertainty value.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetLeapSecondsUnc
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint8_t leapSecondsUnc;
+    le_result_t result;
+
+    result = le_gnss_GetLeapSecondsUncertainty(positionSampleRef,&leapSecondsUnc);
+
+    if (LE_OK == result)
+    {
+        printf("Leap seconds Uncertainty: %u sec\n", leapSecondsUnc);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets position sample's UTC leap seconds in advance
  *
  * @return
@@ -4253,6 +4289,10 @@ static int GetValidityInfo
         {
             printf("valid protect vertical\n");
         }
+        if(validityExMask & (1ULL << LE_GNSS_HAS_LEAP_SECONDS_UNC))
+        {
+            printf("valid leap seconds uncertainty\n");
+        }
         if(validityExMask == 0)
         {
             printf("no ValidEx Mask\n");
@@ -5171,7 +5211,7 @@ static void PositionHandlerFunction
         {
             status = GetCablibrationConfData(positionSampleRef);
         }
-        else if (strcmp(ParamsName, "drSolutionStatus") == 0)//lsc
+        else if (strcmp(ParamsName, "drSolutionStatus") == 0)
         {
             status = GetDrSolutionStatus(positionSampleRef);
         }
@@ -5202,6 +5242,10 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "gPTPTime") == 0)
         {
             status = GetGptpTimeInformation(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "LeapSecondsUnc"))
+        {
+            status = GetLeapSecondsUnc(positionSampleRef);
         }
         le_gnss_ReleaseSampleRef(positionSampleRef);
         ExitApp = true;
@@ -5504,7 +5548,8 @@ static void GetGnssParams
              (0 == strcmp(params, "reportStatus"))||
              (0 == strcmp(params, "gnssData"))||
              (0 == strcmp(params,"gPTPTime"))||
-             (0 == strcmp(params,"drSolutionStatus")))
+             (0 == strcmp(params,"drSolutionStatus"))||
+             (0 == strcmp(params,"LeapSecondsUnc")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
