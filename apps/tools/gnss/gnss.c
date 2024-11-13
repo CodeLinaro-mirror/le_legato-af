@@ -171,6 +171,8 @@ void PrintGnssHelp
          "\t\t\t\t\t-  32 ---> BDS\n"
          "\t\t\t\t\t-  64 ---> QZSS\n"
          "\t\t\t\t\t-  128 ---> NAVIC\n"
+         "\t\t\t<delete DRCalibData>\n"
+         "\t\t\t\t- Deletes DR Sensor calibration data\n\n"
          "\t\t\trestart <RestartType>\n"
          "\t\t\t\t- Restart gnss device. Allowed when device in 'active' state. Restart type can\n"
          "\t\t\t\t  be as follows:\n"
@@ -247,6 +249,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- 0.0 ---> Least comforming\n"
          "\t\t\t\t\t- 1.0 ---> Most comforming\n"
          "\t\t\t\t\t- calibData  --> Get the sensor calibration status and confidence percent\n"
+         "\t\t\t\t\t- drSolutionStatus  --> Get the the Dead Reckoning sensor solution status\n"
          "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
          "\t\t\t\t\t- xtraStatus --> Get the device's xtra status\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
@@ -665,6 +668,50 @@ static int Restart
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function deletes DR sensor calibration data.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int Delete
+(
+    const char* deleteTypePtr      ///< [IN] Type of delete, i.e. DR sensor calib data
+)
+{
+    le_result_t result = LE_FAULT;
+    if (strcmp(deleteTypePtr, "DRCalibData") == 0)
+    {
+        printf("Doing DR sensor calib data deletion..\n");
+        result = le_gnss_DeleteDRSensorCalData();
+    }
+    else
+    {
+        printf("Invalid parameter: %s\n", deleteTypePtr);
+        return EXIT_FAILURE;
+    }
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("The GNSS device is not READY. See logs for details\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to delete DR sensor calibration data\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2942,6 +2989,106 @@ static int GetCablibrationConfData
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets the Dead Reckoning sensor solution status.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetDrSolutionStatus
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t drSolutionPtr;
+    le_result_t result = le_gnss_GetDRSolutionStatus(positionSampleRef,
+                                                     &drSolutionPtr);
+    if (result == LE_OK)
+    {
+        if(drSolutionPtr & TAF_LOCGNSS_VEHICLE_SENSOR_SPEED_INPUT_DETECTED)
+        {
+            printf("Vehicle sensor speed input was detected by DRE\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_VEHICLE_SENSOR_SPEED_INPUT_USED)
+        {
+            printf("Vehicle sensor speed input was used by DRE\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_UNCALIBRATED)
+        {
+            printf("DRE solution disengaged due to insufficient calibration\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_GNSS_QUALITY_INSUFFICIENT)
+        {
+            printf("DRE solution disengaged due to bad GNSS quality\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_FERRY_DETECTED)
+        {
+            printf("DRE solution disengaged as ferry condition detected.\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_ERROR_6DOF_SENSOR_UNAVAILABLE)
+        {
+            printf("DRE solution disengaged as 6DOF sensor inputs not available\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_ERROR_VEHICLE_SPEED_UNAVAILABLE)
+        {
+            printf("DRE solution disengaged as vehicle speed inputs not available\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_ERROR_GNSS_EPH_UNAVAILABLE)
+        {
+            printf("DRE solution disengaged as Ephemeris info not available\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_ERROR_GNSS_MEAS_UNAVAILABLE)
+        {
+            printf("DRE solution disengaged as GNSS measurement info not available\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_INIT_POSITION_INVALID)
+        {
+            printf("DRE solution disengaged due to non-availability of stored position from previous session\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_INIT_POSITION_UNRELIABLE)
+        {
+            printf("DRE solution disengaged due to vehicle motion detected at session start\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_POSITON_UNRELIABLE)
+        {
+            printf("DRE solution disengaged due to unreliable position\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_ERROR_GENERIC)
+        {
+            printf("DRE solution disengaged due to a generic error\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_SENSOR_TEMP_OUT_OF_RANGE)
+        {
+            printf("DRE solution disengaged due to Sensor Temperature being out of range\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_USER_DYNAMICS_INSUFFICIENT)
+        {
+            printf("DRE solution disengaged due to insufficient user dynamics\n");
+        }
+        if(drSolutionPtr & TAF_LOCGNSS_WARNING_FACTORY_DATA_INCONSISTENT)
+        {
+            printf("DRE solution disengaged due to inconsistent factory data\n");
+        }
+        if(drSolutionPtr == 0)
+        {
+            printf("Dead Reckoning solution status not found\n");
+        }
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("Dr solution status data is invalid\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets the date of updated location.
  *
  * @return
@@ -5024,6 +5171,10 @@ static void PositionHandlerFunction
         {
             status = GetCablibrationConfData(positionSampleRef);
         }
+        else if (strcmp(ParamsName, "drSolutionStatus") == 0)//lsc
+        {
+            status = GetDrSolutionStatus(positionSampleRef);
+        }
         else if (strcmp(ParamsName, "bodyFrameData") == 0)
         {
             status = GetKinematicsData(positionSampleRef);
@@ -5352,7 +5503,8 @@ static void GetGnssParams
              (0 == strcmp(params, "svIds"))||
              (0 == strcmp(params, "reportStatus"))||
              (0 == strcmp(params, "gnssData"))||
-             (0 == strcmp(params,"gPTPTime")))
+             (0 == strcmp(params,"gPTPTime"))||
+             (0 == strcmp(params,"drSolutionStatus")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -5828,6 +5980,18 @@ void GnssMainFunction
         else if (strcmp(commandPtr, "disable") == 0)
         {
             Disable();
+        }
+        else if (strcmp(commandPtr, "delete") == 0)//delete DR sensor calib data-DRCalibData
+        {
+            const char *deleteTypePtr = TokenArray[1];
+            if (deleteTypePtr == NULL)
+            {
+                printf("delete type is NULL.\n");
+                continue;
+            }
+            // Following function exit on failure, so no need to check return code.
+            CheckEnoughParams(1, numArgs, "delete type missing");
+            Delete(deleteTypePtr);
         }
         else if (strcmp(commandPtr, "restart") == 0)
         {
