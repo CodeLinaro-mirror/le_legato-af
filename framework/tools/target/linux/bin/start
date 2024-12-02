@@ -44,6 +44,10 @@ case "$1" in
         mkdir -p $CORE_DUMP_PATH
         chmod 777 $CORE_DUMP_PATH
 
+        if [ ! -e /data/persist/telaf/config ]; then
+            mkdir -p /data/persist/telaf/config
+        fi
+
         # Configure the maximum messages size up to 260 Kbytes as some APIs may require big chunck
         # of data to pass.
         #

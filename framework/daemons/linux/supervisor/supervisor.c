@@ -1329,56 +1329,19 @@ COMPONENT_INIT
     // over appsWriteable to work with Legato
     if (isReadOnly)
     {
-        // mount R/W overlay for "current" folder
-        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_CURRENT_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (mount("overlay", CURRENT_SYSTEM_PATH, "overlay", MS_SILENT,
-                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH ","
-                         "lowerdir=" CURRENT_SYSTEM_PATH ","
-                         "workdir=" TELAF_APP_OVERLAYFS_WK_CURRENT_PATH) != 0)
-        {
-            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
-                     TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH);
-        } else {
-            (void)popen_call(
-               "if type restorecon > /dev/null ; then\n"
-               "    restorecon " CURRENT_SYSTEM_PATH "\n"
-               "fi\n"
-            );
-        }
-
-        // mount R/W overlay for APP install folder
-        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_APPS_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (mount("overlay", "/legato/apps", "overlay", MS_SILENT | MS_NODEV | MS_NOSUID,
-                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_APPS_PATH ","
-                         "lowerdir=/legato/apps,"
-                         "workdir=" TELAF_APP_OVERLAYFS_WK_APPS_PATH) != 0)
-        {
-            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
-                     TELAF_APP_OVERLAYFS_UPPER_APPS_PATH);
-        } else {
-            (void)popen_call(
-               "if type restorecon > /dev/null ; then\n"
-               "    restorecon " "/legato/apps" "\n"
-               "fi\n"
-            );
-        }
-
-        // Overlay to /app/appsWriteable, which is the telaf_rw partition
-        LE_INFO("System is read-only. Configuring 'appsWriteable' directory to /app/appsWriteable");
+        LE_INFO("System is read-only. Configuring 'appsWriteable' directory to /tmp/legato/appsWriteable");
         // Create the directories to deploy the R/W upper layer
-        (void)mkdir( "/app/appsWriteable", 0755 );
-        (void)mkdir( "/app/appsWriteable_wk", 0755 );
+        (void)mkdir( "/tmp/legato/appsWriteable", 0755 );
+        (void)mkdir( "/tmp/legato/appsWriteable_wk", 0755 );
         // Check if the upper layer is already mounted
         if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH "/appsWriteable"))
         {
             // mount an R/W overlay
             if (mount("overlay", CURRENT_SYSTEM_PATH "/appsWriteable", "overlay",
                              MS_SILENT | MS_NODEV | MS_NOSUID,
-                             "upperdir=/app/appsWriteable,"
+                             "upperdir=/tmp/legato/appsWriteable,"
                              "lowerdir=" CURRENT_SYSTEM_PATH "/appsWriteable,"
-                             "workdir=/app/appsWriteable_wk") != 0)
+                             "workdir=/tmp/legato/appsWriteable_wk") != 0)
             {
                 LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
                          CURRENT_SYSTEM_PATH "/appsWriteable");
