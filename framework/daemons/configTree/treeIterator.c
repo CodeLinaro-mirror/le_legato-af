@@ -253,16 +253,17 @@ static bool IsRegularFile
 //--------------------------------------------------------------------------------------------------
 static void FindFileTrees
 (
-    ti_TreeIteratorRef_t treeIteratorPtr  ///< [IN] The iterator to populate with tree info.
+    ti_TreeIteratorRef_t treeIteratorPtr,  ///< [IN] The iterator to populate with tree info.
+    const char* dirPathPtr                 ///< [IN] The directory where tree files are stored.
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Open the directory and make sure this is successful.
-    DIR* dirPtr = opendir(CFG_TREE_PATH);
+    DIR* dirPtr = opendir(dirPathPtr);
 
     if (dirPtr == NULL)
     {
-        LE_WARN("Could not open configTree dir, '%s' for iterating.", CFG_TREE_PATH);
+        LE_WARN("Could not open configTree dir, '%s' for iterating.", dirPathPtr);
         return;
     }
 
@@ -283,9 +284,21 @@ static void FindFileTrees
                return;
             }
 
-            if (   (strcmp(dotStrPtr, ".rock") != 0)
+        #ifdef LE_CONFIG_APP_CFG_TREE_PATH
+            char systemTreeName[MAX_TREE_NAME_BYTES];
+            snprintf(systemTreeName, sizeof(systemTreeName), "system%s", dotStrPtr);
+        #endif
+
+                // Skip it if it isn't a config tree file.
+            if (   ((strcmp(dotStrPtr, ".rock") != 0)
                 && (strcmp(dotStrPtr, ".paper") != 0)
                 && (strcmp(dotStrPtr, ".scissors") != 0))
+        #ifdef LE_CONFIG_APP_CFG_TREE_PATH
+                // Skip it if the system config tree is present in the APP config tree region.
+                || (strcmp(dirPathPtr, LE_CONFIG_APP_CFG_TREE_PATH) == 0 &&
+                   (strncmp(dirEntryPtr->d_name, systemTreeName, strlen(systemTreeName)) == 0))
+        #endif
+            )
             {
                 continue;
             }
@@ -365,7 +378,10 @@ le_cfgAdmin_IteratorRef_t ti_CreateIterator
 
     // Gather all in memory trees, then gather all of the unloaded trees from the filesystem.
     FindLoadedTrees(iteratorPtr);
-    FindFileTrees(iteratorPtr);
+    FindFileTrees(iteratorPtr, CFG_TREE_PATH);
+#ifdef LE_CONFIG_APP_CFG_TREE_PATH
+    FindFileTrees(iteratorPtr, LE_CONFIG_APP_CFG_TREE_PATH);
+#endif
 
     // Now, move the iterator to the first item.
     iteratorPtr->currentItemPtr = NULL;

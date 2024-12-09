@@ -1676,13 +1676,19 @@ static void GetTreePath
 
     static const char* revNames[] = { "paper", "rock", "scissors" };
     int printSize;
+    char *basePath = CFG_TREE_PATH;
+
+#ifdef LE_CONFIG_APP_CFG_TREE_PATH
+    basePath = (strncmp(treeNameRef, "system", 6) == 0) ?
+                             CFG_TREE_PATH : LE_CONFIG_APP_CFG_TREE_PATH;
+#endif
 
     LE_ASSERT((revisionId >= 1) && (revisionId <= 3));
 
     printSize = snprintf(pathBuffer,
                          pathSize,
                          "%s/%s.%s",
-                         CFG_TREE_PATH,
+                         basePath,
                          treeNameRef,
                          revNames[revisionId - 1]);
 

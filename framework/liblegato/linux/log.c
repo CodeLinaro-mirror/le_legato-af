@@ -980,6 +980,8 @@ static DltLogLevelType ConverToDltLevel
     switch (legatoLevel)
     {
         case LE_LOG_DEBUG:
+            return DLT_LOG_DEBUG;
+
         case LE_LOG_INFO:
             return DLT_LOG_INFO;
 
