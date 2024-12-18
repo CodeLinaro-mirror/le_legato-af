@@ -2213,30 +2213,6 @@ static int GetSupportedNmeaSentences
     {
         case LE_OK:
             printf("Supported NMEA sentences bit mask = %"PRIu64"\n", nmeaMask);
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGGA)
-            {
-                printf("\tGPGGA (GPS fix data) Supported\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GPRMC)
-            {
-                printf("\tGPRMC (GPS recommended minimum data) Supported\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GNGSA)
-            {
-                printf("\tGNGSA (GNSS DOP and active satellites) Supported\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GPVTG)
-            {
-                printf("\tGPVTG (GPS vector track and speed over the ground) Supported\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGNS)
-            {
-                printf("\tGPGNS Supported\n");
-            }
-            if (nmeaMask & LE_GNSS_NMEA_MASK_GPDTM)
-            {
-               printf("\tGPDTM (Local geodetic datum and datum offset from a reference) Supported\n");
-            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGSV)
             {
                 printf("\tGPGSV (GPS satellites in view) Supported\n");
@@ -2261,15 +2237,36 @@ static int GetSupportedNmeaSentences
             {
                 printf("\tGIGSV Supported\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GGA)
+            {
+                printf("\tGGA Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_RMC)
+            {
+                printf("\tRMC Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GSA)
+            {
+                printf("\tGSA Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_VTG)
+            {
+                printf("\tVTG Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GNS)
+            {
+                printf("\tGNS Supported\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_DTM)
+            {
+                printf("\tDTM Supported\n");
+            }
             break;
         case LE_FAULT:
             printf("Failed to get Supported NMEA sentences. See logs for details\n");
             break;
-        case LE_TIMEOUT:
-            printf("Failed to get Supported NMEA sentences, timeout error\n");
-            break;
         case LE_NOT_PERMITTED:
-            printf("GNSS is not in Ready state!\n");
+            printf("GNSS is not in Ready or Active state!\n");
             break;
         default:
             printf("Failed to get Supported NMEA sentences, error %d (%s)\n",
