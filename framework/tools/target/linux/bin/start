@@ -41,8 +41,11 @@ case "$1" in
         else
             CORE_DUMP_PATH=$(dirname "$CORE_PATTERN")
         fi
-        mkdir -p $CORE_DUMP_PATH
-        chmod 777 $CORE_DUMP_PATH
+
+        if [ ! -e $CORE_DUMP_PATH ]; then
+            mkdir -p $CORE_DUMP_PATH
+            chmod 777 $CORE_DUMP_PATH
+        fi
 
         if [ ! -e /data/persist/telaf/config ]; then
             mkdir -p /data/persist/telaf/config
@@ -93,7 +96,8 @@ case "$1" in
         if [ -f systems/current/read-only ]; then
 
             # Start the legato
-            ./systems/current/bin/startSystem
+            LEGATO_CURRENT_VERSION=`cat /mnt/legato/systems/current/version`
+            ./systems/current/bin/startSystem -v "$LEGATO_CURRENT_VERSION"
         else
             if [ -e /tmp/ld.so.cache ]; then
                 # Assume that /etc is NOT writable. So, copy /etc/hosts and /etc/resolv.conf
