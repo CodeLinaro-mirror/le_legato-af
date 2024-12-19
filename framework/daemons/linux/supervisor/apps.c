@@ -2419,6 +2419,17 @@ le_result_t le_appInfo_GetName
         ///< [IN]
 )
 {
+#ifdef LE_CONFIG_TARGET_SIMULATION
+    AppContainer_t* appContainerPtr = GetActiveAppWithProc(pid);
+    if (appContainerPtr == NULL)
+    {
+        LE_ERROR("Cannot find App with pid=%d", pid);
+        return LE_NOT_FOUND;
+    }
+    app_Ref_t appRef = appContainerPtr->appRef;
+    LE_INFO("le_appInfo_GetName pid=%d, AppName=%s", pid, app_GetName(appRef));
+    return le_utf8_Copy(appName, app_GetName(appRef), appNameNumElements, NULL);
+#else
     char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
     char *subSysNameValid[] = {"cpu,cpuacct", "freezer", "memory"};
     int subSysNum;
@@ -2527,6 +2538,7 @@ le_result_t le_appInfo_GetName
     }
 
     return LE_OK;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
