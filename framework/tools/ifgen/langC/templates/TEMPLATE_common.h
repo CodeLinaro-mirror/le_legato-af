@@ -70,8 +70,8 @@ typedef enum
 {{type|FormatType(useBaseName=True)}};
 {%- elif type is BitMaskType %}
 {%- for element in type.elements %}
-{%- if element.comments %}///{{element.comments|join("\n///")}}{%endif%}
 #define {{apiBaseName|upper}}_{{element.name}} {{"0x%x" % element.value}}
+{%- if element.comments %}///<{{element.comments|join("\n///<")|indent(8)}}{%endif%}
 {%- endfor %}
 {%- if type.size == interface.findType('uint32').size %}
 typedef uint32_t {{type|FormatType(useBaseName=True)}};
@@ -90,6 +90,7 @@ typedef struct
     {{member.apiType|FormatType(useBaseName=True)}} {{member.name|DecorateName}}
     {%- if member is ArrayMember %}[{{member.maxCount}}]{% endif %};
     {%- endif %}
+    {%- if member.comments %}///<{{member.comments|join("\n///<")|indent(8)}}{%endif%}
     {%- endfor %}
 }
 {{type|FormatType(useBaseName=True)}};

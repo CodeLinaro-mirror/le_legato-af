@@ -196,6 +196,7 @@ class StructMember(object):
 
         self.apiType = apiType
         self.name = name
+        self.comments = []
         self.location = location
 
     def MaxSize(self):
