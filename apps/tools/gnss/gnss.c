@@ -1658,7 +1658,7 @@ static int SetNmeaSentences
             printf("Failed to set enabled NMEA sentences, incompatible bit mask\n");
             break;
        case LE_NOT_PERMITTED:
-            printf("GNSS is not in ready state!\n");
+            printf("GNSS is neither ready nor active state!\n");
             break;
         default:
             printf("Failed to set enabled NMEA sentences, error %d (%s)\n",
@@ -2174,14 +2174,8 @@ static int GetNmeaSentences
         case LE_FAULT:
             printf("Failed to get enabled NMEA sentences. See logs for details\n");
             break;
-        case LE_BUSY:
-            printf("Failed to get enabled NMEA sentences, service is busy\n");
-            break;
-        case LE_TIMEOUT:
-            printf("Failed to get enabled NMEA sentences, timeout error\n");
-            break;
         case LE_NOT_PERMITTED:
-            printf("GNSS is not in active state!\n");
+            printf("GNSS is neither ready nor active state!\n");
             break;
         default:
             printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
