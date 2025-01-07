@@ -6292,11 +6292,19 @@ void GnssMainFunction
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    if (le_arg_NumArgs() > 0 && strcmp(le_arg_GetArg(0), "help") == 0)
+    const char* gnssHelp = le_arg_GetArg(0);
+    if(gnssHelp != NULL)
     {
-        PrintGnssHelp();
+        if ((le_arg_NumArgs() > 0) && (strcmp(gnssHelp, "help") == 0))
+        {
+            LE_INFO("PrintGnssHelp menu for 'gnss help' command ");
+            PrintGnssHelp();
+        }
     }
-
+    else
+    {
+        LE_INFO("Launch Gnss tool for 'gnss' command\n");
+    }
     GnssMainFunction();
 }
 
