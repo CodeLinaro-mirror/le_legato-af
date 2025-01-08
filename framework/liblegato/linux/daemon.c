@@ -176,6 +176,9 @@ void daemon_Daemonize
         retBytes = le_fd_Read(fd, lineBuf, sizeof(lineBuf));
         if (retBytes > 0)
         {
+            // lineBuf should be null-terminated.
+            lineBuf[sizeof(lineBuf) - 1] = '\0';
+
             token = strtok_r(lineBuf, delim, &savePtr);
             if (token != NULL)
             {

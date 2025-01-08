@@ -283,6 +283,9 @@ static le_result_t GetExeNameByPid
         return LE_FAULT;
     }
 
+    // cmdBuf should be null-terminated.
+    cmdBuf[sizeof(cmdBuf) - 1] = '\0';
+
     char* nameStr = strrchr(cmdBuf, '/');
     if (!nameStr)
     {

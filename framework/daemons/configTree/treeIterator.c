@@ -474,7 +474,7 @@ void ti_CleanUpForSession
     {
         ti_TreeIteratorRef_t iterRef = (ti_TreeIteratorRef_t)le_ref_GetValue(safeRefIter);
 
-        if (iterRef->sessionRef == sessionRef)
+        if (iterRef != NULL && iterRef->sessionRef == sessionRef)
         {
             ti_ReleaseIterator(iterRef);
         }
