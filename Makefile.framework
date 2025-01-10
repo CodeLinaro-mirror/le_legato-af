@@ -474,4 +474,5 @@ $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
 $(BIN_DIR)/deviceManager: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
-		$(TELAF_LINUX_SRC_DIR)/deviceManager
+		$(TELAF_LINUX_SRC_DIR)/deviceManager \
+		--cflags=-DNO_LOG_CONTROL
