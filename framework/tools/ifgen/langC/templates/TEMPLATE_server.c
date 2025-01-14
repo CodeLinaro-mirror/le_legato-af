@@ -246,7 +246,7 @@ __attribute__((unused)) static void CleanupClientData
 
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
-    _ServerData_t const* serverDataPtr;
+    _ServerData_t* serverDataPtr;
 
     while ( result == LE_OK )
     {
@@ -980,7 +980,9 @@ static void ServerMsgRecvHandler
             break;
         {%- endfor %}
 
-        default: LE_ERROR("Unknowm msg id = %" PRIu32 , msgPtr->id);
+        default:
+            LE_ERROR("Unknowm msg id = %" PRIu32 , msgPtr->id);
+            break;
     }
 
     // Clear the client session ref associated with the current message, since the message

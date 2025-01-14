@@ -211,6 +211,7 @@ void GenerateCLangExeMain
     outputFile << "    LE_DEBUG(\"== Starting Event Processing Loop ==\");\n"
                   "    le_event_RunLoop();\n"
                   "    LE_FATAL(\"== SHOULDN'T GET HERE! ==\");\n"
+                  "    return -1;\n"
                   "}\n";
 
     outputFile.close();

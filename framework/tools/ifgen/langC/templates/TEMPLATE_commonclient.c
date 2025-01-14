@@ -460,7 +460,7 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
     {%- for output in function.parameters if output is OutParameter %}
-    _requiredOutputs |= ((!!({{output|FormatParameterName}})) << {{loop.index0}});
+    _requiredOutputs |= (uint32_t)((!!({{output|FormatParameterName}})) << {{loop.index0}});
     {%- endfor %}
     LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, _requiredOutputs));
     {%- endif %}
@@ -558,6 +558,15 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
 
 error_unpack:
     LE_FATAL("Unexpected response from server.");
+
+    // Return with unpacked error.
+    {%- if function.returnType %}
+
+    return _result;
+    {%- else %}
+
+    return;
+    {%- endif %}
     {%- endif %}
     {%- endwith %}
 }
@@ -620,5 +629,6 @@ static void ClientIndicationRecvHandler
         default:
             LE_FATAL("Unknowm msg id = %" PRIu32 " for client thread = %p",
                 msgPtr->id, callersThreadRef);
+            break;
     }
 }
