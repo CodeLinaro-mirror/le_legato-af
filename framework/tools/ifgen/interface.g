@@ -422,6 +422,7 @@ compoundMember returns [member]
                                                        $IDENTIFIER.text,
                                                        self.getLocationTuple($IDENTIFIER),
                                                        $arrayExpression.size)
+                $member.comments = $docPostComments.comments
         }
     ;
 
