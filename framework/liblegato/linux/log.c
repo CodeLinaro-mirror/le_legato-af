@@ -20,14 +20,23 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * TelAF DLT applicationID and contextID.
+ * Data struct of TelAF DLT session
  */
 //--------------------------------------------------------------------------------------------------
-DLT_DECLARE_CONTEXT(TafDltCtx)
+typedef struct dlt_log_Session
+{
+    DltContext ctxHandle;                          /// TelAF context handler.
+    char appId[DLT_ID_SIZE + 1];                   /// TelAF application ID.
+    char ctxId[DLT_ID_SIZE + 1];                   /// TelAF context ID.
+    char appDesc[LIMIT_MAX_APP_NAME_BYTES];        /// TelAF application description.
+    char ctxDesc[LIMIT_MAX_COMPONENT_NAME_BYTES];  /// TelAF context description.
+    DltLogLevelType logLevel;                      /// TelAF DLT log level.
+    bool initialized;                              /// TelAF session state.
+}
+DLTSession_t;
 
-static char  DltAppId[DLT_ID_SIZE + 1] = { 0 };
-static char  DltCtxId[DLT_ID_SIZE + 1] = { 0 };
-static bool  DltInitialized = false;
+static DLTSession_t DltSession;
+
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -733,6 +742,294 @@ static void RegisterWithLogControlDaemon
     }
 }
 
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+//--------------------------------------------------------------------------------------------------
+/**
+ * Hash algorithm used to compute APPID.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* BuildAppId
+(
+    const char* namePtr
+)
+{
+    if (namePtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Initialize the hash value.
+    uint32_t hashValue = 0;
+    uint32_t cnt = 0;
+
+    // Go through the name string.
+    while ((*namePtr) && (cnt <= LIMIT_MAX_PATH_LEN))
+    {
+        // Update the hash value.
+        hashValue = (hashValue * 31 + (*namePtr++)) & 0xFFFFFFFF;
+
+        // Increase the counter.
+        cnt++;
+    }
+
+    // Define the charset.
+    static const char Charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+    static const int Base = sizeof(Charset) - 1;
+
+    // Map the hash to charset.
+    static char Result[5];
+    for (int i = 0; i < 4; i++)
+    {
+        Result[i] = Charset[hashValue % Base];
+        hashValue /= Base;
+    }
+    Result[4] = '\0';
+
+    return Result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert DLT log level enum values to strings suitable for message logging.
+ *
+ * @return Severity string.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetDltSeverityStr
+(
+    DltLogLevelType dltLevel    ///< Severity level.
+)
+{
+    switch (dltLevel)
+    {
+        case DLT_LOG_OFF:
+            return "DLT_LOG_OFF";
+
+        case DLT_LOG_FATAL:
+            return "DLT_LOG_FATAL";
+
+        case DLT_LOG_ERROR:
+            return "DLT_LOG_ERROR";
+
+        case DLT_LOG_WARN:
+            return "DLT_LOG_WARN";
+
+        case DLT_LOG_INFO:
+            return "DLT_LOG_INFO";
+
+        case DLT_LOG_DEBUG:
+            return "DLT_LOG_DEBUG";
+
+        case DLT_LOG_VERBOSE:
+            return "DLT_LOG_VERBOSE";
+
+        default:
+            LE_FATAL("unknown DLT log level (%u).", dltLevel);
+            return "unknown";
+    }
+
+    return "unknown";
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Converts the DLT log level to LE log level
+ *
+ * @return
+ *      DLT log level.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_Level_t ConverDltLevelToLELevel
+(
+    DltLogLevelType dltLevel
+)
+{
+    switch (dltLevel)
+    {
+        case DLT_LOG_DEBUG:
+        case DLT_LOG_VERBOSE:
+            return LE_LOG_DEBUG;
+
+        case DLT_LOG_INFO:
+            return LE_LOG_INFO;
+
+        case DLT_LOG_WARN:
+            return LE_LOG_WARN;
+
+        case DLT_LOG_ERROR:
+            return LE_LOG_ERR;
+
+        case DLT_LOG_OFF:
+        case DLT_LOG_FATAL:
+            return LE_LOG_EMERG;
+
+        default:
+            LE_FATAL("unknown DLT log level (%u).", dltLevel);
+            return LE_LOG_INFO;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update LE log level for all log components
+ */
+//--------------------------------------------------------------------------------------------------
+static void UpdateLeLogLevel
+(
+   le_log_Level_t logLevel
+)
+{
+    le_sls_Link_t* sessionLinkPtr = le_sls_Peek(&SessionList);
+
+    while (sessionLinkPtr != NULL)
+    {
+        // Get the session.
+        LogSession_t* sessionPtr = CONTAINER_OF(sessionLinkPtr, LogSession_t, link);
+
+        LE_EMERG("Update LE comp(%s) log level: '%s' -> '%s'", sessionPtr->componentNamePtr,
+            log_GetSeverityStr(sessionPtr->level), log_GetSeverityStr(logLevel));
+
+        sessionPtr->level = logLevel;
+        sessionLinkPtr = le_sls_PeekNext(&SessionList, sessionLinkPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * DLT user log level change callback.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DltLogLevelChangeHandler
+(
+    char contextId[DLT_ID_SIZE],
+    uint8_t logLevel,
+    uint8_t traceStatus
+)
+{
+    char ctxid[5] = { 0 };
+
+    memcpy(ctxid, contextId, DLT_ID_SIZE);
+    if ((strcmp(ctxid, DltSession.ctxId) != 0) ||
+        (logLevel == DltSession.logLevel) ||
+        (logLevel > DLT_LOG_VERBOSE))
+    {
+        return;
+    }
+
+    LE_EMERG("Update DLT log level: '%s' -> '%s'", GetDltSeverityStr(DltSession.logLevel),
+                                                   GetDltSeverityStr(logLevel));
+
+    DltSession.logLevel = logLevel;
+
+    DefaultLogSession.level = ConverDltLevelToLELevel(DltSession.logLevel);
+
+    Lock();
+
+    UpdateLeLogLevel(DefaultLogSession.level);
+
+    Unlock();
+}
+#endif
+
+#ifdef LEGATO_EMBEDDED
+
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+//--------------------------------------------------------------------------------------------------
+/**
+ * Converts the legato log levels to the DLT log levels.
+ *
+ * @return
+ *      DLT log level.
+ */
+//--------------------------------------------------------------------------------------------------
+static DltLogLevelType ConverToDltLevel
+(
+    le_log_Level_t legatoLevel
+)
+{
+    switch (legatoLevel)
+    {
+        case LE_LOG_DEBUG:
+            return DLT_LOG_DEBUG;
+
+        case LE_LOG_INFO:
+            return DLT_LOG_INFO;
+
+        case LE_LOG_WARN:
+            return DLT_LOG_WARN;
+
+        case LE_LOG_ERR:
+        case LE_LOG_CRIT:
+            return DLT_LOG_ERROR;
+
+        case LE_LOG_EMERG:
+            return DLT_LOG_FATAL;
+
+        // LE trace message (legatoLevel:-1) is logged at DLT INFO level.
+        default:
+            return DLT_LOG_INFO;
+    }
+}
+#else
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Converts the legato log levels to the syslog priority levels.
+ *
+ * @return
+ *      Syslog priority level.
+ */
+//--------------------------------------------------------------------------------------------------
+static int ConvertToSyslogLevel
+(
+    le_log_Level_t legatoLevel
+)
+{
+    switch (legatoLevel)
+    {
+        case LE_LOG_DEBUG:
+            return LOG_DEBUG;
+
+        case LE_LOG_INFO:
+            return LOG_INFO;
+
+        case LE_LOG_WARN:
+            return LOG_WARNING;
+
+        case LE_LOG_ERR:
+            return LOG_ERR;
+
+        case LE_LOG_CRIT:
+            return LOG_CRIT;
+
+        default:
+            return LOG_EMERG;
+    }
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logging to log system
+ */
+//--------------------------------------------------------------------------------------------------
+static void LogMessage
+(
+    le_log_Level_t legatoLevel,
+    const char* logMessagePtr
+)
+{
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    if (DltSession.initialized)
+    {
+        DLT_LOG(DltSession.ctxHandle, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
+    }
+#else
+    syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
+#endif
+}
+#endif
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize/Reinitialize DLT logging.
@@ -745,18 +1042,41 @@ void log_DltInit
 {
 #ifdef LE_CONFIG_ENABLE_DLT_LOGGING
 
-    if (DltInitialized)
+    if (DltSession.initialized)
     {
-        DltInitialized = false;
+        DltSession.initialized = false;
 
-        DLT_UNREGISTER_CONTEXT(TafDltCtx);
+        DLT_UNREGISTER_CONTEXT(DltSession.ctxHandle);
         DLT_UNREGISTER_APP_FLUSH_BUFFERED_LOGS();
         dlt_free();
     }
 
-    // Set DLT appId/ctxId from build options.
-    le_utf8_Copy(DltAppId, LE_CONFIG_DLT_APP_ID, sizeof(DltAppId), NULL);
-    le_utf8_Copy(DltCtxId, LE_CONFIG_DLT_CTX_ID, sizeof(DltCtxId), NULL);
+    // Set the default log level from LE log level.
+    DltSession.logLevel = ConverToDltLevel(DefaultLogSession.level);
+
+    // Set default DLT appId/ctxId.
+    le_utf8_Copy(DltSession.appId, "TAFA", sizeof(DltSession.appId), NULL);
+    le_utf8_Copy(DltSession.ctxId, "TAFC", sizeof(DltSession.ctxId), NULL);
+
+    // Set default DLT appDesc/ctxDesc
+    le_utf8_Copy(DltSession.appDesc, "TelAF application", sizeof(DltSession.appDesc), NULL);
+    le_utf8_Copy(DltSession.ctxDesc, "TelAF Context", sizeof(DltSession.ctxDesc), NULL);
+
+    // Fill the dedicated DLT appId/appDesc according to the calling process name.
+    char  procPath[LIMIT_MAX_PATH_BYTES] = { 0 };
+    char  appPath[LIMIT_MAX_PATH_BYTES] = { 0 };
+    char* appName = NULL;
+
+    if ((snprintf(procPath, sizeof(procPath), "/proc/%d/exe", getpid()) < sizeof(procPath)) &&
+        (readlink(procPath, appPath, sizeof(appPath)) > 0))
+    {
+        // Get the program name from the executable Path.
+        appName = le_path_GetBasenamePtr(appPath, "/");
+
+        // Set the APPID and APPDesc.
+        le_utf8_Copy(DltSession.appDesc, appName, sizeof(DltSession.appDesc), NULL);
+        le_utf8_Copy(DltSession.appId, BuildAppId(appName), sizeof(DltSession.appId), NULL);
+    }
 
     const char* envAppIdPtr = getenv("TAF_DLT_APP_ID");
     const char* envCtxIdPtr = getenv("TAF_DLT_CTX_ID");
@@ -764,19 +1084,21 @@ void log_DltInit
     // Override DLT appId/ctxId from envs.
     if (envAppIdPtr != NULL)
     {
-        le_utf8_Copy(DltAppId, envAppIdPtr, sizeof(DltAppId), NULL);
+        le_utf8_Copy(DltSession.appId, envAppIdPtr, sizeof(DltSession.appId), NULL);
     }
     if (envCtxIdPtr != NULL)
     {
-        le_utf8_Copy(DltCtxId, envCtxIdPtr, sizeof(DltCtxId), NULL);
+        le_utf8_Copy(DltSession.ctxId, envCtxIdPtr, sizeof(DltSession.ctxId), NULL);
     }
 
     // Register DLT APPID and CTXID with descriptions.
-    DLT_REGISTER_APP(DltAppId, "TelAF APP");
-    DLT_REGISTER_CONTEXT(TafDltCtx, DltCtxId, "TelAF Context");
+    DLT_REGISTER_APP(DltSession.appId, DltSession.appDesc);
+    dlt_register_context_ll_ts(&DltSession.ctxHandle, DltSession.ctxId, DltSession.ctxDesc,
+                               DltSession.logLevel, DLT_TRACE_STATUS_OFF);
+    DLT_REGISTER_LOG_LEVEL_CHANGED_CALLBACK(DltSession.ctxHandle, DltLogLevelChangeHandler);
 
-    // DLT logging gets initialized.
-    DltInitialized = true;
+    // DLT logging initialization is done.
+    DltSession.initialized = true;
 
 #endif
 }
@@ -814,7 +1136,8 @@ void fa_log_Init
     TraceRef = le_log_GetTraceRef("logControl");
 
 #ifdef LE_CONFIG_ENABLE_DLT_LOGGING
-    // Set DLT as the log system if configured.
+    // Initialize DLT session.
+    memset(&DltSession, 0, sizeof(DltSession));
     log_DltInit();
 #else
     // Otherwise use syslogd as the default log system.
@@ -960,104 +1283,6 @@ __attribute__((deprecated)) le_log_SessionRef_t log_RegComponent
 {
     return le_log_RegComponent(componentNamePtr, levelFilterPtrPtr);
 }
-
-#ifdef LEGATO_EMBEDDED
-
-#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
-//--------------------------------------------------------------------------------------------------
-/**
- * Converts the legato log levels to the DLT log levels.
- *
- * @return
- *      DLT log level.
- */
-//--------------------------------------------------------------------------------------------------
-static DltLogLevelType ConverToDltLevel
-(
-    le_log_Level_t legatoLevel
-)
-{
-    switch (legatoLevel)
-    {
-        case LE_LOG_DEBUG:
-            return DLT_LOG_DEBUG;
-
-        case LE_LOG_INFO:
-            return DLT_LOG_INFO;
-
-        case LE_LOG_WARN:
-            return DLT_LOG_WARN;
-
-        case LE_LOG_ERR:
-        case LE_LOG_CRIT:
-            return DLT_LOG_ERROR;
-
-        case LE_LOG_EMERG:
-            return DLT_LOG_FATAL;
-
-        default:
-            return DLT_LOG_DEFAULT;
-    }
-}
-#else
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Converts the legato log levels to the syslog priority levels.
- *
- * @return
- *      Syslog priority level.
- */
-//--------------------------------------------------------------------------------------------------
-static int ConvertToSyslogLevel
-(
-    le_log_Level_t legatoLevel
-)
-{
-    switch (legatoLevel)
-    {
-        case LE_LOG_DEBUG:
-            return LOG_DEBUG;
-
-        case LE_LOG_INFO:
-            return LOG_INFO;
-
-        case LE_LOG_WARN:
-            return LOG_WARNING;
-
-        case LE_LOG_ERR:
-            return LOG_ERR;
-
-        case LE_LOG_CRIT:
-            return LOG_CRIT;
-
-        default:
-            return LOG_EMERG;
-    }
-}
-#endif
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Logging to log system
- */
-//--------------------------------------------------------------------------------------------------
-static void LogMessage
-(
-    le_log_Level_t legatoLevel,
-    const char* logMessagePtr
-)
-{
-#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
-    if (DltInitialized)
-    {
-        DLT_LOG(TafDltCtx, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
-    }
-#else
-    syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
-#endif
-}
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
