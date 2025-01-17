@@ -275,15 +275,10 @@ le_timer_Ref_t RebootTimer;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumerates the different application start options that can be provided on the command-line.
- */
+ * App start mode.
+ **/
 //--------------------------------------------------------------------------------------------------
-static enum
-{
-    APP_START_AUTO,     ///< Start all apps that are marked for automatic start.
-    APP_START_NONE      ///< Don't start any apps until told to do so through the App Control API.
-}
-AppStartMode = APP_START_AUTO;   // Default is to start apps.
+static AppStartMode_t AppStartMode = APP_START_GROUP;   // Default is to start group.
 
 
 //--------------------------------------------------------------------------------------------------
@@ -433,10 +428,14 @@ static void ParseCommandLine
         {
             AppStartMode = APP_START_NONE;
         }
-        else if (strcmp(appStartModeArgPtr, "auto") != 0)
+        else if (strcmp(appStartModeArgPtr, "auto") == 0)
+        {
+            AppStartMode = APP_START_AUTO;
+        }
+        else if (strcmp(appStartModeArgPtr, "group") != 0)
         {
             fprintf(stderr,
-                    "Invalid --start-apps (-a) option '%s'.  Must be 'auto' or 'none'.\n",
+                    "Invalid --start-apps (-a) option '%s'.  Must be 'group', auto' or 'none'.\n",
                     appStartModeArgPtr);
             exit(EXIT_FAILURE);
         }
@@ -582,7 +581,7 @@ static void StartFramework
 
     State = STATE_NORMAL;
 
-    if (AppStartMode == APP_START_AUTO)
+    if (AppStartMode != APP_START_NONE)
     {
         // Launch all user apps in the config tree that should be launched on system startup.
         LE_INFO("Auto-starting apps.");
@@ -1145,6 +1144,21 @@ bool framework_IsStopping
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the app start mode.
+ *
+ * @return
+ *     app start mode.
+ */
+//--------------------------------------------------------------------------------------------------
+AppStartMode_t framework_GetAppStartMode
+(
+    void
+)
+{
+    return AppStartMode;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

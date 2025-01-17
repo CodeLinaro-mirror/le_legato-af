@@ -56,6 +56,8 @@ extern void InitFramework(void);
 static pa_start_Init_t                  pa_start_Init;
 /// PA hardware reset query function.
 static pa_start_IsHardwareFaultReset_t  pa_start_IsHardwareFaultReset;
+/// last exit code.
+static int LastExitCode = EXIT_FAILURE; // Treat a reboot as a fault.
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1357,14 +1359,26 @@ static int TryToRun
         // I'm the child. Exec the Supervisor, telling it not to daemonize itself.
         const char supervisorPath[] = "/legato/systems/current/bin/supervisor";
 
+        // Default supervisor start mode is "group".
+        char startAppMode[16] = { 0 };
+        le_utf8_Copy(startAppMode, "group", sizeof(startAppMode), NULL);
+
+        if (LastExitCode != EXIT_FAILURE)
+        {
+            // For telaf user/crash restart, supervisor start mode switches to "auto", which means
+            // all auto-started apps will be launched.
+            le_utf8_Copy(startAppMode, "auto", sizeof(startAppMode), NULL);
+        }
+
         if (CurrentStartVersion == NULL)
         {
-            (void)execl(supervisorPath, supervisorPath, "--no-daemonize", NULL);
+            (void)execl(supervisorPath, supervisorPath, "--no-daemonize", "-a", startAppMode, NULL);
             LE_FATAL("Failed to run '%s': %m", supervisorPath);
         }
         else
         {
-            (void)execl(supervisorPath, supervisorPath, "--no-daemonize", "-v", CurrentStartVersion, NULL);
+            (void)execl(supervisorPath, supervisorPath, "--no-daemonize",
+                        "-a", startAppMode, "-v", CurrentStartVersion, NULL);
             LE_FATAL("Failed to run '%s': %m", supervisorPath);
         }
     }
@@ -1767,7 +1781,6 @@ static void Launch
     bool isReadOnly
 )
 {
-    static int lastExitCode = EXIT_FAILURE; // Treat a reboot as a fault.
     int bootCount;
 
     int tries;
@@ -1778,7 +1791,7 @@ static void Launch
             // If the supervisor exited with exit code 3 then don't
             // increment the try count, unless the system is new (untried).
             // This means that "legato restart" was used.
-            if ((lastExitCode != LE_START_EXIT_MANUAL_RESTART) || (tries == 0))
+            if ((LastExitCode != LE_START_EXIT_MANUAL_RESTART) || (tries == 0))
             {
                 MarkStatusTried(tries + 1);
             }
@@ -1791,13 +1804,13 @@ static void Launch
             if (!isReadOnly)
             {
                 bootCount = ReadBootCount();
-                if (lastExitCode != LE_START_EXIT_MANUAL_RESTART)
+                if (LastExitCode != LE_START_EXIT_MANUAL_RESTART)
                 {
                     WriteBootCount(bootCount + 1);
                 }
             }
 
-            lastExitCode = RunCurrentSystem();
+            LastExitCode = RunCurrentSystem();
             break;
 
         case STATUS_BAD:

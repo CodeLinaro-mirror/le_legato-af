@@ -1546,19 +1546,23 @@ void apps_AutoStart
                         appName, appStartOrder, LIMIT_MAX_START_GROUP_NUM);
                 }
 
-        #ifdef LE_CONFIG_LIMIT_APP_START_GROUP
-                //The supervisor only starts the app with a start group number that does not exceed
-                //the value defined in the macro LE_CONFIG_LIMIT_APP_START_GROUP.
-                if (appStartOrder > LE_CONFIG_LIMIT_APP_START_GROUP)
+                if (framework_GetAppStartMode() == APP_START_GROUP)
                 {
-                    LE_INFO("App '%s' was ignore, order is: %d", appName, appStartOrder);
-                    continue;
+#ifdef LE_CONFIG_LIMIT_APP_START_GROUP
+                    // The supervisor only starts the app with a start group number that does not
+                    // exceed the value defined in the macro LE_CONFIG_LIMIT_APP_START_GROUP.
+                    if (appStartOrder > LE_CONFIG_LIMIT_APP_START_GROUP)
+                    {
+                        LE_INFO("App '%s' was ignore, order is: %d", appName, appStartOrder);
+                        continue;
+                    }
+                    else
+#endif
+                    {
+                        LE_INFO("App '%s' start order is: %d", appName, appStartOrder);
+                    }
                 }
-                else
-        #endif
-                {
-                    LE_INFO("App '%s' start order is: %d", appName, appStartOrder);
-                }
+
                 // In order to decrease the usage time of cfg tree, get app name and
                 // put it into app name list immediately.
                 appNameLink = (appName_t *)le_mem_ForceAlloc(appNameListPool);
