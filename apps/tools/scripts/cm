@@ -10,6 +10,7 @@
 # For more information type 'cm help'.                                         #
 #                                                                              #
 # Copyright (C) Sierra Wireless Inc.                                           #
+# Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.     #
 #                                                                              #
 ################################################################################
 
@@ -20,7 +21,7 @@ N_IFCONFIG=${N_IFCONFIG:="/bin/ifconfig"}
 CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/var/log/cm"}
-TEST_SITE=${TEST_SITE:="https://www.codeaurora.org/"}
+TEST_SITE=${TEST_SITE:="www.codelinaro.org"}
 RUN_TIME=${RUN_TIME:="/var/run/cm"}
 DEFAULT_ROUTE=${DEFAULT_ROUTE:="$RUN_TIME/default.bck"}
 DEFAULT_RESOLV_CONF=${DEFAULT_RESOLV_CONF:="$RUN_TIME/resolv.conf.bck"}
@@ -233,9 +234,16 @@ cm_data_connect () {
     done
     #update_dns connect ${dns_list}
 
+    # Check if curl is available on the device before using it
+    # else use ping
     echo -n "Testing connection ... "
-    curl --head --silent $TEST_SITE > $LOG 2>&1
-    handle_err $?
+    if [ -e "$CURL" ]; then
+        curl --head --silent $TEST_SITE > $LOG 2>&1
+        handle_err $?
+    else
+        ping $TEST_SITE -q -I $iface -c 2 > $LOG 2>&1
+        handle_err $?
+    fi
 
     exit 0
 }

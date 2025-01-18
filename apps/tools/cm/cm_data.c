@@ -5,7 +5,7 @@
  * Handle data connection control related functionality
  *
  * Copyright (C) Sierra Wireless Inc.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 //-------------------------------------------------------------------------------------------------
 
@@ -458,6 +458,8 @@ static const char * DataBearerTechnologyToString
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO:       return "CDMA Ev-DO";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVA:  return "CDMA Ev-DO Rev.A";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD:      return "CDMA eHRPD";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA_1X:             return "CDMA 1X";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA_EVDO:           return "CDMA Ev-DO";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_64_QAM:              return "64 QAM";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_5G:                  return "5G";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVB:  return "CDMA Ev-DO Rev.B";

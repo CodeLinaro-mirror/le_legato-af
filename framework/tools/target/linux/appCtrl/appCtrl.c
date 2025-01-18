@@ -2001,7 +2001,7 @@ static void __attribute__((noreturn)) StartAppGroup
         if (tmpStartGroupNum > LIMIT_MAX_START_GROUP_NUM ||
             tmpStartGroupNum < 0)
         {
-            LE_ERROR("Inputted group num '%d' is not correct", tmpStartGroupNum);
+            fprintf(stderr, "Inputted group num '%d' is not correct", tmpStartGroupNum);
             le_cfg_CancelTxn(appCfg);
             exit(EXIT_FAILURE);
         }
@@ -2009,7 +2009,7 @@ static void __attribute__((noreturn)) StartAppGroup
 
     if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
     {
-        LE_ERROR("No applications installed.\n");
+        fprintf(stderr, "No applications installed.\n");
 
         le_cfg_CancelTxn(appCfg);
         exit(EXIT_SUCCESS);
@@ -2033,13 +2033,13 @@ static void __attribute__((noreturn)) StartAppGroup
             {
                 if(IsAppRunning(appName))
                 {
-                    LE_INFO("Skip running App %s", appName);
+                    printf("Skip running App %s", appName);
                     continue;
                 }
 
                 int appStartOrder =
                    GetappStartGroupOrder(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
-                LE_INFO("App '%s' start order: %d, request order: %d\n",
+                printf("App '%s' start order: %d, request order: %d\n",
                     appName, appStartOrder, tmpStartGroupNum);
 
                 if (tmpStartGroupNum != -1)
@@ -2048,7 +2048,7 @@ static void __attribute__((noreturn)) StartAppGroup
                   // $ app startGroup num
                     if (appStartOrder != tmpStartGroupNum)
                     {
-                        LE_INFO("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
+                        printf("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
                         continue;
                     }
                 }
@@ -2063,7 +2063,7 @@ static void __attribute__((noreturn)) StartAppGroup
         #endif
                     if (appStartOrder <= tmpNum)
                     {
-                        LE_INFO("Skip app %s not in start scop\n", appName);
+                        printf("Skip app %s not in start scop\n", appName);
                         continue;
                     }
                 }
@@ -2096,23 +2096,23 @@ static void __attribute__((noreturn)) StartAppGroup
         switch (le_appCtrl_Start(appNameLink->appName))
         {
             case LE_OK:
-                LE_INFO("App '%s' has launched....\n", appNameLink->appName);
+                printf("App '%s' has launched....\n", appNameLink->appName);
                 break;
 
             case LE_DUPLICATE:
-                LE_INFO("App '%s' is already running\n", appNameLink->appName);
+                printf("App '%s' is already running\n", appNameLink->appName);
                 break;
 
             case LE_NOT_FOUND:
-                LE_INFO("App '%s' is not installed\n", appNameLink->appName);
+                printf("App '%s' is not installed\n", appNameLink->appName);
                 break;
 
             case LE_BUSY:
-                LE_INFO("App '%s' is going to be updated/removed.\n", appNameLink->appName);
+                printf("App '%s' is going to be updated/removed.\n", appNameLink->appName);
                 break;
 
             default:
-                LE_ERROR("There was an error.  App '%s' could not be started.\n"
+                fprintf(stderr,"There was an error.  App '%s' could not be started.\n"
                         "Check the system log for error messages.\n",
                         appNameLink->appName);
                 break;
@@ -2149,7 +2149,7 @@ static void __attribute__((noreturn)) StopAppGroup
         if (tmpStartGroupNum > LIMIT_MAX_START_GROUP_NUM ||
             tmpStartGroupNum < 0)
         {
-            LE_ERROR("Inputted group num '%d' is not correct", tmpStartGroupNum);
+            fprintf(stderr, "Inputted group num '%d' is not correct", tmpStartGroupNum);
             le_cfg_CancelTxn(appCfg);
             exit(EXIT_FAILURE);
         }
@@ -2157,7 +2157,7 @@ static void __attribute__((noreturn)) StopAppGroup
 
     if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
     {
-        LE_ERROR("No applications installed.\n");
+        fprintf(stderr, "No applications installed.\n");
 
         le_cfg_CancelTxn(appCfg);
         exit(EXIT_SUCCESS);
@@ -2181,13 +2181,13 @@ static void __attribute__((noreturn)) StopAppGroup
             {
                 if(!IsAppRunning(appName))
                 {
-                    LE_INFO("Skip stopped App %s", appName);
+                    printf("Skip stopped App %s", appName);
                     continue;
                 }
 
                 int appStartOrder =
                   GetappStartGroupOrder(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
-                LE_INFO("App '%s' start order: %d, request order: %d\n",
+                printf("App '%s' start order: %d, request order: %d\n",
                     appName, appStartOrder, tmpStartGroupNum);
 
                 if (tmpStartGroupNum != -1)
@@ -2196,7 +2196,7 @@ static void __attribute__((noreturn)) StopAppGroup
                   // $ app stopGroup num
                     if (appStartOrder != tmpStartGroupNum)
                     {
-                        LE_INFO("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
+                        printf("Skip app %s not in group %d\n", appName, tmpStartGroupNum);
                         continue;
                     }
                 }
@@ -2211,7 +2211,7 @@ static void __attribute__((noreturn)) StopAppGroup
         #endif
                     if (appStartOrder <= tmpNum)
                     {
-                        LE_INFO("Skip app %s not in stop scop\n", appName);
+                        printf("Skip app %s not in stop scop\n", appName);
                         continue;
                     }
                 }
@@ -2246,11 +2246,11 @@ static void __attribute__((noreturn)) StopAppGroup
         switch (le_appCtrl_Stop(appNameLink->appName))
         {
             case LE_OK:
-                LE_INFO("App '%s' was stopped successfully.\n", appNameLink->appName);
+                printf("App '%s' was stopped successfully.\n", appNameLink->appName);
                 break;
 
             case LE_NOT_FOUND:
-                LE_INFO("App '%s' was not running.\n", appNameLink->appName);
+                printf("App '%s' was not running.\n", appNameLink->appName);
                 break;
 
             default:

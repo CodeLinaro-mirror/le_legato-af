@@ -16,10 +16,6 @@ requires:
     api:
     {
         le_voicecall = taf_voicecall.api
-#if ${LE_CONFIG_REFRESH_AUDIO_SVC} = y
-        le_audio = $TELAF_ROOT/interfaces/staging/audio/taf_audio.api
-#else
         le_audio = taf_audio.api
-#endif
     }
 }

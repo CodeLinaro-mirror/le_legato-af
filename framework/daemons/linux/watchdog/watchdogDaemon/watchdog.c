@@ -405,6 +405,15 @@ static le_result_t GetAppNameFromPid
     size_t appNameNumElements       ///< [IN] Application name size
 )
 {
+#ifdef LE_CONFIG_TARGET_SIMULATION
+    AppProcKey_t key;
+    memset(&key, 0, sizeof(key));
+    if (LE_OK == le_appInfo_GetName(pid, key.appName, sizeof(key.appName))) {
+        LE_INFO("GetAppNameFromPid pid=%d, AppName=%s",pid,key.appName);
+        return le_utf8_Copy(appName, key.appName, appNameNumElements, NULL);
+    }
+    return LE_FAULT;
+#else
     char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
 
     LE_ASSERT(snprintf(cgroupFilePath, sizeof(cgroupFilePath), "/proc/%d/cgroup", pid)
@@ -472,6 +481,7 @@ static le_result_t GetAppNameFromPid
 
     // Note that the leading slash of the token has to be removed.
     return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -90,7 +90,7 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "
 //--------------------------------------------------------------------------------------------------
 #define MAX_FREEZE_STATE_BYTES      20
 
-
+#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Checks if all cgroup subsystems are mounted.
@@ -122,7 +122,6 @@ static bool IsAllSubSysMounted
     return true;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Setup a separate cgroup hierarchy for each supported subsystem.
@@ -149,7 +148,7 @@ static void MountSubSys
         LE_INFO("Mounted cgroup hierarchy for subsystem '%s'.", SubSysName[subSys]);
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -166,6 +165,7 @@ void cgrp_Init
     void
 )
 {
+    #ifndef LE_CONFIG_TARGET_SIMULATION
     struct statfs st;
 
     // TelAf uses ROOT_PATH to keep its cgroup items, so make sure ROOT_PATH is exist first.
@@ -213,9 +213,12 @@ void cgrp_Init
             MountSubSys();
         }
     }
+    #else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    #endif
 }
 
-
+#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Opens a cgroup file.
@@ -255,7 +258,7 @@ static int OpenCgrpFile
 
     return fd;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -279,6 +282,7 @@ static le_result_t WriteToFile
     const char* string              ///< [IN] String to write into the file.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Get the length of the string.
     size_t len = strlen(string);
     LE_ASSERT(len > 0);
@@ -319,6 +323,10 @@ static le_result_t WriteToFile
     fd_Close(fd);
 
     return result;
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    return LE_OK;
+#endif
 }
 
 
@@ -342,6 +350,7 @@ static le_result_t GetValue
     size_t bufSize                  ///< [IN] Size of the buffer.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the file.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, fileNamePtr, O_RDONLY);
 
@@ -391,9 +400,13 @@ static le_result_t GetValue
     fd_Close(fd);
 
     return result;
+#else
+    bufPtr[0] = '\0';
+    return LE_OK;
+#endif
 }
 
-
+#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads a PID from the opened procs or tasks file specified by fd.  Updates the file offset of fd.
@@ -433,7 +446,6 @@ static pid_t GetTasksId
     return result;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Modifies the string by removing all trailing white space from the string.
@@ -457,7 +469,7 @@ static void RemoveTrailingWhiteSpace
 
     strPtr[0] = '\0';
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -481,6 +493,8 @@ le_result_t cgrp_Create
     const char* cgroupNamePtr       ///< Name of the cgroup to create.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
+
     // Create the path to the cgroup.
     char path[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
     LE_ASSERT(le_path_Concat("/", path, sizeof(path), SubSysName[subsystem], cgroupNamePtr,
@@ -499,7 +513,9 @@ le_result_t cgrp_Create
         LE_ERROR("Could not create cgroup %s.", path);
         return LE_FAULT;
     }
-
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+#endif
     return LE_OK;
 }
 
@@ -530,6 +546,7 @@ le_result_t cgrp_AddProc
     return WriteToFile(subsystem, cgroupNamePtr, PROCS_FILENAME, pidStr);
 }
 
+#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads a list of tids/pids from an open file descriptor.  The number of pids in the file may be
@@ -576,6 +593,7 @@ static ssize_t BuildTidList
     }
     return numTids;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -595,6 +613,7 @@ ssize_t cgrp_GetThreadList
     size_t maxTids                  ///< [IN] The maximum number of tids tidListPtr can hold.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the cgroup's tasks file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, TASKS_FILENAME, O_RDONLY);
 
@@ -613,6 +632,10 @@ ssize_t cgrp_GetThreadList
     }
 
     return numTids;
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    return 0;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -633,6 +656,8 @@ ssize_t cgrp_GetProcessesList
     size_t maxPids                  ///< [IN] The maximum number of pids pidListPtr can hold.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
+
     // Open the cgroup's processes file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, PROCS_FILENAME, O_RDONLY);
 
@@ -651,6 +676,10 @@ ssize_t cgrp_GetProcessesList
     fd_Close(fd);
 
     return numPids;
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    return 0;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -736,6 +765,7 @@ ssize_t cgrp_SendSig
     int sig                         ///< [IN] The signal to send.
 )
 {
+#ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the cgroup's procs file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, PROCS_FILENAME, O_RDONLY);
 
@@ -792,6 +822,11 @@ ssize_t cgrp_SendSig
 
     fd_Close(fd);
     return numPids;
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    return 1;
+#endif
+
 }
 
 
@@ -810,6 +845,7 @@ bool cgrp_IsEmpty
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+    #ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the cgroup's tasks file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, TASKS_FILENAME, O_RDONLY);
 
@@ -836,6 +872,9 @@ bool cgrp_IsEmpty
         LE_ERROR("Error reading the '%s' cgroup's tasks.", cgroupNamePtr);
         return false;
     }
+    #else
+    return true;
+    #endif
 }
 
 
@@ -1093,7 +1132,7 @@ cgrp_FreezeState_t cgrp_frz_GetState
     {
         return LE_FAULT;
     }
-
+#ifndef LE_CONFIG_TARGET_SIMULATION
     RemoveTrailingWhiteSpace(stateStr);
 
     if ( (strcmp(stateStr, "THAWED") == 0) ||
@@ -1107,6 +1146,10 @@ cgrp_FreezeState_t cgrp_frz_GetState
     }
 
     LE_FATAL("Unrecognized freeze state '%s'.", stateStr);
+#else
+    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    return CGRP_FROZEN;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1175,5 +1218,3 @@ ssize_t cgrp_GetMaxMemUsed
     }
     return result;
 }
-
-

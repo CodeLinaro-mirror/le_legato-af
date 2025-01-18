@@ -1809,6 +1809,30 @@ static void StoppingProcsInList
     }
 }
 
+#ifdef LE_CONFIG_TARGET_SIMULATION
+static void KillingProcsInList
+(
+    le_dls_List_t list,              ///< [IN] List of process containers.
+    int sig
+)
+{
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&list);
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        if (proc_GetState(procContainerPtr->procRef) != PROC_STATE_STOPPED)
+        {
+            procContainerPtr->stopHandler = NULL;
+            pid_t pid = proc_GetPID(procContainerPtr->procRef);
+            kill_SendSig(pid, sig);
+        }
+
+        procLinkPtr = le_dls_PeekNext(&list, procLinkPtr);
+    }
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1857,8 +1881,12 @@ static le_result_t KillAppProcs
 
     // Kill all procs in the app including child processes and forked processes.
     int killSig = (killType == KILL_SOFT) ? SIGTERM: SIGKILL;
-
     ssize_t numProcs = cgrp_SendSig(CGRP_SUBSYS_FREEZE, appRef->name, killSig);
+
+    #ifdef LE_CONFIG_TARGET_SIMULATION
+    KillingProcsInList(appRef->procs,killSig);
+    KillingProcsInList(appRef->auxProcs,killSig);
+    #endif
 
     if (numProcs == LE_FAULT)
     {
