@@ -1212,7 +1212,7 @@ static void FireTriggeredCallbacks
         // For each registration, check to see if it was triggered.
         Registration_t* registrationPtr = (Registration_t*)le_hashmap_GetValue(handlerIterRef);
 
-        if (registrationPtr->triggered)
+        if (registrationPtr != NULL && registrationPtr->triggered)
         {
             // This registration has been triggered, so call all of the handlers attached to it.
             le_dls_Link_t* linkPtr = le_dls_Peek(&registrationPtr->handlerList);
