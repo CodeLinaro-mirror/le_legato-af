@@ -1415,7 +1415,7 @@ void HandleAppUninstall
         MandatoryWatchdogObj_t* mandatoryWdogPtr = le_hashmap_GetValue(mandatoryWdogIterator);
         result = le_hashmap_NextNode(mandatoryWdogIterator);
 
-        if (0 == strcmp(mandatoryWdogPtr->key.appName, appName))
+        if (mandatoryWdogPtr != NULL && 0 == strcmp(mandatoryWdogPtr->key.appName, appName))
         {
             // This watchdog belongs to the app which has just been uninstalled.
             // Stop timer and remove it.

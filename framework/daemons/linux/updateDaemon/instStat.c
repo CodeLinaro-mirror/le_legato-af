@@ -92,7 +92,7 @@ static void TriggerHandlers
     {
         HandlerRegisration_t const* regPtr = le_ref_GetValue(iterRef);
 
-        if (regPtr->type == type)
+        if (regPtr != NULL && regPtr->type == type)
         {
             regPtr->handlerPtr(appNamePtr, regPtr->contextPtr);
         }
