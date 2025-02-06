@@ -1678,12 +1678,30 @@ static void GetTreePath
     int printSize;
     char *basePath = CFG_TREE_PATH;
 
-#ifdef LE_CONFIG_APP_CFG_TREE_PATH
-    basePath = (strncmp(treeNameRef, "system", 6) == 0) ?
-                             CFG_TREE_PATH : LE_CONFIG_APP_CFG_TREE_PATH;
-#endif
-
     LE_ASSERT((revisionId >= 1) && (revisionId <= 3));
+
+#ifdef LE_CONFIG_APP_CFG_TREE_PATH
+    if (strncmp(treeNameRef, "system", strlen(treeNameRef)) != 0)
+    {
+        char treeFile[LE_CFG_STR_LEN_BYTES] = "";
+        char treeTmpPath[LE_CFG_STR_LEN_BYTES] = {0};
+        snprintf(treeTmpPath, sizeof(treeTmpPath), "%s.paper", treeNameRef);
+        if (le_path_Concat("/", treeFile, sizeof(treeFile), CFG_TREE_PATH, treeTmpPath, NULL)
+              == LE_OK)
+        {
+            if (access(treeFile, F_OK) != 0)
+            {
+                basePath = LE_CONFIG_APP_CFG_TREE_PATH;
+            }
+        }
+        else
+        {
+            LE_ERROR("Configuration tree file path is too long: %s", treeFile);
+            pathBuffer[0] = '\0';
+            return;
+        }
+    }
+#endif
 
     printSize = snprintf(pathBuffer,
                          pathSize,
@@ -3397,6 +3415,7 @@ void tdb_MergeTree
     if (!filePtr && (EROFS == errno))
     {
         // In case we are R/O for the config tree, we discard the update to flash
+        LE_DEBUG("Can not update tree data to R/O file system '%s'.", filePath);
         return;
     }
 
