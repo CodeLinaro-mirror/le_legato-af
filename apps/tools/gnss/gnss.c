@@ -259,7 +259,7 @@ void PrintGnssHelp
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
          "\t\t\t\t  ConstellationType can be as follows:\n"
          "\t\t\t\t\t- 1 ---> DEFAULT\n"
-         "\t\t\t\t\t- 2 ---> GPS(Not Supported)\n"
+         "\t\t\t\t\t- 2 ---> GPS\n"
          "\t\t\t\t\t- 4 ---> GLONASS\n"
          "\t\t\t\t\t- 8 ---> BEIDOU\n"
          "\t\t\t\t\t- 16 ---> GALILEO\n"
