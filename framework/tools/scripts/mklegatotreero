@@ -98,64 +98,155 @@ for f in ../apps/*; do
     mkdir -m 0777 `basename $f` `basename $f`/bin `basename $f`/lib
 done
 
+# Files used by sandbox APPs
+SBOX_FILES="
+    /lib/liblegato.so
+    /lib/ld-linux-aarch64.so.1
+    /lib/libc.so.6
+    /lib/libpthread.so.0
+    /lib/librt.so.1
+    /lib/libdl.so.2
+    /lib/libgcc_s.so.1
+    /lib/libm.so.6
+    /lib/libstdc++.so.6
+    /lib/libdlt.so.2
+    /tmp/legato/serviceDirectoryServer
+    /tmp/legato/serviceDirectoryClient"
+
+# File nodes for sandbox APPs
+DEV_NODE="
+   /dev/null
+   /dev/zero
+   /dev/log
+   /dev/urandom"
+
+# Function to get specific sections from root.cfg file
+GetSection() {
+  local section_src="$1"
+  local section_name="$2"
+  echo "$section_src" | awk -v section="$section_name" '
+    $0 ~ section {flag=1; next}
+    flag {
+      if (/{/) depth++
+      if (/}/) depth--
+      if (depth == 0) flag=0
+      if (flag) print
+    }
+  '
+}
+
 # Perform some move of file and make useful links
 for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
-   for d in bin lib; do
-      for ff in ../../../$ln/read-only/$d/*; do
-         mv $ff `basename $f`/$d/.
-         ln -s /legato/systems/current/appsWriteable/`basename $f`/$d/`basename $ff` \
-               ../../../$ln/read-only/$d/`basename $ff`
-      done
-   done
-   # Deploy read-only tree for an apps if it exists
-   for d in scripts cfg; do
-     if [ -d ../../../$ln/read-only/$d ]; then
-       mkdir -m 0777 `basename $f`/$d
-       for ff in ../../../$ln/read-only/$d/*; do
-         mv $ff `basename $f`/$d/.
-         ln -s /legato/systems/current/appsWriteable/`basename $f`/$d/`basename $ff` \
-               ../../../$ln/read-only/$d/`basename $ff`
-       done
-     fi
-   done
-   if [ -d ../../../$ln/read-only/usr ]; then
-     mkdir -p `basename $f`/usr/
-     for dd in `cd ../../../$ln/read-only/usr; find -type d`; do
-        mkdir -p `basename $f`/usr/$dd
-        for ff in ../../../$ln/read-only/usr/$dd/*; do
-           if [ -f $ff ]; then
-              mv $ff `basename $f`/usr/$dd/. &&
-              ln -s /legato/systems/current/appsWriteable/`basename $f`/usr/$dd/`basename $ff` \
-                    ../../../$ln/read-only/usr/$dd/`basename $ff`
-           fi
+
+   for d in read-only writeable; do
+      if [ -d ../../../$ln/$d ]; then
+
+        mkdir -p `basename $f`
+        for dd in `cd ../../../$ln/$d; find -type d`; do
+
+           mkdir -p `basename $f`/$dd
+           for ff in ../../../$ln/$d/$dd/*; do
+
+              if [ -f $ff ]; then
+                 mv $ff `basename $f`/$dd/. &&
+                 ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
+                       ../../../$ln/$d/$dd/`basename $ff`
+
+                 # lnk scissors file to 'current/config/' as RO config tree and rename to ".paper"
+                 # The TelAF framework will check and load this RO config tree file ".paper".
+                 if [[ "$ff" == *.scissors ]]; then
+                     ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
+                           "../config/$(basename "${ff%.*}.paper")"
+                     if [ $? -ne 0 ]; then
+                         echo "Error: Config tree name '`basename $ff`' is duplicated with other"
+                         exit 1
+                     fi
+                 fi
+
+              fi
+           done
         done
-     done
+      fi
+   done
+
+   # Prepare requires links and devices for APPs in read-only image
+   CURR_PATH=`pwd`
+   ROOT_CFG="$CURR_PATH/../../../$ln/root.cfg"
+   if [ -e "$ROOT_CFG" ]; then
+      app_name=`basename $f`
+
+      # Extract the "requires" section
+      requires=$(cat $ROOT_CFG | awk '
+        /"requires"/ {flag=1; next}
+        flag {
+          if (/{/) depth++
+          if (/}/) depth--
+          if (depth == 0) flag=0
+          if (flag) print
+        }
+      ')
+
+      # Extract "files", "dirs", and "devices" sections
+      files_section=$(GetSection "$requires" '"files"')
+      dirs_section=$(GetSection "$requires" '"dirs"')
+      devices_section=$(GetSection "$requires" '"devices"')
+
+      # Process the "files" and "dirs" section line by line
+      while IFS= read -r line; do
+        if [[ $line == *'"src"'* ]]; then
+          src=$(echo "$line" | grep -oP '(?<="src" ")[^"]*')
+        elif [[ $line == *'"dest"'* ]]; then
+          dest=$(echo "$line" | grep -oP '(?<="dest" ")[^"]*')
+          mkdir -p $(dirname "$app_name$dest")
+          ln -s "$src" "$app_name$dest"
+        fi
+      done <<< "$files_section$dirs_section"
+
+      # Prepare empty file for sandboxed APPs to bind mount in read-only image
+      if ! grep -q '"sandboxed" !f' "$ROOT_CFG"; then
+
+          echo sandboxed app: $app_name
+          mkdir -p $app_name/dev/
+          mkdir -p $app_name/tmp/legato/
+
+          # Pre-create empty files for sandbox APPs for read only system
+          echo "$SBOX_FILES" | while read -r item; do
+              if [ -n "$item" ]; then
+                  touch "$app_name$item"
+              fi
+          done
+          # Pre-create the file nodes for sandbox APPs for read only system
+          echo "$DEV_NODE" | while read -r item; do
+              if [ -n "$item" ]; then
+                  touch "$app_name$item"
+              fi
+          done
+
+          # Process the "devices" section for sandboxed apps
+          while IFS= read -r line; do
+            if [[ $line == *'"dest"'* ]]; then
+              dest=$(echo "$line" | grep -oP '(?<="dest" ")[^"]*')
+
+              # Check if the path ends with a "/"
+              if [[ "$dest" == */ ]]; then
+                  dir_path="$dest"
+                  file_name=""
+              else
+                  dir_path=$(dirname "$dest")
+                  file_name=$(basename "$dest")
+              fi
+              mkdir -p "$app_name$dir_path"
+              if [[ -n "$file_name" ]]; then
+                  touch "$app_name$dest"
+              fi
+
+            fi
+          done <<< "$devices_section"
+      fi # "sandboxed"
+
    fi
 
-   # lnk scissors file to 'current/config/' as read only config tree and rename to ".paper"
-   # The TelAF framework will check this name ".paper" if it is not a "system" RO tree file.
-   if [ -d "../../../$ln/read-only" ]; then
-      find "../../../$ln/read-only" -type f -name "*.scissors" | while read -r file; do
-           applink=$(echo "$file" | sed "s|.*read-only|/legato/systems/current/apps/$f/read-only|")
-           ln -s "$applink" "../config/$(basename "${file%.*}.paper")"
-      done
-   fi
-
-   # Deploy writeable tree for an apps if it exists
-   if [ -d ../../../$ln/writeable ]; then
-     for dd in `cd ../../../$ln/writeable; find -type d`; do
-        mkdir -p `basename $f`/$dd
-        for ff in ../../../$ln/writeable/$dd/*; do
-           if [ -f $ff ]; then
-              mv $ff `basename $f`/$dd/. &&
-              ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
-                    ../../../$ln/writeable/$dd/`basename $ff`
-           fi
-        done
-     done
-   fi
 done
-
 
 # Deploy all libs .so into /legato/systems/current/lib if SMACK is disabled
 if [ $DISABLE_SMACK -eq 1 ]; then
