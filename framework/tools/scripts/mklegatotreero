@@ -87,6 +87,9 @@ echo ' }' >> $sysConfigFile
 # waste time importing them at boot time.
 rm $appsConfigFile $usersConfigFile $modsConfigFile
 
+# Mark the startSystem executable file as set-user-ID-root
+chmod a+s "${OUTPUT_DIR}/systems/current/bin/startSystem"
+
 # Make the directory and deploy the apps
 mkdir "${OUTPUT_DIR}/systems/current/appsWriteable"
 cd "${OUTPUT_DIR}/systems/current/appsWriteable"

@@ -221,6 +221,12 @@ User List ------> User --+---> Name               |        |        |
 
 
 //--------------------------------------------------------------------------------------------------
+/// The UID for root user.
+//--------------------------------------------------------------------------------------------------
+#define ROOT_USER_ID 0
+
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Represents a user.  Objects of this type are allocated from the User Pool and are kept on the
  * User List.
@@ -983,6 +989,31 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "logDaemonWdog", uid, "logDaemonWdog");
     CreateBinding(uid, "updateDaemonWdog", uid, "updateDaemonWdog");
     CreateBinding(uid, "supervisorWdog", uid, "supervisorWdog");
+
+    // Add the 'root' user hardcode bindings to current-uid user (tafcore) services
+    CreateBinding(ROOT_USER_ID, "sdirTool", uid, "sdirTool");
+    CreateBinding(ROOT_USER_ID, "LogClient", uid, "LogClient");
+    CreateBinding(ROOT_USER_ID, "LogControl", uid, "LogControl");
+    CreateBinding(ROOT_USER_ID, "le_appCtrl", uid, "le_appCtrl");
+    CreateBinding(ROOT_USER_ID, "le_framework", uid, "le_framework");
+    CreateBinding(ROOT_USER_ID, "wdog", uid, "wdog");
+    CreateBinding(ROOT_USER_ID, "le_wdog", uid, "le_wdog");
+    CreateBinding(ROOT_USER_ID, "le_cfg", uid, "le_cfg");
+    CreateBinding(ROOT_USER_ID, "le_cfgAdmin", uid, "le_cfgAdmin");
+    CreateBinding(ROOT_USER_ID, "le_update", uid, "le_update");
+    CreateBinding(ROOT_USER_ID, "le_updateCtrl", uid, "le_updateCtrl");
+    CreateBinding(ROOT_USER_ID, "le_appRemove", uid, "le_appRemove");
+    CreateBinding(ROOT_USER_ID, "le_instStat", uid, "le_instStat");
+    CreateBinding(ROOT_USER_ID, "le_appInfo", uid, "le_appInfo");
+    CreateBinding(ROOT_USER_ID, "le_appProc", uid, "le_appProc");
+    CreateBinding(ROOT_USER_ID, "le_ima", uid, "le_ima");
+    CreateBinding(ROOT_USER_ID, "appSmack", uid, "appSmack");
+    CreateBinding(ROOT_USER_ID, "logFd", uid, "logFd");
+
+    CreateBinding(ROOT_USER_ID, "configTreeWdog", uid, "configTreeWdog");
+    CreateBinding(ROOT_USER_ID, "logDaemonWdog", uid, "logDaemonWdog");
+    CreateBinding(ROOT_USER_ID, "updateDaemonWdog", uid, "updateDaemonWdog");
+    CreateBinding(ROOT_USER_ID, "supervisorWdog", uid, "supervisorWdog");
 }
 
 

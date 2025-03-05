@@ -97,7 +97,7 @@ case "$1" in
 
             # Start the legato
             LEGATO_CURRENT_VERSION=`cat /mnt/legato/systems/current/version`
-            ./systems/current/bin/startSystem -v "$LEGATO_CURRENT_VERSION"
+            su tafcore -c "PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin /legato/systems/current/bin/startSystem -v $LEGATO_CURRENT_VERSION"
         else
             if [ -e /tmp/ld.so.cache ]; then
                 # Assume that /etc is NOT writable. So, copy /etc/hosts and /etc/resolv.conf

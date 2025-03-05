@@ -249,12 +249,21 @@ static void List
 {
     le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
 
-    int fd = open(TEMP_FILE, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR);
+    // Prevent the default mask (022), allow the current user to create the new file with 'g+w'
+    mode_t oldMask = umask(000);
+
+    // For TEMP_FILE (/tmp/sdOutput), who creates the file who is the owner,
+    // to support to run the 'sdir' command by different users, add the
+    // ( S_IRGRP | S_IWGRP ) to open flags.
+    int fd = open(TEMP_FILE, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
 
     if (fd < 0)
     {
         ExitWithErrorMsg("Setup with Service Directory failed.");
     }
+
+    // Restore the mask
+    umask(oldMask);
 
     le_msg_SetFd(msgRef, fd);
 
