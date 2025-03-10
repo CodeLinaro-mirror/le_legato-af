@@ -1,4 +1,4 @@
-# $ANTLR 3.5.3 interface.g 2025-03-03 16:35:51
+# $ANTLR 3.5.3 interface.g 2025-03-06 23:43:56
 
 import sys
 from antlr3 import *
@@ -2029,19 +2029,20 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "functionDecl"
-    # interface.g:494:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:494:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' '=' d= DEC_NUMBER ';' ;
     def functionDecl(self, ):
         function = None
 
 
+        d = None
         IDENTIFIER51 = None
         formalParameterList49 = None
         typeIdentifier50 = None
 
         try:
             try:
-                # interface.g:495:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:495:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:495:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' '=' d= DEC_NUMBER ';' )
+                # interface.g:495:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' '=' d= DEC_NUMBER ';'
                 pass 
                 self.match(self.input, FUNCTION, self.FOLLOW_FUNCTION_in_functionDecl1864)
 
@@ -2090,7 +2091,11 @@ class interfaceParser(Parser):
 
                 self.match(self.input, 31, self.FOLLOW_31_in_functionDecl1876)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_functionDecl1878)
+                self.match(self.input, 38, self.FOLLOW_38_in_functionDecl1878)
+
+                d = self.match(self.input, DEC_NUMBER, self.FOLLOW_DEC_NUMBER_in_functionDecl1882)
+
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_functionDecl1885)
 
                 #action start
                         
@@ -2098,10 +2103,13 @@ class interfaceParser(Parser):
                     parameterList = []
                 else:
                     parameterList = formalParameterList49
+                msgId = int(d.text)
                 function = interfaceIR.Function(typeIdentifier50,
                                                   IDENTIFIER51.text,
                                                   self.getLocationTuple(IDENTIFIER51),
-                                                  parameterList)
+                                                  parameterList,
+                 msgId
+                 )
                         
                 #action end
 
@@ -2122,7 +2130,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "handlerDecl"
-    # interface.g:508:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:511:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def handlerDecl(self, ):
         handler = None
 
@@ -2132,25 +2140,25 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:509:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:509:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:512:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:512:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
-                self.match(self.input, HANDLER, self.FOLLOW_HANDLER_in_handlerDecl1909)
+                self.match(self.input, HANDLER, self.FOLLOW_HANDLER_in_handlerDecl1916)
 
-                IDENTIFIER53 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_handlerDecl1911)
+                IDENTIFIER53 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_handlerDecl1918)
 
-                self.match(self.input, 30, self.FOLLOW_30_in_handlerDecl1913)
+                self.match(self.input, 30, self.FOLLOW_30_in_handlerDecl1920)
 
-                # interface.g:509:30: ( formalParameterList )?
+                # interface.g:512:30: ( formalParameterList )?
                 alt23 = 2
                 LA23_0 = self.input.LA(1)
 
                 if (LA23_0 == IDENTIFIER or LA23_0 == SCOPED_IDENTIFIER) :
                     alt23 = 1
                 if alt23 == 1:
-                    # interface.g:509:30: formalParameterList
+                    # interface.g:512:30: formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_handlerDecl1915)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_handlerDecl1922)
                     formalParameterList52 = self.formalParameterList()
 
                     self._state.following.pop()
@@ -2158,9 +2166,9 @@ class interfaceParser(Parser):
 
 
 
-                self.match(self.input, 31, self.FOLLOW_31_in_handlerDecl1918)
+                self.match(self.input, 31, self.FOLLOW_31_in_handlerDecl1925)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_handlerDecl1920)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_handlerDecl1927)
 
                 #action start
                         
@@ -2191,35 +2199,37 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "eventDecl"
-    # interface.g:521:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:524:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' '=' '(' d1= DEC_NUMBER ',' d2= DEC_NUMBER ')' ';' ;
     def eventDecl(self, ):
         event = None
 
 
+        d1 = None
+        d2 = None
         IDENTIFIER55 = None
         formalParameterList54 = None
 
         try:
             try:
-                # interface.g:522:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:522:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:525:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' '=' '(' d1= DEC_NUMBER ',' d2= DEC_NUMBER ')' ';' )
+                # interface.g:525:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' '=' '(' d1= DEC_NUMBER ',' d2= DEC_NUMBER ')' ';'
                 pass 
-                self.match(self.input, EVENT, self.FOLLOW_EVENT_in_eventDecl1951)
+                self.match(self.input, EVENT, self.FOLLOW_EVENT_in_eventDecl1958)
 
-                IDENTIFIER55 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_eventDecl1953)
+                IDENTIFIER55 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_eventDecl1960)
 
-                self.match(self.input, 30, self.FOLLOW_30_in_eventDecl1955)
+                self.match(self.input, 30, self.FOLLOW_30_in_eventDecl1962)
 
-                # interface.g:522:28: ( formalParameterList )?
+                # interface.g:525:28: ( formalParameterList )?
                 alt24 = 2
                 LA24_0 = self.input.LA(1)
 
                 if (LA24_0 == IDENTIFIER or LA24_0 == SCOPED_IDENTIFIER) :
                     alt24 = 1
                 if alt24 == 1:
-                    # interface.g:522:28: formalParameterList
+                    # interface.g:525:28: formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_eventDecl1957)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_eventDecl1964)
                     formalParameterList54 = self.formalParameterList()
 
                     self._state.following.pop()
@@ -2227,9 +2237,21 @@ class interfaceParser(Parser):
 
 
 
-                self.match(self.input, 31, self.FOLLOW_31_in_eventDecl1960)
+                self.match(self.input, 31, self.FOLLOW_31_in_eventDecl1967)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_eventDecl1962)
+                self.match(self.input, 38, self.FOLLOW_38_in_eventDecl1969)
+
+                self.match(self.input, 30, self.FOLLOW_30_in_eventDecl1971)
+
+                d1 = self.match(self.input, DEC_NUMBER, self.FOLLOW_DEC_NUMBER_in_eventDecl1975)
+
+                self.match(self.input, 34, self.FOLLOW_34_in_eventDecl1977)
+
+                d2 = self.match(self.input, DEC_NUMBER, self.FOLLOW_DEC_NUMBER_in_eventDecl1981)
+
+                self.match(self.input, 31, self.FOLLOW_31_in_eventDecl1983)
+
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_eventDecl1985)
 
                 #action start
                         
@@ -2237,9 +2259,13 @@ class interfaceParser(Parser):
                     parameterList = []
                 else:
                     parameterList = formalParameterList54
+                addMsgId = int(d1.text)
+                remMsgId = int(d2.text)
                 event = interfaceIR.Event(IDENTIFIER55.text,
                                             self.getLocationTuple(IDENTIFIER55),
-                                            parameterList)
+                                            parameterList,
+                                            addMsgId,
+                                            remMsgId)
                         
                 #action end
 
@@ -2260,7 +2286,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "declaration"
-    # interface.g:537:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | structDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
+    # interface.g:544:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | structDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
     def declaration(self, ):
         declaration = None
 
@@ -2276,7 +2302,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:538:5: ( enumDecl | bitmaskDecl | referenceDecl | structDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
+                # interface.g:545:5: ( enumDecl | bitmaskDecl | referenceDecl | structDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
                 alt25 = 8
                 LA25 = self.input.LA(1)
                 if LA25 == ENUM:
@@ -2302,9 +2328,9 @@ class interfaceParser(Parser):
 
 
                 if alt25 == 1:
-                    # interface.g:538:7: enumDecl
+                    # interface.g:545:7: enumDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_enumDecl_in_declaration1996)
+                    self._state.following.append(self.FOLLOW_enumDecl_in_declaration2019)
                     enumDecl56 = self.enumDecl()
 
                     self._state.following.pop()
@@ -2316,9 +2342,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 2:
-                    # interface.g:539:7: bitmaskDecl
+                    # interface.g:546:7: bitmaskDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_bitmaskDecl_in_declaration2013)
+                    self._state.following.append(self.FOLLOW_bitmaskDecl_in_declaration2036)
                     bitmaskDecl57 = self.bitmaskDecl()
 
                     self._state.following.pop()
@@ -2330,9 +2356,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 3:
-                    # interface.g:540:7: referenceDecl
+                    # interface.g:547:7: referenceDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_referenceDecl_in_declaration2027)
+                    self._state.following.append(self.FOLLOW_referenceDecl_in_declaration2050)
                     referenceDecl58 = self.referenceDecl()
 
                     self._state.following.pop()
@@ -2344,9 +2370,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 4:
-                    # interface.g:541:7: structDecl
+                    # interface.g:548:7: structDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_structDecl_in_declaration2039)
+                    self._state.following.append(self.FOLLOW_structDecl_in_declaration2062)
                     structDecl59 = self.structDecl()
 
                     self._state.following.pop()
@@ -2358,9 +2384,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 5:
-                    # interface.g:542:7: functionDecl
+                    # interface.g:549:7: functionDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_functionDecl_in_declaration2054)
+                    self._state.following.append(self.FOLLOW_functionDecl_in_declaration2077)
                     functionDecl60 = self.functionDecl()
 
                     self._state.following.pop()
@@ -2372,9 +2398,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 6:
-                    # interface.g:543:7: handlerDecl
+                    # interface.g:550:7: handlerDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_handlerDecl_in_declaration2067)
+                    self._state.following.append(self.FOLLOW_handlerDecl_in_declaration2090)
                     handlerDecl61 = self.handlerDecl()
 
                     self._state.following.pop()
@@ -2386,9 +2412,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 7:
-                    # interface.g:544:7: eventDecl
+                    # interface.g:551:7: eventDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_eventDecl_in_declaration2081)
+                    self._state.following.append(self.FOLLOW_eventDecl_in_declaration2104)
                     eventDecl62 = self.eventDecl()
 
                     self._state.following.pop()
@@ -2400,9 +2426,9 @@ class interfaceParser(Parser):
 
 
                 elif alt25 == 8:
-                    # interface.g:545:7: defineDecl
+                    # interface.g:552:7: defineDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_defineDecl_in_declaration2097)
+                    self._state.following.append(self.FOLLOW_defineDecl_in_declaration2120)
                     defineDecl63 = self.defineDecl()
 
                     self._state.following.pop()
@@ -2439,7 +2465,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "documentedDeclaration"
-    # interface.g:561:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
+    # interface.g:568:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
     def documentedDeclaration(self, ):
         declaration = None
 
@@ -2449,15 +2475,15 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:562:5: ( docPreComment declaration )
-                # interface.g:562:7: docPreComment declaration
+                # interface.g:569:5: ( docPreComment declaration )
+                # interface.g:569:7: docPreComment declaration
                 pass 
-                self._state.following.append(self.FOLLOW_docPreComment_in_documentedDeclaration2137)
+                self._state.following.append(self.FOLLOW_docPreComment_in_documentedDeclaration2160)
                 docPreComment65 = self.docPreComment()
 
                 self._state.following.pop()
 
-                self._state.following.append(self.FOLLOW_declaration_in_documentedDeclaration2139)
+                self._state.following.append(self.FOLLOW_declaration_in_documentedDeclaration2162)
                 declaration64 = self.declaration()
 
                 self._state.following.pop()
@@ -2487,7 +2513,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "filename"
-    # interface.g:572:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:579:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def filename(self, ):
         filename = None
 
@@ -2497,7 +2523,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:573:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                # interface.g:580:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
                 alt26 = 2
                 LA26_0 = self.input.LA(1)
 
@@ -2512,9 +2538,9 @@ class interfaceParser(Parser):
 
 
                 if alt26 == 1:
-                    # interface.g:573:7: IDENTIFIER
+                    # interface.g:580:7: IDENTIFIER
                     pass 
-                    IDENTIFIER66 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_filename2172)
+                    IDENTIFIER66 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_filename2195)
 
                     #action start
                     filename = IDENTIFIER66.text 
@@ -2523,9 +2549,9 @@ class interfaceParser(Parser):
 
 
                 elif alt26 == 2:
-                    # interface.g:574:7: SCOPED_IDENTIFIER
+                    # interface.g:581:7: SCOPED_IDENTIFIER
                     pass 
-                    SCOPED_IDENTIFIER67 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_filename2190)
+                    SCOPED_IDENTIFIER67 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_filename2213)
 
                     #action start
                     filename = SCOPED_IDENTIFIER67.text 
@@ -2547,23 +2573,23 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "usetypesStmt"
-    # interface.g:577:1: usetypesStmt : USETYPES filename ';' ;
+    # interface.g:584:1: usetypesStmt : USETYPES filename ';' ;
     def usetypesStmt(self, ):
         filename68 = None
 
         try:
             try:
-                # interface.g:578:5: ( USETYPES filename ';' )
-                # interface.g:578:7: USETYPES filename ';'
+                # interface.g:585:5: ( USETYPES filename ';' )
+                # interface.g:585:7: USETYPES filename ';'
                 pass 
-                self.match(self.input, USETYPES, self.FOLLOW_USETYPES_in_usetypesStmt2210)
+                self.match(self.input, USETYPES, self.FOLLOW_USETYPES_in_usetypesStmt2233)
 
-                self._state.following.append(self.FOLLOW_filename_in_usetypesStmt2212)
+                self._state.following.append(self.FOLLOW_filename_in_usetypesStmt2235)
                 filename68 = self.filename()
 
                 self._state.following.pop()
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_usetypesStmt2214)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_usetypesStmt2237)
 
                 #action start
                         
@@ -2595,7 +2621,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "apiDocument"
-    # interface.g:594:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF ;
+    # interface.g:601:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF ;
     def apiDocument(self, ):
         iface = None
 
@@ -2611,10 +2637,10 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:595:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF )
-                # interface.g:595:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF
+                # interface.g:602:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF )
+                # interface.g:602:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )* EOF
                 pass 
-                # interface.g:595:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )?
+                # interface.g:602:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) ) )?
                 alt29 = 2
                 LA29_0 = self.input.LA(1)
 
@@ -2624,9 +2650,9 @@ class interfaceParser(Parser):
                     if (LA29_1 == DOC_PRE_COMMENT or LA29_1 == USETYPES or LA29_1 == 39) :
                         alt29 = 1
                 if alt29 == 1:
-                    # interface.g:595:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) )
+                    # interface.g:602:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) )
                     pass 
-                    # interface.g:595:9: ( docPreComment )+
+                    # interface.g:602:9: ( docPreComment )+
                     cnt27 = 0
                     while True: #loop27
                         alt27 = 2
@@ -2642,9 +2668,9 @@ class interfaceParser(Parser):
 
 
                         if alt27 == 1:
-                            # interface.g:595:11: docPreComment
+                            # interface.g:602:11: docPreComment
                             pass 
-                            self._state.following.append(self.FOLLOW_docPreComment_in_apiDocument2252)
+                            self._state.following.append(self.FOLLOW_docPreComment_in_apiDocument2275)
                             docPreComment69 = self.docPreComment()
 
                             self._state.following.pop()
@@ -2665,7 +2691,7 @@ class interfaceParser(Parser):
                         cnt27 += 1
 
 
-                    # interface.g:596:13: ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) )
+                    # interface.g:603:13: ( usetypesStmt |firstDecl= documentedDeclaration | (firstVer= apiVersion firstServingVer= servingVersion ) )
                     alt28 = 3
                     LA28 = self.input.LA(1)
                     if LA28 == USETYPES:
@@ -2681,18 +2707,18 @@ class interfaceParser(Parser):
 
 
                     if alt28 == 1:
-                        # interface.g:596:16: usetypesStmt
+                        # interface.g:603:16: usetypesStmt
                         pass 
-                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2274)
+                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2297)
                         self.usetypesStmt()
 
                         self._state.following.pop()
 
 
                     elif alt28 == 2:
-                        # interface.g:597:15: firstDecl= documentedDeclaration
+                        # interface.g:604:15: firstDecl= documentedDeclaration
                         pass 
-                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2292)
+                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2315)
                         firstDecl = self.documentedDeclaration()
 
                         self._state.following.pop()
@@ -2707,12 +2733,12 @@ class interfaceParser(Parser):
 
 
                     elif alt28 == 3:
-                        # interface.g:602:6: (firstVer= apiVersion firstServingVer= servingVersion )
+                        # interface.g:609:6: (firstVer= apiVersion firstServingVer= servingVersion )
                         pass 
-                        # interface.g:602:6: (firstVer= apiVersion firstServingVer= servingVersion )
-                        # interface.g:603:7: firstVer= apiVersion firstServingVer= servingVersion
+                        # interface.g:609:6: (firstVer= apiVersion firstServingVer= servingVersion )
+                        # interface.g:610:7: firstVer= apiVersion firstServingVer= servingVersion
                         pass 
-                        self._state.following.append(self.FOLLOW_apiVersion_in_apiDocument2328)
+                        self._state.following.append(self.FOLLOW_apiVersion_in_apiDocument2351)
                         firstVer = self.apiVersion()
 
                         self._state.following.pop()
@@ -2722,7 +2748,7 @@ class interfaceParser(Parser):
                         #action end
 
 
-                        self._state.following.append(self.FOLLOW_servingVersion_in_apiDocument2340)
+                        self._state.following.append(self.FOLLOW_servingVersion_in_apiDocument2363)
                         firstServingVer = self.servingVersion()
 
                         self._state.following.pop()
@@ -2741,7 +2767,7 @@ class interfaceParser(Parser):
 
 
 
-                # interface.g:609:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )*
+                # interface.g:616:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration | (laterVer= apiVersion laterServingVer= servingVersion ) )*
                 while True: #loop30
                     alt30 = 5
                     LA30 = self.input.LA(1)
@@ -2755,18 +2781,18 @@ class interfaceParser(Parser):
                         alt30 = 4
 
                     if alt30 == 1:
-                        # interface.g:609:9: usetypesStmt
+                        # interface.g:616:9: usetypesStmt
                         pass 
-                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2379)
+                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2402)
                         self.usetypesStmt()
 
                         self._state.following.pop()
 
 
                     elif alt30 == 2:
-                        # interface.g:610:11: declaration
+                        # interface.g:617:11: declaration
                         pass 
-                        self._state.following.append(self.FOLLOW_declaration_in_apiDocument2391)
+                        self._state.following.append(self.FOLLOW_declaration_in_apiDocument2414)
                         declaration70 = self.declaration()
 
                         self._state.following.pop()
@@ -2781,9 +2807,9 @@ class interfaceParser(Parser):
 
 
                     elif alt30 == 3:
-                        # interface.g:615:11: laterDecl= documentedDeclaration
+                        # interface.g:622:11: laterDecl= documentedDeclaration
                         pass 
-                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2420)
+                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2443)
                         laterDecl = self.documentedDeclaration()
 
                         self._state.following.pop()
@@ -2798,12 +2824,12 @@ class interfaceParser(Parser):
 
 
                     elif alt30 == 4:
-                        # interface.g:621:5: (laterVer= apiVersion laterServingVer= servingVersion )
+                        # interface.g:628:5: (laterVer= apiVersion laterServingVer= servingVersion )
                         pass 
-                        # interface.g:621:5: (laterVer= apiVersion laterServingVer= servingVersion )
-                        # interface.g:622:7: laterVer= apiVersion laterServingVer= servingVersion
+                        # interface.g:628:5: (laterVer= apiVersion laterServingVer= servingVersion )
+                        # interface.g:629:7: laterVer= apiVersion laterServingVer= servingVersion
                         pass 
-                        self._state.following.append(self.FOLLOW_apiVersion_in_apiDocument2453)
+                        self._state.following.append(self.FOLLOW_apiVersion_in_apiDocument2476)
                         laterVer = self.apiVersion()
 
                         self._state.following.pop()
@@ -2813,7 +2839,7 @@ class interfaceParser(Parser):
                         #action end
 
 
-                        self._state.following.append(self.FOLLOW_servingVersion_in_apiDocument2465)
+                        self._state.following.append(self.FOLLOW_servingVersion_in_apiDocument2488)
                         laterServingVer = self.servingVersion()
 
                         self._state.following.pop()
@@ -2831,7 +2857,7 @@ class interfaceParser(Parser):
                         break #loop30
 
 
-                self.match(self.input, EOF, self.FOLLOW_EOF_in_apiDocument2485)
+                self.match(self.input, EOF, self.FOLLOW_EOF_in_apiDocument2508)
 
                 #action start
                 iface = self.iface 
@@ -3129,46 +3155,54 @@ class interfaceParser(Parser):
     FOLLOW_IDENTIFIER_in_functionDecl1869 = frozenset([30])
     FOLLOW_30_in_functionDecl1871 = frozenset([19, 25, 31])
     FOLLOW_formalParameterList_in_functionDecl1873 = frozenset([31])
-    FOLLOW_31_in_functionDecl1876 = frozenset([26])
-    FOLLOW_SEMICOLON_in_functionDecl1878 = frozenset([1])
-    FOLLOW_HANDLER_in_handlerDecl1909 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_handlerDecl1911 = frozenset([30])
-    FOLLOW_30_in_handlerDecl1913 = frozenset([19, 25, 31])
-    FOLLOW_formalParameterList_in_handlerDecl1915 = frozenset([31])
-    FOLLOW_31_in_handlerDecl1918 = frozenset([26])
-    FOLLOW_SEMICOLON_in_handlerDecl1920 = frozenset([1])
-    FOLLOW_EVENT_in_eventDecl1951 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_eventDecl1953 = frozenset([30])
-    FOLLOW_30_in_eventDecl1955 = frozenset([19, 25, 31])
-    FOLLOW_formalParameterList_in_eventDecl1957 = frozenset([31])
-    FOLLOW_31_in_eventDecl1960 = frozenset([26])
-    FOLLOW_SEMICOLON_in_eventDecl1962 = frozenset([1])
-    FOLLOW_enumDecl_in_declaration1996 = frozenset([1])
-    FOLLOW_bitmaskDecl_in_declaration2013 = frozenset([1])
-    FOLLOW_referenceDecl_in_declaration2027 = frozenset([1])
-    FOLLOW_structDecl_in_declaration2039 = frozenset([1])
-    FOLLOW_functionDecl_in_declaration2054 = frozenset([1])
-    FOLLOW_handlerDecl_in_declaration2067 = frozenset([1])
-    FOLLOW_eventDecl_in_declaration2081 = frozenset([1])
-    FOLLOW_defineDecl_in_declaration2097 = frozenset([1])
-    FOLLOW_docPreComment_in_documentedDeclaration2137 = frozenset([6, 10, 13, 14, 15, 16, 24, 27])
-    FOLLOW_declaration_in_documentedDeclaration2139 = frozenset([1])
-    FOLLOW_IDENTIFIER_in_filename2172 = frozenset([1])
-    FOLLOW_SCOPED_IDENTIFIER_in_filename2190 = frozenset([1])
-    FOLLOW_USETYPES_in_usetypesStmt2210 = frozenset([19, 25])
-    FOLLOW_filename_in_usetypesStmt2212 = frozenset([26])
-    FOLLOW_SEMICOLON_in_usetypesStmt2214 = frozenset([1])
-    FOLLOW_docPreComment_in_apiDocument2252 = frozenset([12, 28, 39])
-    FOLLOW_usetypesStmt_in_apiDocument2274 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_documentedDeclaration_in_apiDocument2292 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_apiVersion_in_apiDocument2328 = frozenset([40])
-    FOLLOW_servingVersion_in_apiDocument2340 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_usetypesStmt_in_apiDocument2379 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_declaration_in_apiDocument2391 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_documentedDeclaration_in_apiDocument2420 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_apiVersion_in_apiDocument2453 = frozenset([40])
-    FOLLOW_servingVersion_in_apiDocument2465 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
-    FOLLOW_EOF_in_apiDocument2485 = frozenset([1])
+    FOLLOW_31_in_functionDecl1876 = frozenset([38])
+    FOLLOW_38_in_functionDecl1878 = frozenset([9])
+    FOLLOW_DEC_NUMBER_in_functionDecl1882 = frozenset([26])
+    FOLLOW_SEMICOLON_in_functionDecl1885 = frozenset([1])
+    FOLLOW_HANDLER_in_handlerDecl1916 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_handlerDecl1918 = frozenset([30])
+    FOLLOW_30_in_handlerDecl1920 = frozenset([19, 25, 31])
+    FOLLOW_formalParameterList_in_handlerDecl1922 = frozenset([31])
+    FOLLOW_31_in_handlerDecl1925 = frozenset([26])
+    FOLLOW_SEMICOLON_in_handlerDecl1927 = frozenset([1])
+    FOLLOW_EVENT_in_eventDecl1958 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_eventDecl1960 = frozenset([30])
+    FOLLOW_30_in_eventDecl1962 = frozenset([19, 25, 31])
+    FOLLOW_formalParameterList_in_eventDecl1964 = frozenset([31])
+    FOLLOW_31_in_eventDecl1967 = frozenset([38])
+    FOLLOW_38_in_eventDecl1969 = frozenset([30])
+    FOLLOW_30_in_eventDecl1971 = frozenset([9])
+    FOLLOW_DEC_NUMBER_in_eventDecl1975 = frozenset([34])
+    FOLLOW_34_in_eventDecl1977 = frozenset([9])
+    FOLLOW_DEC_NUMBER_in_eventDecl1981 = frozenset([31])
+    FOLLOW_31_in_eventDecl1983 = frozenset([26])
+    FOLLOW_SEMICOLON_in_eventDecl1985 = frozenset([1])
+    FOLLOW_enumDecl_in_declaration2019 = frozenset([1])
+    FOLLOW_bitmaskDecl_in_declaration2036 = frozenset([1])
+    FOLLOW_referenceDecl_in_declaration2050 = frozenset([1])
+    FOLLOW_structDecl_in_declaration2062 = frozenset([1])
+    FOLLOW_functionDecl_in_declaration2077 = frozenset([1])
+    FOLLOW_handlerDecl_in_declaration2090 = frozenset([1])
+    FOLLOW_eventDecl_in_declaration2104 = frozenset([1])
+    FOLLOW_defineDecl_in_declaration2120 = frozenset([1])
+    FOLLOW_docPreComment_in_documentedDeclaration2160 = frozenset([6, 10, 13, 14, 15, 16, 24, 27])
+    FOLLOW_declaration_in_documentedDeclaration2162 = frozenset([1])
+    FOLLOW_IDENTIFIER_in_filename2195 = frozenset([1])
+    FOLLOW_SCOPED_IDENTIFIER_in_filename2213 = frozenset([1])
+    FOLLOW_USETYPES_in_usetypesStmt2233 = frozenset([19, 25])
+    FOLLOW_filename_in_usetypesStmt2235 = frozenset([26])
+    FOLLOW_SEMICOLON_in_usetypesStmt2237 = frozenset([1])
+    FOLLOW_docPreComment_in_apiDocument2275 = frozenset([12, 28, 39])
+    FOLLOW_usetypesStmt_in_apiDocument2297 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_documentedDeclaration_in_apiDocument2315 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_apiVersion_in_apiDocument2351 = frozenset([40])
+    FOLLOW_servingVersion_in_apiDocument2363 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_usetypesStmt_in_apiDocument2402 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_declaration_in_apiDocument2414 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_documentedDeclaration_in_apiDocument2443 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_apiVersion_in_apiDocument2476 = frozenset([40])
+    FOLLOW_servingVersion_in_apiDocument2488 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27, 28, 39])
+    FOLLOW_EOF_in_apiDocument2508 = frozenset([1])
 
 
 

@@ -203,6 +203,7 @@ BITMASK : 'BITMASK' ;
 STRUCT : 'STRUCT' ;
 USETYPES : 'USETYPES' ;
 
+
 /** Identifiers */
 IDENTIFIER : ALPHA ( ALPHANUM | '_' )* ;
 
@@ -212,6 +213,8 @@ SCOPED_IDENTIFIER : IDENTIFIER '.' IDENTIFIER ;
 /** Decimal numbers */
 DEC_NUMBER : number=( '0' | '1'..'9' NUM*) ;
 HEX_NUMBER : '0' ('x' | 'X' ) HEXNUM+ ;
+
+
 
 /* Quoted strings */
 QUOTED_STRING : '"' ( ~('\"' | '\\') | '\\' . )* '"'
@@ -232,9 +235,22 @@ C_COMMENT : '/*' (~'*' | '*'+ ~('/' | '*') )+ '*'+ '/' { self.skip() };
 /** Skip C++ comments which are not documentation comments */
 CPP_COMMENT : '//' ~'\n'* { self.skip() } ;
 
+
 /*
  * Grammar
  */
+/** Get the verions for the API file */
+apiVersion returns [int version]
+	: 'API_VERSION' '=' d=DEC_NUMBER ';'
+		{ $version = int($d.text) }
+	;
+
+servingVersion returns [int version]
+	: 'SERVING_VERSION' '=' d=DEC_NUMBER ';'
+		{ $version = int($d.text) }
+	;
+
+
 /** Argument direction can be in or out */
 direction returns [direction]
     : IN     { $direction = interfaceIR.DIR_IN }
@@ -422,7 +438,6 @@ compoundMember returns [member]
                                                        $IDENTIFIER.text,
                                                        self.getLocationTuple($IDENTIFIER),
                                                        $arrayExpression.size)
-                $member.comments = $docPostComments.comments
         }
     ;
 
@@ -477,16 +492,19 @@ formalParameterList returns [parameters]
     ;
 
 functionDecl returns [function]
-    : FUNCTION typeIdentifier? IDENTIFIER '(' formalParameterList? ')' ';'
+    : FUNCTION typeIdentifier? IDENTIFIER '(' formalParameterList? ')' '=' d=DEC_NUMBER  ';'
         {
             if $formalParameterList.parameters == None:
                 parameterList = []
             else:
                 parameterList = $formalParameterList.parameters
+            msgId = int(d.text)
             $function = interfaceIR.Function($typeIdentifier.typeObj,
                                               $IDENTIFIER.text,
                                               self.getLocationTuple($IDENTIFIER),
-                                              parameterList)
+                                              parameterList,
+											  msgId
+											  )
         }
     ;
 
@@ -504,17 +522,24 @@ handlerDecl returns [handler]
     ;
 
 eventDecl returns [event]
-    : EVENT IDENTIFIER '(' formalParameterList? ')' ';'
+    : EVENT IDENTIFIER '(' formalParameterList? ')' '=' '(' d1=DEC_NUMBER ',' d2=DEC_NUMBER ')' ';'
         {
             if $formalParameterList.parameters == None:
                 parameterList = []
             else:
                 parameterList = $formalParameterList.parameters
+            addMsgId = int(d1.text)
+            remMsgId = int(d2.text)
             $event = interfaceIR.Event($IDENTIFIER.text,
                                         self.getLocationTuple($IDENTIFIER),
-                                        parameterList)
+                                        parameterList,
+                                        addMsgId,
+                                        remMsgId)
         }
     ;
+
+
+
 
 declaration returns [declaration]
     : enumDecl        { $declaration = $enumDecl.enum }
@@ -580,7 +605,13 @@ apiDocument returns [iface]
                 {
                      if $firstDecl.declaration:
                          self.iface.addDeclaration($firstDecl.declaration)
-                } )
+                }
+			| (
+			   firstVer=apiVersion { self.iface.api_version = $firstVer.version}
+			   firstServingVer=servingVersion {self.iface.serving_version = $firstServingVer.version}
+			  )
+		 	)
+
       )?
       ( usetypesStmt
         | declaration
@@ -593,5 +624,10 @@ apiDocument returns [iface]
                   if $laterDecl.declaration:
                        self.iface.addDeclaration($laterDecl.declaration)
              }
+
+		| (
+			   laterVer=apiVersion { self.iface.api_version = $laterVer.version}
+			   laterServingVer=servingVersion {self.iface.serving_version = $laterServingVer.version}
+		  )
       )* EOF { $iface = self.iface }
     ;
