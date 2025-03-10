@@ -270,7 +270,23 @@ def Main():
         sys.exit(0)
 
     # Calculate the hashValue, as it is always needed
-    hashValue, hashText = CalcHash(interface)
+    # if there is version for API, do not use hash
+    if interface.api_version and interface.serving_version:
+        if interface.api_version > 999 or interface.serving_version > 999:
+            print "ifgen: error: the version string is not valid"
+            sys.exit(1)
+        # telaf.lnx.1.1, framework version is 11
+        FRAMEWORK_VER = "11"
+        apiVerStr = "{:03}".format(interface.api_version)
+        servingVerStr = "{:03}".format(interface.serving_version)
+        hashText = "TELAF" + "_" + FRAMEWORK_VER + "_"
+        hashText = hashText + apiVerStr
+        hashText = hashText + "_" + servingVerStr
+        hashText = hashText + "_" + "000000000000000"
+        #hashValue = int(hashText,16)
+        hashValue = hashText
+    else:
+        hashValue, hashText = CalcHash(interface)
 
     # Handle the --hash argument here.  No need to generate any code
     if args.hash:

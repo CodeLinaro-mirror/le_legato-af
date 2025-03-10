@@ -196,7 +196,6 @@ class StructMember(object):
 
         self.apiType = apiType
         self.name = name
-        self.comments = []
         self.location = location
 
     def MaxSize(self):
@@ -516,6 +515,8 @@ class Interface(object):
         self.events = collections.OrderedDict()
         self.comments = []
         self.text = None
+        self.api_version = None
+        self.serving_version = None
 
     def isTypeNameUsed(self, name):
         return ((name in Interface._basicTypes) or
