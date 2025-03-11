@@ -56,7 +56,7 @@ static DLTSession_t DltSession;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_log_Session
 {
-    const char* componentNamePtr;       ///< A pointer to the component's name.
+    char componentName[LIMIT_MAX_COMPONENT_NAME_BYTES];  ///< The component name.
     le_log_Level_t level;               ///< The component's severity level filter.
                                         ///  Log messages with severity less than this are ignored.
     le_sls_List_t keywordList;          ///< The list of keywords for this component.
@@ -88,7 +88,7 @@ static le_mem_PoolRef_t SessionMemPool;
  **/
 //--------------------------------------------------------------------------------------------------
 static LogSession_t DefaultLogSession =    {
-                                            .componentNamePtr="<invalid>",
+                                            .componentName="<invalid>",
                                             .level=LOG_DEFAULT_LOG_FILTER,
                                             .keywordList=LE_SLS_LIST_INIT,
                                             .link=LE_SLS_LINK_INIT
@@ -282,7 +282,7 @@ static LogSession_t* GetSession
         // Get the session.
         LogSession_t* sessionPtr = CONTAINER_OF(sessionLinkPtr, LogSession_t, link);
 
-        if (strcmp(componentNamePtr, sessionPtr->componentNamePtr) == 0)
+        if (strcmp(componentNamePtr, sessionPtr->componentName) == 0)
         {
             // Found the session.
             return sessionPtr;
@@ -404,7 +404,8 @@ static LogSession_t* CreateSession
     LogSession_t* logSessionPtr = le_mem_ForceAlloc(SessionMemPool);
 
     // Initialize the log session.
-    logSessionPtr->componentNamePtr = componentNamePtr;
+    le_utf8_Copy(logSessionPtr->componentName, componentNamePtr,
+                 sizeof(logSessionPtr->componentName), NULL);
     logSessionPtr->level = DefaultLogSession.level;
     logSessionPtr->keywordList = LE_SLS_LIST_INIT;
     logSessionPtr->link = LE_SLS_LINK_INIT;
@@ -695,7 +696,7 @@ static void RegisterWithLogControlDaemon
     if (IpcSessionRef != NULL)
     {
         TRACE("Registering component '%s' with the Log Control Daemon.",
-              logSessionPtr->componentNamePtr);
+              logSessionPtr->componentName);
 
         // Allocate a message
         le_msg_MessageRef_t msgRef = le_msg_CreateMsg(IpcSessionRef);
@@ -717,7 +718,7 @@ static void RegisterWithLogControlDaemon
         n = snprintf(packetPtr + packetLength,
                      LOG_MAX_CMD_PACKET_BYTES - packetLength,
                      "/%s/%d",
-                     logSessionPtr->componentNamePtr,
+                     logSessionPtr->componentName,
                      getpid());
         LE_ASSERT(n > 0);
 
@@ -886,7 +887,7 @@ static void UpdateLeLogLevel
         // Get the session.
         LogSession_t* sessionPtr = CONTAINER_OF(sessionLinkPtr, LogSession_t, link);
 
-        LE_EMERG("Update LE comp(%s) log level: '%s' -> '%s'", sessionPtr->componentNamePtr,
+        LE_EMERG("Update LE comp(%s) log level: '%s' -> '%s'", sessionPtr->componentName,
             log_GetSeverityStr(sessionPtr->level), log_GetSeverityStr(logLevel));
 
         sessionPtr->level = logLevel;
@@ -1344,7 +1345,7 @@ void fa_log_Send
 
     // Get the component name.
     // NOTE: The component name won't change, so it's safe to read this without locking the mutex.
-    const char* compNamePtr = logSession->componentNamePtr;
+    const char* compNamePtr = logSession->componentName;
 
     // Get the file name.
     char* baseFileNamePtr = le_path_GetBasenamePtr((char*)filenamePtr, "/");
