@@ -353,6 +353,17 @@ def Main():
                 if destDir and not os.path.exists(destDir):
                     os.makedirs(destDir)
             Template = TemplateEnvironment.get_template(fileName % ('TEMPLATE'))
+            # check to make sure no duplicate message id for functions
+            tempFuncs = interface.functions.values()
+            msgIdList = []
+           
+            for func in tempFuncs:
+                msgIdList.append(func.msgId)
+
+            if((len(msgIdList)!= len(set(msgIdList))) and (len(msgIdList)!= 0)):
+                print("ifgen: error: duplicate message ids in the API file:" + repr(msgIdList))
+                sys.exit(1)
+            
             Template.stream(args=args,
                             # Although we pass full args, break out a few commonly used arguments
                             # with easier to use names.
