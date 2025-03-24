@@ -38,6 +38,10 @@
 //--------------------------------------------------------------------------------------------------
 
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
+
 /// Logical size of the module names accepted by this API.
 DEFINE NAME_LEN = 60;
 
@@ -61,7 +65,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
 FUNCTION le_result_t Load
 (
     string moduleName[NAME_LEN] IN  ///< Name of the module to load.
-);
+) = 0;
 
 
 
@@ -81,4 +85,5 @@ FUNCTION le_result_t Load
 FUNCTION le_result_t Unload
 (
     string moduleName[NAME_LEN] IN  ///< Name of the module to unload.
-);
+) = 1;
+

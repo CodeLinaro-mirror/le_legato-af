@@ -24,6 +24,9 @@
 //--------------------------------------------------------------------------------------------------
 
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 USETYPES le_limit.api;
 
 
@@ -43,7 +46,7 @@ FUNCTION StdErr
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
     string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
     int32 pid IN                                    ///< PID of the process.
-);
+) = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -62,6 +65,6 @@ FUNCTION StdOut
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
     string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
     int32 pid IN                                    ///< PID of the process.
-);
+) = 1;
 
 

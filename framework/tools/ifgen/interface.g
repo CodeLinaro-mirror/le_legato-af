@@ -202,7 +202,9 @@ ENUM : 'ENUM' ;
 BITMASK : 'BITMASK' ;
 STRUCT : 'STRUCT' ;
 USETYPES : 'USETYPES' ;
-
+API_VERSION : 'API_VERSION' ;
+SERVING_VERSION : 'SERVING_VERSION' ;
+API_MSG_SIZE : 'API_MSG_SIZE' ;
 
 /** Identifiers */
 IDENTIFIER : ALPHA ( ALPHANUM | '_' )* ;
@@ -246,9 +248,15 @@ apiVersion returns [int version]
 	;
 
 servingVersion returns [int version]
-	: 'SERVING_VERSION' '=' d=DEC_NUMBER ';'
-		{ $version = int($d.text) }
-	;
+    : SERVING_VERSION '=' d=DEC_NUMBER ';'
+        { $version = int($d.text) }
+    ;
+
+apiMsgSize returns [int msgSize]
+    : API_MSG_SIZE '=' d=DEC_NUMBER ';'
+        { $msgSize = int($d.text) }
+    ;
+
 
 
 /** Argument direction can be in or out */
@@ -601,19 +609,29 @@ usetypesStmt
 apiDocument returns [iface]
     : ( ( docPreComment { self.iface.comments.append($docPreComment.comment) } )+
             (  usetypesStmt
+			| (
+			   firstVer=apiVersion { self.iface.api_version = $firstVer.version}
+			   firstServingVer=servingVersion {self.iface.serving_version = $firstServingVer.version}
+			  )
+			| (
+			   firstMsgSize = apiMsgSize {self.iface.apiMsgMaxSize = $firstMsgSize.msgSize}
+			  )
             | firstDecl=documentedDeclaration
                 {
                      if $firstDecl.declaration:
                          self.iface.addDeclaration($firstDecl.declaration)
                 }
-			| (
-			   firstVer=apiVersion { self.iface.api_version = $firstVer.version}
-			   firstServingVer=servingVersion {self.iface.serving_version = $firstServingVer.version}
-			  )
 		 	)
 
       )?
       ( usetypesStmt
+        | (
+			   laterVer=apiVersion { self.iface.api_version = $laterVer.version}
+			   laterServingVer=servingVersion {self.iface.serving_version = $laterServingVer.version}
+		  )
+		| (
+             laterMsgSize = apiMsgSize {self.iface.apiMsgMaxSize = $laterMsgSize.msgSize}
+		  )
         | declaration
              {
                 if $declaration.declaration:
@@ -624,10 +642,5 @@ apiDocument returns [iface]
                   if $laterDecl.declaration:
                        self.iface.addDeclaration($laterDecl.declaration)
              }
-
-		| (
-			   laterVer=apiVersion { self.iface.api_version = $laterVer.version}
-			   laterServingVer=servingVersion {self.iface.serving_version = $laterServingVer.version}
-		  )
       )* EOF { $iface = self.iface }
     ;

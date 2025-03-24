@@ -23,6 +23,9 @@
 //--------------------------------------------------------------------------------------------------
 
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 USETYPES le_limit.api;
 
 
@@ -45,7 +48,7 @@ HANDLER AppInstallHandler
 EVENT AppInstallEvent
 (
     AppInstallHandler handler
-);
+) = (0,1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -67,5 +70,5 @@ HANDLER AppUninstallHandler
 EVENT AppUninstallEvent
 (
     AppUninstallHandler handler
-);
+) = (2,3);
 

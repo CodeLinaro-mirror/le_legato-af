@@ -14,7 +14,7 @@ import hashlib
 import importlib
 
 # Templating library
-sys.path.append('/pkg/qct/lint/py2mod/')
+sys.path.append('/pkg/qct/lint/py2mod/') 
 import jinja2
 
 # ifgen extensions for templating library
@@ -273,16 +273,20 @@ def Main():
     # if there is version for API, do not use hash
     if interface.api_version and interface.serving_version:
         if interface.api_version > 999 or interface.serving_version > 999:
-            print "ifgen: error: the version string is not valid"
+            print >> sys.stderr, "ERROR: the version string is not valid"
             sys.exit(1)
         # telaf.lnx.1.1, framework version is 11
         FRAMEWORK_VER = "11"
         apiVerStr = "{:03}".format(interface.api_version)
         servingVerStr = "{:03}".format(interface.serving_version)
-        hashText = "TELAF" + "_" + FRAMEWORK_VER + "_"
+        fileName = args.apiFileName
+        if len(fileName) > 19:
+            print >> sys.stderr,"Error: API file name should NOT exceed 19 chars"
+            sys.exit(1)
+        hashText = fileName.ljust(19,'~') + ":" + FRAMEWORK_VER + ":"
         hashText = hashText + apiVerStr
-        hashText = hashText + "_" + servingVerStr
-        hashText = hashText + "_" + "000000000000000"
+        hashText = hashText + ":" + servingVerStr
+        hashText = hashText + ":" + "0"
         #hashValue = int(hashText,16)
         hashValue = hashText
     else:
@@ -361,9 +365,17 @@ def Main():
                 msgIdList.append(func.msgId)
 
             if((len(msgIdList)!= len(set(msgIdList))) and (len(msgIdList)!= 0)):
-                print("ifgen: error: duplicate message ids in the API file:" + repr(msgIdList))
+                print >> sys.stderr, "ERROR: duplicate message ids in the API file:" + repr(msgIdList)
                 sys.exit(1)
             
+            if interface.apiMsgMaxSize and interface.apiMsgMaxSize < interface.getMessageSize():
+                print >> sys.stderr, "ERROR: API defined max message size(%d) NOT big engough(%d)" % (interface.apiMsgMaxSize,interface.getMessageSize())
+                sys.exit(1)
+            
+            if interface.apiMsgMaxSize == None:
+               print >> sys.stderr, "WARN: API NOT define max message size, use calculated one - %d" % (interface.getMessageSize())
+               interface.apiMsgMaxSize = interface.getMessageSize()
+                
             Template.stream(args=args,
                             # Although we pass full args, break out a few commonly used arguments
                             # with easier to use names.
@@ -371,7 +383,7 @@ def Main():
                             apiName=args.namePrefix,
                             apiBaseName=args.apiFileName,
                             idString=hashValue,
-                            messageSize=interface.getMessageSize(),
+                            messageSize=interface.apiMsgMaxSize,
                             # Break-out various aspects of the interface for convenience
                             imports=interface.imports.keys(),
                             types=interface.types.values(),

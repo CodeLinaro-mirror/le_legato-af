@@ -25,6 +25,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+
+API_VERSION = 1;
+SERVING_VERSION = 1;
 USETYPES le_limit.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -41,4 +44,4 @@ USETYPES le_limit.api;
 FUNCTION le_result_t Remove
 (
     string appName[le_limit.APP_NAME_LEN] IN ///< Name of the app to remove.
-);
+) = 0;

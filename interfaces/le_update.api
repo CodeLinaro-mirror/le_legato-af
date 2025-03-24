@@ -138,6 +138,8 @@
 //--------------------------------------------------------------------------------------------------
 
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
 USETYPES le_limit.api;
 
 
@@ -206,7 +208,7 @@ HANDLER ProgressHandler
 EVENT Progress
 (
     ProgressHandler handler       ///< Progress handler
-);
+) = (0,1);
 
 
 //-------------------------------------------------------------------------------------------------
@@ -224,7 +226,7 @@ EVENT Progress
 FUNCTION le_result_t Start
 (
     file fd                 IN  ///< Open file descriptor from which the update can be read.
-);
+) = 2;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -237,7 +239,7 @@ FUNCTION le_result_t Start
  *      - LE_FAULT if there is an error. Check logs
  */
 //-------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Install();
+FUNCTION le_result_t Install() = 3;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -245,7 +247,7 @@ FUNCTION le_result_t Install();
  * Ends an update session.  If the update isn't finished yet, cancels it.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION End();
+FUNCTION End() = 4;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -257,7 +259,7 @@ FUNCTION End();
  *      - ERR_NONE if update is in any other state.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION ErrorCode GetErrorCode();
+FUNCTION ErrorCode GetErrorCode() = 5;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -267,7 +269,7 @@ FUNCTION ErrorCode GetErrorCode();
  * @return The index of the running system.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION int32 GetCurrentSysIndex();
+FUNCTION int32 GetCurrentSysIndex() = 6;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -285,7 +287,7 @@ FUNCTION le_result_t GetSystemHash
 (
     int32 systemIndex                    IN,  ///< The system to read the hash for.
     string hashStr[le_limit.MD5_STR_LEN] OUT  ///< Buffer to hold the system hash string.
-);
+) = 7;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -299,4 +301,4 @@ FUNCTION le_result_t GetSystemHash
 FUNCTION int32 GetPreviousSystemIndex
 (
     int32 systemIndex IN  ///< Get the system that's older than this system.
-);
+) = 8;

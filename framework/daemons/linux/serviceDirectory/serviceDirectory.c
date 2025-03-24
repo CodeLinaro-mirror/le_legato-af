@@ -935,8 +935,8 @@ static le_result_t DispatchToServer
         {
             LE_INFO("Connect client API:%d to service api(serving):%d",clientApiVer,servingApiVer);
 
-            // Send the client connection fd to the server.
-            le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
+                // Send the client connection fd to the server.
+                le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
                                                 NULL,   // dataPtr
                                                 0,      // dataSize
                                                 clientConnectionPtr->fd, // fdToSend
@@ -955,17 +955,17 @@ static le_result_t DispatchToServer
                      serverConnectionPtr->interface.interfaceName,
                      serverConnectionPtr->interface.protocolId);
 
-                 // Close the client connection (it has been handed off to the server now).
-                 CloseClientConnection(clientConnectionPtr);
-            }
-           else
-           {
-                // The server seems to have failed.
-                // Leave the client on the waiting list, close the server connection.
-                CloseServerConnection(serverConnectionPtr);
+                     // Close the client connection (it has been handed off to the server now).
+                    CloseClientConnection(clientConnectionPtr);
+               }
+               else
+               {
+                   // The server seems to have failed.
+                   // Leave the client on the waiting list, close the server connection.
+                   CloseServerConnection(serverConnectionPtr);
 
-                return LE_CLOSED;
-           }
+                   return LE_CLOSED;
+                }
 
             return LE_OK;
         }

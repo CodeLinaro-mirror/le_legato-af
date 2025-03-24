@@ -26,6 +26,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
 
 USETYPES le_limit.api;
 
@@ -97,7 +99,7 @@ FUNCTION Ref Create
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the app.
     string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
     string execPath[le_limit.MAX_PATH_LEN] IN       ///< Path to the executable file.
-);
+) = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -114,7 +116,7 @@ FUNCTION SetStdIn
     Ref appProcRef IN,              ///< Application process to start.
     file stdInFd IN                 ///< File descriptor to use as the app proc's standard in.
                                     ///< -1 means direct to /dev/null.
-);
+) = 1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -131,7 +133,7 @@ FUNCTION SetStdOut
     Ref appProcRef IN,              ///< Application process to start.
     file stdOutFd IN                ///< File descriptor to use as the app proc's standard out.
                                     ///<  -1 means direct to logs.
-);
+) = 2;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -148,7 +150,7 @@ FUNCTION SetStdErr
     Ref appProcRef IN,              ///< Application process to start.
     file stdErrFd IN                ///< File descriptor to use as the app proc's standard error.
                                     ///< -1 means direct to logs.
-);
+) = 3;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -160,7 +162,7 @@ EVENT Stop
 (
     Ref appProcRef,                 ///< Application process to start.
     StopHandler handler             ///< Handler for the event.
-);
+) = (4,5);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -180,7 +182,7 @@ FUNCTION AddArg
 (
     Ref appProcRef IN,                              ///< Application process to start.
     string arg[le_limit.MAX_ARGS_STR_LEN] IN        ///< Argument to add.
-);
+) = 6;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -195,7 +197,7 @@ FUNCTION AddArg
 FUNCTION ClearArgs
 (
     Ref appProcRef IN                               ///< Application process to start.
-);
+) = 7;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -211,7 +213,7 @@ FUNCTION SetPriority
 (
     Ref appProcRef IN,                                  ///< Application process to start.
     string priority[le_limit.MAX_PRIORITY_NAME_LEN] IN  ///< Priority for the application process.
-);
+) = 8;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -225,7 +227,7 @@ FUNCTION SetPriority
 FUNCTION ClearPriority
 (
     Ref appProcRef IN                                   ///< Application process to start.
-);
+) = 9;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -240,7 +242,7 @@ FUNCTION SetFaultAction
 (
     Ref appProcRef IN,              ///< Application process to start.
     FaultAction action IN           ///< Fault action for the application process.
-);
+) = 10;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -255,7 +257,7 @@ FUNCTION SetFaultAction
 FUNCTION ClearFaultAction
 (
     Ref appProcRef IN               ///< Application process to start.
-);
+) = 11;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -267,7 +269,7 @@ FUNCTION SetDebug
 (
     Ref appProcRef IN,            ///< Application process to set debug flag
     bool debug IN                 ///< Flag to debug the process or not.
-);
+) = 12;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -285,7 +287,7 @@ FUNCTION SetDebug
 FUNCTION le_result_t Start
 (
     Ref appProcRef IN               ///< Application process to start.
-);
+) = 13;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -299,4 +301,4 @@ FUNCTION le_result_t Start
 FUNCTION Delete
 (
     Ref appProcRef IN               ///< Application process to start.
-);
+) = 14;

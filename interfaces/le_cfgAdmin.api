@@ -271,6 +271,10 @@
  */
 //-------------------------------------------------------------------------------------------------
 
+
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 USETYPES le_cfg.api;
 
 
@@ -312,7 +316,7 @@ FUNCTION le_result_t ImportTree
     string nodePath[512]        IN   ///< Where in the tree should this import happen?  Leave
                                      ///<   as an empty string to use the iterator's current
                                      ///<   node.
-);
+) = 0;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -334,7 +338,7 @@ FUNCTION le_result_t ExportTree
     string nodePath[512]        IN   ///< Where in the tree should this export happen?  Leave
                                      ///<   as an empty string to use the iterator's current
                                      ///<   node.
-);
+) = 1;
 
 
 
@@ -354,7 +358,7 @@ FUNCTION le_result_t ExportTree
 FUNCTION DeleteTree
 (
     string treeName[64] IN  ///< Name of the tree to delete.
-);
+) = 2;
 
 
 
@@ -374,7 +378,7 @@ FUNCTION DeleteTree
 //-------------------------------------------------------------------------------------------------
 FUNCTION Iterator CreateTreeIterator
 (
-);
+) = 3;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -385,7 +389,7 @@ FUNCTION Iterator CreateTreeIterator
 FUNCTION ReleaseTreeIterator
 (
     Iterator iteratorRef IN  ///< Iterator object to release.
-);
+) = 4;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -402,7 +406,7 @@ FUNCTION le_result_t GetTreeName
     Iterator iteratorRef IN,  ///< Iterator object to read.
     string name[64] OUT       ///< Name of the currently referenced tree is
                               ///<   passed in this out parameter.
-);
+) = 5;
 
 
 //-------------------------------------------------------------------------------------------------
@@ -416,4 +420,4 @@ FUNCTION le_result_t GetTreeName
 FUNCTION le_result_t NextTree
 (
     Iterator iteratorRef IN  ///< Iterator to iterate.
-);
+) = 6;

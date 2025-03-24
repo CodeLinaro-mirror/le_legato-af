@@ -520,6 +520,7 @@ class Interface(object):
         self.text = None
         self.api_version = None
         self.serving_version = None
+        self.apiMsgMaxSize = None
 
     def isTypeNameUsed(self, name):
         return ((name in Interface._basicTypes) or

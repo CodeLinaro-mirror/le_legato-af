@@ -82,6 +82,10 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * State of the system.
@@ -99,7 +103,7 @@ ENUM SystemState
  * Prevent all updates (and roll-backs) until further notice.
  */
 //-------------------------------------------------------------------------------------------------
-FUNCTION Defer();
+FUNCTION Defer() = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -107,7 +111,7 @@ FUNCTION Defer();
  * Allow updates to go ahead.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Allow();
+FUNCTION Allow() = 1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -117,7 +121,7 @@ FUNCTION Allow();
  * @return false if lock failed (for example if not in a probation period).
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION bool LockProbation();
+FUNCTION bool LockProbation() = 2;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -127,7 +131,7 @@ FUNCTION bool LockProbation();
  * @b NOTE: Must match previous successful call to LockProbation().
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION UnlockProbation();
+FUNCTION UnlockProbation() = 3;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -143,7 +147,7 @@ FUNCTION UnlockProbation();
 FUNCTION le_result_t MarkGood
 (
     bool force     IN  ///< True to set system Good even if someone holds a probation lock
-);
+) = 4;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -154,7 +158,7 @@ FUNCTION le_result_t MarkGood
  * someone is deferring updates using le_updateCtrl_Defer().
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION FailProbation();
+FUNCTION FailProbation() = 5;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -165,4 +169,4 @@ FUNCTION FailProbation();
  * the return value is checked.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SystemState GetSystemState();
+FUNCTION SystemState GetSystemState() = 6;

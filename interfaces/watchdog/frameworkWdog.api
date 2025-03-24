@@ -25,6 +25,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for framework daemon kick.  Called periodically by a framework daemon to notify
@@ -45,4 +48,4 @@ EVENT KickEvent
 (
     uint32 interval,      ///< [IN] Interval to kick the timer, in ms.
     KickHandler handler   ///< [IN] Handler for watchdog kick.
-);
+) = (0,1);
