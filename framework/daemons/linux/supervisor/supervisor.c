@@ -547,6 +547,7 @@ static void StartFramework
     // Connect to the services we need from the framework daemons.
     LE_DEBUG("---- Connecting to services ----");
     le_cfg_ConnectService();
+    le_cfgAdmin_ConnectService();
     logFd_ConnectService();
     le_instStat_ConnectService();
 
@@ -766,6 +767,7 @@ static void ShutdownFramework
     // Disconnect ourselves from services we use so when we kill the servers it does not cause us
     // to die too.
     le_cfg_DisconnectService();
+    le_cfgAdmin_DisconnectService();
     logFd_DisconnectService();
     le_instStat_DisconnectService();
 
@@ -1343,6 +1345,47 @@ COMPONENT_INIT
     // over appsWriteable to work with Legato
     if (isReadOnly)
     {
+#if defined(LE_CONFIG_TARGET_SIMULATION)
+        // mount R/W overlay for "current" folder
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH,
+                                                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_CURRENT_PATH,
+                                                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (mount("overlay", CURRENT_SYSTEM_PATH, "overlay", MS_SILENT,
+                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH ","
+                         "lowerdir=" CURRENT_SYSTEM_PATH ","
+                         "workdir=" TELAF_APP_OVERLAYFS_WK_CURRENT_PATH) != 0)
+        {
+            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
+                     TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH);
+        } else {
+            (void)popen_call(
+               "if type restorecon > /dev/null ; then\n"
+               "    restorecon " CURRENT_SYSTEM_PATH "\n"
+               "fi\n"
+            );
+        }
+
+        // mount R/W overlay for APP install folder
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_APPS_PATH,
+                                                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_WK_APPS_PATH,
+                                                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (mount("overlay", "/legato/apps", "overlay", MS_SILENT | MS_NODEV | MS_NOSUID,
+                         "upperdir=" TELAF_APP_OVERLAYFS_UPPER_APPS_PATH ","
+                         "lowerdir=/legato/apps,"
+                         "workdir=" TELAF_APP_OVERLAYFS_WK_APPS_PATH) != 0)
+        {
+            LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
+                     TELAF_APP_OVERLAYFS_UPPER_APPS_PATH);
+        } else {
+            (void)popen_call(
+               "if type restorecon > /dev/null ; then\n"
+               "    restorecon " "/legato/apps" "\n"
+               "fi\n"
+            );
+        }
+#endif
         LE_INFO("System is read-only. Configuring 'appsWriteable' directory to /tmp/legato/appsWriteable");
         // Create the directories to deploy the R/W upper layer
         (void)mkdir( "/tmp/legato/appsWriteable", 0755 );

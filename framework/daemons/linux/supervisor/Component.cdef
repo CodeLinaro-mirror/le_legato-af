@@ -36,6 +36,7 @@ requires:
         le_cfg.api              [manual-start]
         logDaemon/logFd.api     [manual-start]
         le_instStat.api         [manual-start]
+        le_cfgAdmin.api         [manual-start]
     }
     lib:
     {

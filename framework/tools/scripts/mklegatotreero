@@ -118,28 +118,39 @@ for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
        done
      fi
    done
-
    if [ -d ../../../$ln/read-only/usr ]; then
      mkdir -p `basename $f`/usr/
      for dd in `cd ../../../$ln/read-only/usr; find -type d`; do
         mkdir -p `basename $f`/usr/$dd
         for ff in ../../../$ln/read-only/usr/$dd/*; do
-           [ -f $ff ] &&
+           if [ -f $ff ]; then
               mv $ff `basename $f`/usr/$dd/. &&
               ln -s /legato/systems/current/appsWriteable/`basename $f`/usr/$dd/`basename $ff` \
                     ../../../$ln/read-only/usr/$dd/`basename $ff`
+           fi
         done
      done
    fi
+
+   # lnk scissors file to 'current/config/' as read only config tree and rename to ".paper"
+   # The TelAF framework will check this name ".paper" if it is not a "system" RO tree file.
+   if [ -d "../../../$ln/read-only" ]; then
+      find "../../../$ln/read-only" -type f -name "*.scissors" | while read -r file; do
+           applink=$(echo "$file" | sed "s|.*read-only|/legato/systems/current/apps/$f/read-only|")
+           ln -s "$applink" "../config/$(basename "${file%.*}.paper")"
+      done
+   fi
+
    # Deploy writeable tree for an apps if it exists
    if [ -d ../../../$ln/writeable ]; then
      for dd in `cd ../../../$ln/writeable; find -type d`; do
         mkdir -p `basename $f`/$dd
         for ff in ../../../$ln/writeable/$dd/*; do
-           [ -f $ff ] &&
+           if [ -f $ff ]; then
               mv $ff `basename $f`/$dd/. &&
               ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
                     ../../../$ln/writeable/$dd/`basename $ff`
+           fi
         done
      done
    fi
@@ -148,7 +159,7 @@ done
 
 # Deploy all libs .so into /legato/systems/current/lib if SMACK is disabled
 if [ $DISABLE_SMACK -eq 1 ]; then
-    for libpath in `find . -name "libComponent*.so"`; do
+    for libpath in `find -L . -name "libComponent*.so"`; do
         lib=`basename $libpath`
         if [ ! -e ../lib/$lib ]; then
             ln -s /legato/systems/current/appsWriteable/$libpath ../lib/$lib 2>/dev/null
