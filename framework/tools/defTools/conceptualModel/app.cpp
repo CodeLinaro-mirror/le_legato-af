@@ -37,7 +37,7 @@ App_t::App_t
     maxMemoryBytes(40000 * 1024), // 40 MB
     maxMQueueBytes(512),
     maxQueuedSignals(100),
-    maxThreads(20),
+    maxThreads(300),
     maxSecureStorageBytes(8192)
 //--------------------------------------------------------------------------------------------------
 {
@@ -68,7 +68,7 @@ App_t::App_t
     maxMemoryBytes(40000 * 1024), // 40 MB
     maxMQueueBytes(512),
     maxQueuedSignals(100),
-    maxThreads(20),
+    maxThreads(300),
     maxSecureStorageBytes(8192)
 //--------------------------------------------------------------------------------------------------
 {
