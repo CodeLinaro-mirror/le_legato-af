@@ -217,6 +217,7 @@ static le_result_t GetCurrentRAT
 {
     le_result_t res;
     le_mrc_Rat_t rat;
+    le_mrc_NrIconType_t icon;
     le_mrc_NetRegState_t state;
 
     res = le_mrc_GetNetRegState(&state, RADIO_DEFAULT_PHONE_ID);
@@ -248,13 +249,21 @@ static le_result_t GetCurrentRAT
             cm_cmn_FormatPrint("Current RAT", "TD-SCDMA network (LE_MRC_RAT_TDSCDMA)");
             break;
         case LE_MRC_RAT_LTE:
-            cm_cmn_FormatPrint("Current RAT", "LTE network (LE_MRC_RAT_LTE)");
+            res = le_mrc_GetNrIconType(&icon, RADIO_DEFAULT_PHONE_ID);
+            if (icon == TAF_RADIO_NR_ICON_TYPE_NONE)
+            {
+                cm_cmn_FormatPrint("Current RAT", "LTE network (LE_MRC_RAT_LTE)");
+            }
+            else
+            {
+                cm_cmn_FormatPrint("Current RAT", "LTE (5G NSA network)");
+            }
             break;
         case LE_MRC_RAT_CDMA:
             cm_cmn_FormatPrint("Current RAT", "CDMA network (LE_MRC_RAT_CDMA)");
             break;
         case LE_MRC_RAT_NR5G:
-            cm_cmn_FormatPrint("Current RAT", "NR5G network (LE_MRC_RAT_NR5G)");
+            cm_cmn_FormatPrint("Current RAT", "5G SA network (LE_MRC_RAT_NR5G)");
             break;
         default:
             cm_cmn_FormatPrint("Current RAT", "Unknown network (LE_MRC_RAT_UNKNOWN)");
