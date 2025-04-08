@@ -2767,6 +2767,77 @@ static le_result_t CreateLibBinLinks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Import a given ".cfg" file for the APP as config tree data.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ImportCfgForApp
+(
+    app_Ref_t appRef,                   ///< [IN] Reference to the application object.
+    const char *cfgFile,
+    const char *cfgName,
+    bool isWritable
+)
+{
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    char treeRootDir[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(treeRootDir, LE_CFG_STR_LEN_BYTES, "%s:/%s", appRef->name, cfgName);
+
+    LE_INFO("IMPORT TREE: %s %s",pathBuffer, treeRootDir);
+
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(treeRootDir);
+    le_cfgAdmin_ImportTree(iterRef, cfgFile, pathBuffer);
+    le_cfg_CommitTxn(iterRef);
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the name for the ".cfg" file if any.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetCfgFileName
+(
+    const char *srcPath,   ///< [IN] File name to be check.
+    char *cfgName          ///< [OUT] Read only config tree file path.
+)
+{
+    const char *extensionSrc = ".cfg";
+    size_t lenSrc = strlen(srcPath);
+    size_t lenExt = strlen(extensionSrc);
+
+    if (lenSrc >= lenExt)
+    {
+        if (strcmp(srcPath + lenSrc - lenExt, extensionSrc) == 0)
+        {
+            const char *filename = strrchr(srcPath, '/');
+            if (filename == NULL)
+            {
+                filename = srcPath;
+            }
+            else
+            {
+                filename++;
+            }
+            LE_INFO("filename: %s", filename);
+
+            snprintf(cfgName, LIMIT_MAX_PATH_BYTES, "%s", filename);
+            char *dot = strrchr(cfgName, '.');
+            if (dot != NULL)
+            {
+                *dot = '\0';
+            }
+
+            return;
+        }
+    }
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the source path for read only bundled files at the current node in the config iterator.
  *
  * @return
@@ -2820,6 +2891,76 @@ static le_result_t GetBundledReadOnlySrcPath
             LE_ERROR("Import source path '%s' for app '%s' is too long.", bufPtr, app_GetName(appRef));
             return LE_FAULT;
         }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the source path for cfg bundled files at the current node in the config iterator and import
+ * the data to the APP's config tree.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCfgFileAndToConfigTree
+(
+    app_Ref_t appRef,                   ///< [IN] Reference to the application object.
+    le_cfg_IteratorRef_t cfgIter,       ///< [IN] Config iterator.
+    bool isWriteable
+)
+{
+    char srcPath[LIMIT_MAX_PATH_BYTES] = "";
+    LE_INFO("GetBundledReadOnlySrcPath:");
+    if (le_cfg_GetString(cfgIter, "src", srcPath, sizeof(srcPath), "") != LE_OK)
+    {
+        LE_ERROR("Source file path '%s...' for app '%s' is too long.",
+            srcPath, app_GetName(appRef));
+        return LE_FAULT;
+    }
+
+    if (strlen(srcPath) == 0)
+    {
+        LE_ERROR("Empty source file path supplied for app %s.", app_GetName(appRef));
+        return LE_FAULT;
+    }
+
+    char cfgName[LIMIT_MAX_PATH_BYTES] = "";
+    char cfgPath[LIMIT_MAX_PATH_BYTES] = "";
+    GetCfgFileName(srcPath, cfgName);
+    if (cfgName[0] != '\0')
+    {
+        if (srcPath[0] == '/')
+        {
+            // The source path is an absolute path so just copy it to the user's buffer.
+            if (le_utf8_Copy(cfgPath, srcPath, LIMIT_MAX_PATH_BYTES, NULL) != LE_OK)
+            {
+                LE_ERROR("Source file path '%s...' for app '%s' is too long.",
+                    srcPath, app_GetName(appRef));
+                return LE_FAULT;
+            }
+        }
+        else
+        {
+            // The source file path is relative to the app install directory.
+            cfgPath[0] = '\0';
+            if (LE_OK != le_path_Concat("/",
+                                        cfgPath,
+                                        LIMIT_MAX_PATH_BYTES,
+                                        appRef->installDirPath,
+                                        isWriteable? "writeable":"read-only",
+                                        srcPath,
+                                        NULL) )
+            {
+                LE_ERROR("Import source path '%s' for app '%s' is too long.",
+                    cfgPath, app_GetName(appRef));
+                return LE_FAULT;
+            }
+        }
+        ImportCfgForApp(appRef, cfgPath, cfgName, isWriteable);
     }
 
     return LE_OK;
@@ -2992,6 +3133,51 @@ static le_result_t CreateBundledLinks
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import the bundled cfg files for application.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ImportBundledCfg
+(
+    app_Ref_t appRef,                   ///< [IN] Application reference.
+    const char* appDirLabelPtr          ///< [IN] SMACK label to use for created directories.
+)
+{
+    // Get a config iterator for this app.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+
+    // Go to the bundled directories section.
+    le_cfg_GoToNode(appCfg, CFG_NODE_BUNDLES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DIRS);
+
+    // Go to the requires files section.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_FILES);
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            bool isWritable = le_cfg_GetBool(appCfg, "isWritable", false);
+            if (GetCfgFileAndToConfigTree(appRef, appCfg, isWritable)
+                != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+    }
+
+    le_cfg_CancelTxn(appCfg);
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3193,6 +3379,11 @@ static le_result_t SetupAppArea
 
     // Create links to bundled files.
     if (CreateBundledLinks(appRef, appDirLabel) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    if (ImportBundledCfg(appRef, appDirLabel) != LE_OK)
     {
         return LE_FAULT;
     }

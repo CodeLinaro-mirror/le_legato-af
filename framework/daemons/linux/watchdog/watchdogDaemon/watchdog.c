@@ -386,106 +386,6 @@ static WatchdogObj_t* LookupClientWatchdogPtrById
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the application name of the process with the specified PID.
- *
- * Do not depend on the le_appInfo API as the watchdog must continue to work even if the supervisor
- * has hung or crashed.
- *
- * @return
- *      LE_OK if the application name was successfully found.
- *      LE_OVERFLOW if the application name could not fit in the provided buffer.
- *      LE_NOT_FOUND if the process is not part of an application.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t GetAppNameFromPid
-(
-    int32_t pid,                    ///< [IN] PID of the process.
-    char* appName,                  ///< [OUT] Application name
-    size_t appNameNumElements       ///< [IN] Application name size
-)
-{
-#ifdef LE_CONFIG_TARGET_SIMULATION
-    AppProcKey_t key;
-    memset(&key, 0, sizeof(key));
-    if (LE_OK == le_appInfo_GetName(pid, key.appName, sizeof(key.appName))) {
-        LE_INFO("GetAppNameFromPid pid=%d, AppName=%s",pid,key.appName);
-        return le_utf8_Copy(appName, key.appName, appNameNumElements, NULL);
-    }
-    return LE_FAULT;
-#else
-    char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
-
-    LE_ASSERT(snprintf(cgroupFilePath, sizeof(cgroupFilePath), "/proc/%d/cgroup", pid)
-              < sizeof(cgroupFilePath));
-
-    FILE* cgroupFilePtr = fopen(cgroupFilePath, "r");
-
-    if (cgroupFilePtr == NULL)
-    {
-        LE_INFO("Cannot open %s. %m.", cgroupFilePath);
-        return LE_FAULT;
-    }
-
-    // Other than the cgroup path which contains an app name, allocate another 20 bytes for
-    // hierarchy ID, controller list, and misc. separators.
-    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 20] = {0};
-
-    // Read the first line.
-    LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
-
-    // Close the stream
-    if (fclose(cgroupFilePtr) != 0)
-    {
-        if (errno == EINTR)
-        {
-            LE_WARN("Closing '%s' caused EINTR. Proceeding anyway.", cgroupFilePath);
-        }
-        else
-        {
-            LE_FATAL("Failed to close '%s'. Errno = %d (%m).", cgroupFilePath, errno);
-        }
-    }
-
-    // Remove the trailing newline char.
-    size_t len = strlen(lineBuf);
-
-    if (lineBuf[len - 1] == '\n')
-    {
-        lineBuf[len - 1] = '\0';
-    }
-
-    // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
-    // e.g. 4:freezer:/SomeApp
-    // We are trying to get the 3rd token and remove the leading slash.
-    char* token;
-    char delim[2] = ":";
-    char *saveptr;
-
-    strtok_r(lineBuf, delim, &saveptr);
-    strtok_r(NULL, delim, &saveptr);
-    token = strtok_r(NULL, delim, &saveptr);
-
-    if (NULL == token)
-    {
-        LE_CRIT("Unexpected format for '%s'", lineBuf);
-        return LE_FAULT;
-    }
-
-    // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
-    // hence not part of any app.
-    if (strlen(token) <= 1)
-    {
-        return LE_NOT_FOUND;
-    }
-
-    // Note that the leading slash of the token has to be removed.
-    return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
-#endif
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The handler for all time outs. No registered application wants to see us get here.
  * Arrival here means that some process has failed to service its watchdog and therefore,
  * we need to tattle to the supervisor who, if the app still exists, will deal with it
@@ -754,41 +654,37 @@ static le_result_t GetProcessNameFromPid
 //--------------------------------------------------------------------------------------------------
 static le_clk_Time_t GetConfigKickTimeoutInterval
 (
-    pid_t procId  ///< The process id of the client
+    const char* appNamePtr, ///< App name
+    const char* procNamePtr ///< Process name
 )
 {
-    char appName[LIMIT_MAX_APP_NAME_BYTES] = "";
-    char procName[LIMIT_MAX_PROCESS_NAME_BYTES] = "";
     char configPath[LIMIT_MAX_PATH_BYTES] = "";
 
     const int defaultTimeout = TIMEOUT_DEFAULT;
     int proc_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
     int app_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
 
-    if (LE_OK == GetAppNameFromPid(procId, appName, sizeof(appName) ))
+    if ((appNamePtr != NULL) && (procNamePtr != NULL))
     {    // Check if there is a config for the process name first else check under the app name
 
         // It's a real app. Let's look up the config!
-        LE_DEBUG("Getting configured watchdog timeout for app %s", appName);
-        if (le_path_Concat("/", configPath, sizeof(configPath), CFG_NODE_APPS_LIST, appName,
+        LE_DEBUG("Getting configured watchdog timeout for app %s", appNamePtr);
+        if (le_path_Concat("/", configPath, sizeof(configPath), CFG_NODE_APPS_LIST, appNamePtr,
                 CFG_NODE_WDOG_TIMEOUT, NULL) == LE_OK)
         {
             app_milliseconds = le_cfg_QuickGetInt(configPath, CFG_TIMEOUT_USE_DEFAULT);
         }
 
-        if (LE_OK == GetProcessNameFromPid( procId, procName, sizeof(procName)))
-        {
-            // get the config
-            configPath[0]='\0';
-            LE_DEBUG("Getting configured watchdog timeout for process %s", procName);
+        // get the config
+        configPath[0]='\0';
+        LE_DEBUG("Getting configured watchdog timeout for process %s", procNamePtr);
 
-            if(le_path_Concat("/", configPath, sizeof(configPath),
-                              CFG_NODE_APPS_LIST, appName,
-                              CFG_NODE_PROC_LIST, procName,
-                              CFG_NODE_WDOG_TIMEOUT, NULL) == LE_OK)
-            {
-                proc_milliseconds = le_cfg_QuickGetInt(configPath, CFG_TIMEOUT_USE_DEFAULT);
-            }
+        if(le_path_Concat("/", configPath, sizeof(configPath),
+                          CFG_NODE_APPS_LIST, appNamePtr,
+                          CFG_NODE_PROC_LIST, procNamePtr,
+                          CFG_NODE_WDOG_TIMEOUT, NULL) == LE_OK)
+        {
+            proc_milliseconds = le_cfg_QuickGetInt(configPath, CFG_TIMEOUT_USE_DEFAULT);
         }
 
         // find a valid value starting at proc level and working up
@@ -797,19 +693,19 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
             if (app_milliseconds == CFG_TIMEOUT_USE_DEFAULT)
             {
                 proc_milliseconds = defaultTimeout;
-                LE_WARN("No watchdog timeout configured for %s - using default %d ms", appName,
+                LE_WARN("No watchdog timeout configured for %s - using default %d ms", appNamePtr,
                   proc_milliseconds);
             }
             else
             {
                 proc_milliseconds = app_milliseconds;
                 LE_INFO("No watchdog timeout configured for process %s - using app timeout %d ms",
-                    procName, proc_milliseconds);
+                    procNamePtr, proc_milliseconds);
             }
         }
         else
         {
-            LE_DEBUG("Watchdog timeout configured for %s - timeout %d ms", procName,
+            LE_DEBUG("Watchdog timeout configured for %s - timeout %d ms", procNamePtr,
               proc_milliseconds);
         }
     }
@@ -820,8 +716,6 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
         // TODO: Find a way to get the configured watchdog timeout duration for unsandboxed
         //       apps, which run as root.
         proc_milliseconds = defaultTimeout;
-        LE_WARN("Unknown app with pid %d requested watchdog - using default timeout %d ms", procId,
-          proc_milliseconds);
     }
 
     return MakeTimerInterval(proc_milliseconds);
@@ -907,7 +801,7 @@ static WatchdogObj_t* CreateNewWatchdog
         newDogPtr = le_mem_ForceAlloc(WatchdogPool);
         maxKickTimeoutInterval = MakeTimerInterval(LE_WDOG_TIMEOUT_NEVER);
         InitNewWatchdog(newDogPtr, clientPid,
-                        GetConfigKickTimeoutInterval(clientPid),
+                        GetConfigKickTimeoutInterval(key.appName, key.procName),
                         maxKickTimeoutInterval);
     }
 

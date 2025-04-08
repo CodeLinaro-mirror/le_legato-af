@@ -60,11 +60,11 @@ case "$1" in
         if [ -z "${TELAF_IN_CONTAINER}" ]; then
             sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
                 echo "Failed to set net.unix.max_dgram_qlen"
-            sysctl -w net.core.wmem_max=266240 >/dev/null || \
+            sysctl -w net.core.wmem_max=4194304 >/dev/null || \
                 echo "Failed to set net.core.wmem_max"
             sysctl -w net.core.wmem_default=266240 >/dev/null || \
                 echo "Failed to set net.core.wmem_default"
-            sysctl -w net.core.rmem_max=266240 >/dev/null || \
+            sysctl -w net.core.rmem_max=4194304 >/dev/null || \
                 echo "Failed to set net.core.rmem_max"
             sysctl -w net.core.rmem_default=266240 >/dev/null || \
                 echo "Failed to set net.core.rmem_default"
