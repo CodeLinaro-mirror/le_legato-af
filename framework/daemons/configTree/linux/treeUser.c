@@ -7,7 +7,7 @@
  *  trees.  In the future, tree accessibility permissions will also be add to these objects.
  *
  *  Copyright (C) Sierra Wireless Inc.
- *  Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  */
 // -------------------------------------------------------------------------------------------------
@@ -120,34 +120,93 @@ static bool IsTelafApp
     pid_t processId  ///< [IN] Process ID.
 )
 {
-    char cmd[128];
+    char cmd[256];
     FILE *fp;
     char oneline[128];
     pid_t processIdTmp;
+    const char * procName = "supervisor";
 
-    // get the sub processes of supervisor
-    snprintf(cmd, sizeof(cmd), "pgrep -P $(pgrep '%s')", "supervisor");
+    // Get the supervisor PID in the current namespace.
+    snprintf(cmd, sizeof(cmd),
+            "found=0; "
+            "for pid in $(pidof %s); "
+            "do if [ \"$(readlink /proc/1/ns/pid)\" == \"$(readlink /proc/$pid/ns/pid)\" ]; "
+            "then echo \"$pid\"; found=1; break; fi; done; "
+            "[ $found -eq 0 ] && echo 0", procName);
 
     fp = popen(cmd, "r");
-    if (!fp)
+    if (NULL == fp)
     {
-        LE_INFO("Cannot run: %s, errno： %d (%m)", cmd, errno);
+        LE_ERROR("Can not run: %s, error: %m(%d)", cmd, errno);
         return false;
     }
 
-    while (fgets(oneline, sizeof(oneline), fp))
+    // Two cases:
+    // 1. Found the first matched
+    // 2. Return 0 if not found
+    if (fgets(oneline, sizeof(oneline), fp) != NULL)
     {
-        processIdTmp = atoi(oneline);
-        if (processIdTmp == processId)
+        if (pclose(fp) == -1)
         {
-            pclose(fp);
-            return true;
+            LE_ERROR("pclose failed: %m");
+            return false;
+        }
+
+        pid_t superPid = atoi(oneline);
+        LE_DEBUG("%s pid is: %d", procName, superPid);
+
+        // If the NOT found, the superPid is equal to 0
+        if (superPid > 0)
+        {
+            snprintf(cmd, sizeof(cmd), "pgrep -P %d", superPid);
+
+            fp = popen(cmd, "r");
+            if (fp == NULL)
+            {
+                LE_ERROR("Can not run: %s, error: %m(%d)", cmd, errno);
+                return false;
+            }
+            else
+            {
+                while (NULL != fgets(oneline, sizeof(oneline), fp))
+                {
+                    processIdTmp = atoi(oneline);
+                    if (processIdTmp == processId)
+                    {
+                        // Event though the 'pclose' failed, mark it as FOUND
+                        if (pclose(fp) == -1)
+                        {
+                            LE_ERROR("pclose failed: %m");
+                        }
+
+                        return true;
+                    }
+                }
+
+                // Not found the expected PID
+                if (pclose(fp) == -1)
+                {
+                    LE_ERROR("pclose failed: %m");
+                }
+
+                return false;
+            }
+        }
+        else
+        {
+            LE_INFO("No matching PID found for: %s", procName);
+            return false;
         }
     }
-
-    LE_WARN("Process[%u] is not a TelAF process", processId);
-    pclose(fp);
-    return false;
+    else
+    {
+        LE_WARN("Process[%u] is not a TelAF process", processId);
+        if (pclose(fp) == -1)
+        {
+            LE_ERROR("pclose failed: %m");
+        }
+        return false;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
