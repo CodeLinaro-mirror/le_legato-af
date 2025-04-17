@@ -1343,6 +1343,30 @@ static void WriteBootCount
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Write the reboot sub-reason.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteSubReason
+(
+    const char* subReason
+)
+{
+    if(0 != access("/data/telaf", F_OK))
+    {
+        if(mkdir("/data/telaf", 0755) != 0)
+        {
+            LE_ERROR("Failed to create the dir '/data/telaf', %m");
+            return;
+        }
+        LE_INFO("'/data/telaf' does not exist, create it.");
+    }
+
+    file_WriteStr("/data/telaf/bootReason", subReason, 0);
+    sync();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * returns EXIT_FAILURE on error, otherwise, returns the exit code of the Supervisor.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1692,8 +1716,10 @@ static int RunCurrentSystem
                 LE_FATAL("Reboot is disabled. Exit with failure");
             }
 
+            WriteSubReason("telaf crash");
+
             // Try first the /sbin/reboot, less hard that the reboot(2) system call
-            retCode = system("/sbin/reboot");
+            retCode = system("/sbin/reboot 'admin-trigger'");
             if (WIFEXITED(retCode) && (0 == WEXITSTATUS(retCode)))
             {
                 LE_FATAL("System will reboot now !");
