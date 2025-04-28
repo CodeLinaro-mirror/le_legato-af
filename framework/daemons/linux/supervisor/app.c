@@ -2338,11 +2338,17 @@ static le_result_t CreateDirLink
     }
     else
     {
-        // Create a symlink at the specified path.
-        if (symlink(srcPtr, destPath) != 0)
+#if !defined(LE_CONFIG_SUPPORT_APP_UPDATE_WITH_OVERLAY) && ! defined(LE_CONFIG_TARGET_SIMULATION)
+        // If the file alreay present, do not try to create it in read only directory
+        if (access(destPath, F_OK) != 0)
+#endif
         {
-            LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            goto failure;
+            // Create a symlink at the specified path.
+            if (symlink(srcPtr, destPath) != 0)
+            {
+                LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
+                goto failure;
+            }
         }
     }
 
@@ -2428,36 +2434,47 @@ static le_result_t CreateFileLink
     // For devices, create a new device node for the app
     if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
     {
-        char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
-
-        LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
-
-        if (result != LE_OK)
+        // The build script will prepare the device node for read-only image.
+        if (access(destPath, F_OK) == 0)
         {
-            LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
-            goto failure;
+            if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
+            {
+                LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
+                goto failure;
+            }
         }
-
-        if (mknod(destPath,
-                  (srcStat.st_mode & (S_IFCHR | S_IFBLK)) | S_IRUSR | S_IWUSR,
-                  srcStat.st_rdev) == -1)
+        else
         {
-            LE_ERROR("Could not create device '%s'.  %m", destPath);
-            goto failure;
-        }
+            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
 
-        if (smack_SetLabel(destPath, devLabel) != LE_OK)
-        {
-            LE_ERROR("Failed to set smack label for device '%s'", destPath);
-            goto failure;
-        }
+            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
 
-        // Gift the device to the app.
-        if (chown(destPath, appRef->uid, appRef->gid) == -1)
-        {
-            LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
-            goto failure;
+            if (result != LE_OK)
+            {
+                LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
+                goto failure;
+            }
+            if (mknod(destPath,
+                      (srcStat.st_mode & (S_IFCHR | S_IFBLK)) | S_IRUSR | S_IWUSR,
+                      srcStat.st_rdev) == -1)
+            {
+                LE_ERROR("Could not create device '%s'.  %m", destPath);
+                goto failure;
+            }
+
+            if (smack_SetLabel(destPath, devLabel) != LE_OK)
+            {
+                LE_ERROR("Failed to set smack label for device '%s'", destPath);
+                goto failure;
+            }
+
+            // Gift the device to the app.
+            if (chown(destPath, appRef->uid, appRef->gid) == -1)
+            {
+                LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
+                goto failure;
+            }
         }
     }
     else

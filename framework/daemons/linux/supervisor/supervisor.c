@@ -323,6 +323,7 @@ static bool ShouldNotDaemonize = false;
 static const char* CurrentStartVersion = NULL;
 
 
+#if defined(LE_CONFIG_SUPPORT_APP_UPDATE_WITH_OVERLAY) || defined(LE_CONFIG_TARGET_SIMULATION)
 //--------------------------------------------------------------------------------------------------
 /**
  * Popen to run system command.
@@ -347,7 +348,7 @@ static int popen_call(const char *cmd)
     }
     return rst;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1345,7 +1346,7 @@ COMPONENT_INIT
     // over appsWriteable to work with Legato
     if (isReadOnly)
     {
-#if defined(LE_CONFIG_TARGET_SIMULATION)
+#if defined(LE_CONFIG_SUPPORT_APP_UPDATE_WITH_OVERLAY) || defined(LE_CONFIG_TARGET_SIMULATION)
         // mount R/W overlay for "current" folder
         (void)le_dir_MakePath(TELAF_APP_OVERLAYFS_UPPER_CURRENT_PATH,
                                                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -1385,7 +1386,8 @@ COMPONENT_INIT
                "fi\n"
             );
         }
-#endif
+
+        // mount R/W overlay for APP working folder
         LE_INFO("System is read-only. Configuring 'appsWriteable' directory to /tmp/legato/appsWriteable");
         // Create the directories to deploy the R/W upper layer
         (void)mkdir( "/tmp/legato/appsWriteable", 0755 );
@@ -1410,6 +1412,7 @@ COMPONENT_INIT
                 );
             }
         }
+#endif
     }
     else
     {
