@@ -2437,6 +2437,20 @@ static le_result_t CreateFileLink
         // The build script will prepare the device node for read-only image.
         if (access(destPath, F_OK) == 0)
         {
+
+            struct stat desStat;
+            if (stat(destPath, &desStat) == -1)
+            {
+                LE_ERROR("Could not stat file at '%s'. %m", destPath);
+                goto failure;
+            }
+            // Skip mounting the device if it is already mounted.
+            if(srcStat.st_ino == desStat.st_ino)
+            {
+                LE_INFO("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
+                return LE_OK;
+            }
+
             if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
             {
                 LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
