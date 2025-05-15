@@ -46,6 +46,13 @@
 #include <linux/limits.h>
 #include <mntent.h>
 
+#include <pwd.h>
+#include <grp.h>
+#include <sys/capability.h>
+#include <sys/prctl.h>
+#include <linux/securebits.h>
+#include <inttypes.h>
+
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 
@@ -58,6 +65,12 @@ static pa_start_Init_t                  pa_start_Init;
 static pa_start_IsHardwareFaultReset_t  pa_start_IsHardwareFaultReset;
 /// last exit code.
 static int LastExitCode = EXIT_FAILURE; // Treat a reboot as a fault.
+
+/// The max index for capabilites
+static int CapLastCap;
+
+/// Non-root user in unprivileged mode
+static const char* TAF_CORE_USER = "tafcore";
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1365,6 +1378,205 @@ static void WriteSubReason
     sync();
 }
 
+#if LE_CONFIG_DEBUG
+//--------------------------------------------------------------------------------------------------
+/**
+ * Show current thread capabilites within some helpful information
+ */
+//--------------------------------------------------------------------------------------------------
+static void ShowCurrentThreadCap(const char * msg)
+{
+    struct __user_cap_header_struct header;
+    struct __user_cap_data_struct data[2];
+
+    header.version = _LINUX_CAPABILITY_VERSION_3;
+
+    // Get current thread's capability
+    header.pid = 0;
+
+    if (capget(&header, data) == -1)
+    {
+        LE_ERROR("capget failed: %m");
+        return;
+    }
+
+    uint64_t cap_bounding = 0; // Reset the bounding-set
+
+    for (uint64_t cap = 0; cap <= CapLastCap; cap++)
+    {
+        if (prctl(PR_CAPBSET_READ, cap, 0, 0, 0) == 1)
+        {
+            cap_bounding |= (1ULL << cap);
+        }
+    }
+
+    uint64_t ambient_set = 0; // Reset the ambient-set
+
+    for (int cap = 0; cap <= CapLastCap; cap++)
+    {
+        int is_set = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, cap, 0, 0);
+
+        if (is_set == -1)
+        {
+            LE_ERROR("Failed to check ambient cap %d: %m", cap);
+        }
+        else if (is_set == 1)
+        {
+            ambient_set |= (1ULL << cap);
+        }
+    }
+
+    int Securebits = prctl(PR_GET_SECUREBITS, 0, 0, 0, 0);
+    int NoNewPrivs = prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0);
+    int Dumpable = prctl(PR_GET_DUMPABLE, 0, 0, 0, 0);
+
+    LE_INFO("----------------- Dump-Cap ------------------");
+    LE_INFO("> Msg: [ %s ]", msg);
+    LE_INFO("> Version: 0x%x", header.version);
+    LE_INFO("> uid/gid: %u/%u, euid/egid: %u/%u",
+            getuid(), getgid(), geteuid(), getegid());
+    LE_INFO("> pid/tid: %u/%u", (int)getpid(), (uint32_t) syscall(SYS_gettid));
+    LE_INFO("> Inh: 0x%08x%08x", data[1].inheritable, data[0].inheritable);
+    LE_INFO("> Prm: 0x%08x%08x", data[1].permitted, data[0].permitted);
+    LE_INFO("> Eff: 0x%08x%08x", data[1].effective, data[0].effective);
+    LE_INFO("> Bnd: 0x%016" PRIx64, cap_bounding);
+    LE_INFO("> Amb: 0x%016" PRIx64, ambient_set);
+    LE_INFO("> Securebits: 0x%x", Securebits);
+    LE_INFO("> NoNewPrivs: 0x%x", NoNewPrivs);
+    LE_INFO("> Dumpable: 0x%x", Dumpable);
+    LE_INFO("---------------------------------------------");
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prepare the capabilities to set a non-root user (tafcore)
+ */
+//--------------------------------------------------------------------------------------------------
+static void DropPrivileges()
+{
+    char pwbuf[LIMIT_MAX_PATH_BYTES * 3];
+    struct passwd pwd;
+    struct passwd* result;
+    int err;
+
+    struct __user_cap_header_struct head = {0};
+    struct __user_cap_data_struct data[2] = {{0}, {0}};
+
+    head.version = _LINUX_CAPABILITY_VERSION_3;
+    head.pid = 0;
+
+    LE_FATAL_IF(
+        capget(&head, NULL) == -1,
+        "Failed to check capability version: %m"
+    );
+
+    LE_FATAL_IF(
+        _LINUX_CAPABILITY_VERSION_3 != head.version,
+        "Bad capability version got: 0x%x, expected: 0x%x",
+        head.version,
+        _LINUX_CAPABILITY_VERSION_3
+    );
+
+    LE_FATAL_IF(
+        capget(&head, data) == -1,
+        "Failed to get capabilities: %m"
+    );
+
+    /* Reset all inheritable capabilities for supervisor */
+    data[0].inheritable = 0U;
+    data[1].inheritable = 0U;
+
+    /* To unprivileged mode */
+    uint64_t caps = (uint64_t)(-1);
+
+    data[0].inheritable = (uint32_t)(caps & 0xFFFFFFFF);
+    data[1].inheritable = (uint32_t)(caps >> 32);
+
+    /* Set the P(inheritable) to P'(inheritable) */
+    LE_FATAL_IF(
+        capset(&head, data) == -1,
+        "Failed to set capabilities: %m"
+    );
+
+    /* Set P(ambient) to P'(ambient) */
+    for (int i = 0; i <= CapLastCap; i++)
+    {
+        LE_FATAL_IF(
+            prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, i, 0, 0) == -1,
+            "Failed to set ambient cap: %d : %m", i
+        );
+    }
+
+    /* Take effect in P'(permitted, effective, ambient) */
+    LE_FATAL_IF(
+        prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP, 0, 0, 0) == -1,
+        "Failed to set SECBIT_NO_SETUID_FIXUP: %m"
+    );
+
+    /* Get tafcore user's passwd-entry */
+    do
+    {
+        err = getpwnam_r(TAF_CORE_USER, &pwd, pwbuf, sizeof(pwbuf), &result);
+    }
+    while ((result == NULL) && (err == EINTR));
+
+    if (result == NULL)
+    {
+        if (err == 0)
+        {
+            LE_FATAL("User name was NOT found: %s", TAF_CORE_USER);
+        }
+        else
+        {
+            errno = err;
+            LE_FATAL("Could NOT read the passwd entry for user '%s'.  %m", TAF_CORE_USER);
+        }
+    }
+
+    LE_FATAL_IF(
+        setgid(pwd.pw_gid) != 0,
+        "Failed to set GID: %m"
+    );
+
+    LE_FATAL_IF(
+        initgroups(TAF_CORE_USER, pwd.pw_gid) != 0,
+        "Failed to initialize groups: %m"
+    );
+
+    LE_FATAL_IF(
+        setuid(pwd.pw_uid) != 0,
+        "Failed to set UID: %m"
+    );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the max index of capabilities from proc-fs instead of MACRO CAP_LAST_CAP
+ */
+//--------------------------------------------------------------------------------------------------
+static int GetCapLastCap(void)
+{
+    int value = -1;
+
+    FILE *fp = fopen("/proc/sys/kernel/cap_last_cap", "r");
+    if (!fp)
+    {
+        LE_ERROR("Failed to open cap_last_cap: %m");
+        return -1;
+    }
+
+    if (fscanf(fp, "%d", &value) != 1)
+    {
+        LE_ERROR("Failed to read cap_last_cap: %m");
+        fclose(fp);
+        return -1;
+    }
+
+    fclose(fp);
+    return value;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * returns EXIT_FAILURE on error, otherwise, returns the exit code of the Supervisor.
@@ -1375,6 +1587,13 @@ static int TryToRun
     void
 )
 {
+    CapLastCap = GetCapLastCap();
+    LE_FATAL_IF(
+        CapLastCap == -1,
+        "Failed to get the cap_last_cap from proc-fs"
+    );
+
+    LE_INFO("Max-Cap-Num: (header:%d), (proc:%d)", (int) CAP_LAST_CAP, CapLastCap);
 
     // Start the Supervisor.
     pid_t supervisorPid = fork();
@@ -1393,6 +1612,13 @@ static int TryToRun
             // all auto-started apps will be launched.
             le_utf8_Copy(startAppMode, "auto", sizeof(startAppMode), NULL);
         }
+
+        // Drop privilege between 'fork' and 'exec'
+        DropPrivileges();
+
+#if LE_CONFIG_DEBUG
+        ShowCurrentThreadCap("After-Setuid");
+#endif
 
         if (CurrentStartVersion == NULL)
         {

@@ -816,10 +816,10 @@ static void GenerateBindingsConfig
     // If cross-building for an embedded target (not "localhost"),
     if (buildParams.target != "localhost")
     {
-        // Add a bind to the Log Client interface of the Log Control Daemon (which runs as root).
+        // Add a bind to the Log Client interface of the Log Control Daemon (which runs as tafcore).
         GenerateSingleApiBindingToUser(cfgStream,
                                        "LogClient",
-                                       "root",
+                                       "tafcore",
                                        "LogClient");
     }
 
