@@ -2200,7 +2200,7 @@ int main
         MakeDir("/home/root");
     }
 
-    daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
+    daemon_Daemonize(30000); // 30 second timeout in case older supervisor is installed.
 
     LE_INFO("Loading platform adaptor");
     LoadPa();
