@@ -341,6 +341,33 @@ ClientConnection_t;
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Client subscription data struct for receiving service availability event.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dls_Link_t       link;               ///< Link to Subscription list;
+    le_msg_SessionRef_t sessionRef;         ///< Client session reference.
+    uid_t               uid;                ///< Service user ID.
+    char interfaceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES]; ///< Service interface name.
+}
+ClientSubscription_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/// The subscription List.
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t SubscriptionList = LE_DLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/// Pool from which Client Subscription objects are allocated.
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ClientSubscriptionPoolRef;
+
+
+//--------------------------------------------------------------------------------------------------
 /// Pool from which Client Connection objects are allocated.
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ClientConnectionPoolRef;
@@ -1077,6 +1104,51 @@ static void ResolveBindingsToServer
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Notify clients for server availablity state change.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcessServerStateChange
+(
+    ServerConnection_t* connectionPtr,    ///< [in] Ptr to Connection to advertising server.
+    bool state                            ///< [in] available or not.
+)
+{
+    if ((connectionPtr != NULL) && (connectionPtr->userPtr != NULL))
+    {
+        le_dls_Link_t* linkPtr = le_dls_Peek(&SubscriptionList);
+
+        while (linkPtr != NULL)
+        {
+            ClientSubscription_t* subscriptionPtr = CONTAINER_OF(linkPtr,
+                                                                 ClientSubscription_t, link);
+            linkPtr = le_dls_PeekNext(&SubscriptionList, linkPtr);
+
+            if ((subscriptionPtr != NULL) &&
+                (subscriptionPtr->uid == connectionPtr->userPtr->uid) &&
+                (!strcmp(subscriptionPtr->interfaceName, connectionPtr->interface.interfaceName)))
+            {
+                le_msg_MessageRef_t eventMsgRef = le_msg_CreateMsg(subscriptionPtr->sessionRef);
+                le_sdtp_Msg_t* eventMsgPtr = le_msg_GetPayloadPtr(eventMsgRef);
+                memset(eventMsgPtr, 0, sizeof(le_sdtp_Msg_t));
+
+                eventMsgPtr->msgType =
+                    state ? LE_SDTP_MSGID_SERVICE_AVAIL : LE_SDTP_MSGID_SERVICE_UNAVAIL;
+                eventMsgPtr->server = subscriptionPtr->uid;
+                le_utf8_Copy(eventMsgPtr->serverInterfaceName, subscriptionPtr->interfaceName,
+                             sizeof(eventMsgPtr->serverInterfaceName), NULL);
+
+                // Send the event to client.
+                le_msg_Send(eventMsgRef);
+
+                LE_DEBUG("Sending (%s) event for server(<%s>.%s).",
+                eventMsgPtr->msgType == LE_SDTP_MSGID_SERVICE_AVAIL ? "AVAILABLE" : "UNAVAILABLE",
+                connectionPtr->userPtr->name, eventMsgPtr->serverInterfaceName);
+            }
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1109,6 +1181,8 @@ static void ProcessAdvertisementFromServer
     {
         // Add the object to the User's Service List.
         le_dls_Queue(&connectionPtr->userPtr->serviceList, &connectionPtr->link);
+
+        ProcessServerStateChange(connectionPtr, true);
 
         LE_DEBUG("Server (uid %u '%s', pid %d) now serving service '%s' (%s).",
                  connectionPtr->userPtr->uid,
@@ -1718,6 +1792,8 @@ static void ServerConnectionDestructor
         if (le_dls_IsInList(&connectionPtr->userPtr->serviceList, &connectionPtr->link))
         {
             le_dls_Remove(&connectionPtr->userPtr->serviceList, &connectionPtr->link);
+
+            ProcessServerStateChange(connectionPtr, false);
         }
     }
 
@@ -2552,6 +2628,110 @@ static void SdirToolFindService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check if the given service is already subscribed by the client.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsServiceSubscribed
+(
+    const ClientSubscription_t* clientPtr
+)
+{
+    if (clientPtr != NULL)
+    {
+        le_dls_Link_t* linkPtr = le_dls_Peek(&SubscriptionList);
+
+        while (linkPtr != NULL)
+        {
+            ClientSubscription_t* subscriptionPtr = CONTAINER_OF(linkPtr,
+                                                                 ClientSubscription_t, link);
+            linkPtr = le_dls_PeekNext(&SubscriptionList, linkPtr);
+
+            if ((subscriptionPtr != NULL) &&
+                (subscriptionPtr->sessionRef == clientPtr->sessionRef) &&
+                (subscriptionPtr->uid == clientPtr->uid) &&
+                (0 == strcmp(subscriptionPtr->interfaceName, clientPtr->interfaceName)))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handles a "subscribe" request from the 'sdir' tool.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SdirToolSubscribeEvent
+(
+    le_msg_MessageRef_t msgRef  ///< [in] Reference to the received message.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_sdtp_Msg_t* reqMsgPtr = le_msg_GetPayloadPtr(msgRef);
+    le_sdtp_resp_t* rspMsgPtr = le_msg_GetPayloadPtr(msgRef);
+    le_msg_SessionRef_t sessionRef = le_msg_GetSession(msgRef);
+
+    ClientSubscription_t subscription;
+    memset(&subscription, 0, sizeof(subscription));
+
+    subscription.sessionRef = sessionRef;
+    subscription.uid = reqMsgPtr->server;
+    le_utf8_Copy(subscription.interfaceName, reqMsgPtr->serverInterfaceName,
+                 sizeof(subscription.interfaceName), NULL);
+
+    // Set result code in response.
+    rspMsgPtr->result = LE_OK;
+
+    // Check if the specified service is already subscribed by the client.
+    if (IsServiceSubscribed(&subscription))
+    {
+        rspMsgPtr->result = LE_DUPLICATE;
+        return;
+    }
+
+    // Create a subscription object.
+    ClientSubscription_t* subscriptionPtr = le_mem_ForceAlloc(ClientSubscriptionPoolRef);
+    memset(subscriptionPtr, 0, sizeof(ClientSubscription_t));
+
+    subscriptionPtr->link = LE_DLS_LINK_INIT;
+    subscriptionPtr->sessionRef = subscription.sessionRef;
+    subscriptionPtr->uid = subscription.uid;
+    le_utf8_Copy(subscriptionPtr->interfaceName, subscription.interfaceName,
+                 sizeof(subscriptionPtr->interfaceName), NULL);
+    // Add to subscription list.
+    le_dls_Queue(&SubscriptionList, &(subscriptionPtr->link));
+
+    // Check if the given service is already available.
+    User_t* serverUserPtr = GetUser(subscription.uid);
+    ServerConnection_t* connectionPtr = FindService(serverUserPtr, subscription.interfaceName);
+    if (connectionPtr != NULL)
+    {
+        le_msg_MessageRef_t eventMsgRef = le_msg_CreateMsg(subscription.sessionRef);
+        le_sdtp_Msg_t* eventMsgPtr = le_msg_GetPayloadPtr(eventMsgRef);
+        memset(eventMsgPtr, 0, sizeof(le_sdtp_Msg_t));
+
+        eventMsgPtr->msgType = LE_SDTP_MSGID_SERVICE_AVAIL;
+        eventMsgPtr->server = subscription.uid;
+        le_utf8_Copy(eventMsgPtr->serverInterfaceName, subscription.interfaceName,
+                     sizeof(eventMsgPtr->serverInterfaceName), NULL);
+
+        // Send the event to client.
+        le_msg_Send(eventMsgRef);
+
+        LE_DEBUG("Sending (AVAILABLE) event for server(<%s>.%s).",
+                 connectionPtr->userPtr->name, eventMsgPtr->serverInterfaceName);
+    }
+
+    le_mem_Release(serverUserPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process a message received from the "sdir" tool.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2591,6 +2771,11 @@ static void SdirToolRecv
             SdirToolFindService(msgRef);
             break;
 
+        case LE_SDTP_MSGID_SUBSCRIBE_EVENT:
+
+            SdirToolSubscribeEvent(msgRef);
+            break;
+
         default:
             LE_KILL_CLIENT("Invalid message ID %d.", msgPtr->msgType);
             break;
@@ -2599,6 +2784,32 @@ static void SdirToolRecv
     le_msg_Respond(msgRef);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handle the closing of a client subscription session.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void RemoveSubscriptionClient
+(
+    le_msg_SessionRef_t sessionRef,
+    void* contextPtr
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SubscriptionList);
+
+    while (linkPtr != NULL)
+    {
+        ClientSubscription_t* subscriptionPtr = CONTAINER_OF(linkPtr, ClientSubscription_t, link);
+        linkPtr = le_dls_PeekNext(&SubscriptionList, linkPtr);
+
+        if ((subscriptionPtr != NULL) && (subscriptionPtr->sessionRef == sessionRef))
+        {
+            le_dls_Remove(&SubscriptionList, &(subscriptionPtr->link));
+            le_mem_Release(subscriptionPtr);
+        }
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2618,9 +2829,10 @@ static void StartSdirToolService
 
     le_msg_SetServiceRecvHandler(service, SdirToolRecv, NULL);
 
+    le_msg_AddServiceCloseHandler(service, RemoveSubscriptionClient, NULL);
+
     le_msg_AdvertiseService(service);
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2638,6 +2850,7 @@ COMPONENT_INIT
     ServerConnectionPoolRef = le_mem_CreatePool("Server Connection", sizeof(ServerConnection_t));
     UserPoolRef = le_mem_CreatePool("User", sizeof(User_t));
     BindingPoolRef = le_mem_CreatePool("Binding", sizeof(Binding_t));
+    ClientSubscriptionPoolRef = le_mem_CreatePool("Subscription", sizeof(ClientSubscription_t));
 
     /// Expand the pools to their expected maximum sizes.
     /// @todo Make this configurable.
