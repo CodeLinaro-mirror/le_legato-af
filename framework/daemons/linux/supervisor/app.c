@@ -2338,11 +2338,17 @@ static le_result_t CreateDirLink
     }
     else
     {
-        // Create a symlink at the specified path.
-        if (symlink(srcPtr, destPath) != 0)
+#if !defined(LE_CONFIG_SUPPORT_APP_UPDATE_WITH_OVERLAY) && ! defined(LE_CONFIG_TARGET_SIMULATION)
+        // If the file alreay present, do not try to create it in read only directory
+        if (access(destPath, F_OK) != 0)
+#endif
         {
-            LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            goto failure;
+            // Create a symlink at the specified path.
+            if (symlink(srcPtr, destPath) != 0)
+            {
+                LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
+                goto failure;
+            }
         }
     }
 
@@ -2428,36 +2434,60 @@ static le_result_t CreateFileLink
     // For devices, create a new device node for the app
     if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
     {
-        char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
-
-        LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
-
-        if (result != LE_OK)
+        // The build script will prepare the device node for read-only image.
+        if (access(destPath, F_OK) == 0)
         {
-            LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
-            goto failure;
+
+            struct stat desStat;
+            if (stat(destPath, &desStat) == -1)
+            {
+                LE_ERROR("Could not stat file at '%s'. %m", destPath);
+                goto failure;
+            }
+            // Skip mounting the device if it is already mounted.
+            if(srcStat.st_ino == desStat.st_ino)
+            {
+                LE_INFO("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
+                return LE_OK;
+            }
+
+            if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
+            {
+                LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
+                goto failure;
+            }
         }
-
-        if (mknod(destPath,
-                  (srcStat.st_mode & (S_IFCHR | S_IFBLK)) | S_IRUSR | S_IWUSR,
-                  srcStat.st_rdev) == -1)
+        else
         {
-            LE_ERROR("Could not create device '%s'.  %m", destPath);
-            goto failure;
-        }
+            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
+            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
 
-        if (smack_SetLabel(destPath, devLabel) != LE_OK)
-        {
-            LE_ERROR("Failed to set smack label for device '%s'", destPath);
-            goto failure;
-        }
+            if (result != LE_OK)
+            {
+                LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
+                goto failure;
+            }
+            if (mknod(destPath,
+                      (srcStat.st_mode & (S_IFCHR | S_IFBLK)) | S_IRUSR | S_IWUSR,
+                      srcStat.st_rdev) == -1)
+            {
+                LE_ERROR("Could not create device '%s'.  %m", destPath);
+                goto failure;
+            }
 
-        // Gift the device to the app.
-        if (chown(destPath, appRef->uid, appRef->gid) == -1)
-        {
-            LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
-            goto failure;
+            if (smack_SetLabel(destPath, devLabel) != LE_OK)
+            {
+                LE_ERROR("Failed to set smack label for device '%s'", destPath);
+                goto failure;
+            }
+
+            // Gift the device to the app.
+            if (chown(destPath, appRef->uid, appRef->gid) == -1)
+            {
+                LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
+                goto failure;
+            }
         }
     }
     else
@@ -2465,7 +2495,6 @@ static le_result_t CreateFileLink
         // Create an empty file at the specified path.
         int fd;
         while ( ((fd = open(destPath, O_RDONLY | O_CREAT, S_IRUSR)) == -1) && (errno == EINTR) ) {}
-
         if (fd == -1)
         {
             LE_ERROR("Could not create file '%s'.  %m", destPath);
@@ -2773,22 +2802,52 @@ static le_result_t CreateLibBinLinks
 //--------------------------------------------------------------------------------------------------
 static void ImportCfgForApp
 (
-    app_Ref_t appRef,                   ///< [IN] Reference to the application object.
-    const char *cfgFile,
-    const char *cfgName,
-    bool isWritable
+    app_Ref_t appRef,     ///< [IN] Reference to the application object.
+    const char *cfgFile,  ///< [IN] Cfg file name with path.
+    const char *cfgName,  ///< [IN] Cfg name without '.cfg' extention.
+    bool isWritable       ///< [IN] Cfg bundle attribute, [r] or [w].
 )
 {
-    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    char treeRootDir[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(treeRootDir, LE_CFG_STR_LEN_BYTES, "%s:/%s", appRef->name, cfgName);
+    char treeRootDir[LE_CFG_STR_LEN_BYTES] = {0};
+    char treeNode[LE_CFG_STR_LEN_BYTES] = {0};
 
-    LE_INFO("IMPORT TREE: %s %s",pathBuffer, treeRootDir);
+    if(snprintf(treeRootDir, sizeof(treeRootDir), "%s:",
+        appRef->name) >= sizeof(treeRootDir))
+    {
+        LE_ERROR("Tree root dir '%s' is too long.", treeRootDir);
+        return;
+    }
 
+    if (snprintf(treeNode, sizeof(treeNode), "/%s", cfgName) >= sizeof(treeNode))
+    {
+        LE_ERROR("Tree node path '%s' is too long.", treeNode);
+        return;
+    }
+
+    LE_INFO("Import %s file %s.cfg to %s",isWritable? "writable":"read-only", cfgName, treeRootDir);
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(treeRootDir);
-    le_cfgAdmin_ImportTree(iterRef, cfgFile, pathBuffer);
-    le_cfg_CommitTxn(iterRef);
+    if (isWritable)
+    {
+        // For writable cfg, no action will be taken if the node 'cfgName' already exists.
+        if (!le_cfg_IsEmpty(iterRef, treeNode))
+        {
+            LE_WARN("Tree node: %s is exist, the importing is stopped", treeNode);
+            le_cfg_CommitTxn(iterRef);
+            return;
+        }
+    }
+    else
+    {
+        if (!le_cfg_IsEmpty(iterRef, treeNode))
+        {
+            LE_WARN("Tree node: %s is not empty, delete it first", treeNode);
+            // For read-only cfg, everything under the node 'treeNode' will always be deleted.
+            le_cfg_DeleteNode(iterRef, treeNode);
+        }
+    }
 
+    le_cfgAdmin_ImportTree(iterRef, cfgFile, treeNode);
+    le_cfg_CommitTxn(iterRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2820,7 +2879,6 @@ static void GetCfgFileName
             {
                 filename++;
             }
-            LE_INFO("filename: %s", filename);
 
             snprintf(cfgName, LIMIT_MAX_PATH_BYTES, "%s", filename);
             char *dot = strrchr(cfgName, '.');
@@ -2854,7 +2912,6 @@ static le_result_t GetBundledReadOnlySrcPath
 )
 {
     char srcPath[LIMIT_MAX_PATH_BYTES] = "";
-
     if (le_cfg_GetString(cfgIter, "src", srcPath, sizeof(srcPath), "") != LE_OK)
     {
         LE_ERROR("Source file path '%s...' for app '%s' is too long.", srcPath, app_GetName(appRef));
@@ -2914,7 +2971,6 @@ static le_result_t GetCfgFileAndToConfigTree
 )
 {
     char srcPath[LIMIT_MAX_PATH_BYTES] = "";
-    LE_INFO("GetBundledReadOnlySrcPath:");
     if (le_cfg_GetString(cfgIter, "src", srcPath, sizeof(srcPath), "") != LE_OK)
     {
         LE_ERROR("Source file path '%s...' for app '%s' is too long.",

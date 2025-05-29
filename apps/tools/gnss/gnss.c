@@ -5,7 +5,8 @@
  * Tool to debug/monitor GNSS device.
  *
  * Copyright (C) Sierra Wireless Inc.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 //-------------------------------------------------------------------------------------------------
 
@@ -4691,8 +4692,10 @@ static int GetSVIds
       printf("Error to get sv Ids.\n");
       return EXIT_FAILURE;
     }
-
-    if (svIdsLen > 0) printf("Ids of used SVs:");
+    if (svIdsLen > 0)
+        printf("Ids of used SVs:");
+    else
+        printf("No SVIDs found\n");
     for(uint16_t i = 0; i < svIdsLen; i++) {
         printf(" %d", svIds[i]);
     }
