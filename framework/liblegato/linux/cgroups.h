@@ -114,7 +114,11 @@ typedef enum
     CGRP_SUBSYS_CPU = 0,        ///< CPU sub-system.
     CGRP_SUBSYS_MEM,            ///< Memory sub-system.
     CGRP_SUBSYS_FREEZE,         ///< Freezer sub-system.
+    #ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     CGRP_NUM_SUBSYSTEMS         ///< Number of sub-systems.  Must be the last item in this enum.
+    #else
+    CGRP_NUM_SUBSYSTEMS = 1
+    #endif
 }
 cgrp_SubSys_t;
 
