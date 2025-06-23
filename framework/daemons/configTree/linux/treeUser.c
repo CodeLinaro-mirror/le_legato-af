@@ -120,93 +120,56 @@ static bool IsTelafApp
     pid_t processId  ///< [IN] Process ID.
 )
 {
+    pid_t ppid;
+    bool matched = false;
+
+    // Buffer is enough for all cases.
     char cmd[256];
-    FILE *fp;
-    char oneline[128];
-    pid_t processIdTmp;
-    const char * procName = "supervisor";
 
-    // Get the supervisor PID in the current namespace.
-    snprintf(cmd, sizeof(cmd),
-            "found=0; "
-            "for pid in $(pidof %s); "
-            "do if [ \"$(readlink /proc/1/ns/pid)\" == \"$(readlink /proc/$pid/ns/pid)\" ]; "
-            "then echo \"$pid\"; found=1; break; fi; done; "
-            "[ $found -eq 0 ] && echo 0", procName);
+    // Enough for process name.
+    char pname[256];
 
-    fp = popen(cmd, "r");
-    if (NULL == fp)
+    // The 'supervisor' is the direct parent for 'configTree' daemon.
+    pid_t superPid = getppid();
+
+    snprintf(cmd, sizeof(cmd), "/proc/%d/stat", processId);
+
+    FILE *fp = fopen(cmd, "r");
+    if (fp == NULL)
     {
-        LE_ERROR("Can not run: %s, error: %m(%d)", cmd, errno);
+        LE_ERROR("Failed to open %s: %m", cmd);
         return false;
     }
 
-    // Two cases:
-    // 1. Found the first matched
-    // 2. Return 0 if not found
-    if (fgets(oneline, sizeof(oneline), fp) != NULL)
+    // The format is fixed, just check the 4th field for PPID.
+    if (fscanf(fp, "%*d (%255[^)]) %*c %d", pname, &ppid) ==  EOF)
     {
-        if (pclose(fp) == -1)
+        LE_ERROR("Failed to fscanf: %m");
+        goto close_fp;
+    }
+
+#ifdef LE_CONFIG_DEBUG
+    LE_DEBUG("Name: %s", pname);
+    LE_DEBUG("PPID: %d", ppid);
+#endif
+
+    // Compare the PPID with 'supervisor' PID
+    if (ppid == superPid)
+    {
+        matched = true;
+    }
+
+close_fp:
+
+    if (fp != NULL)
+    {
+        if (fclose(fp) != 0)
         {
-            LE_ERROR("pclose failed: %m");
-            return false;
-        }
-
-        pid_t superPid = atoi(oneline);
-        LE_DEBUG("%s pid is: %d", procName, superPid);
-
-        // If the NOT found, the superPid is equal to 0
-        if (superPid > 0)
-        {
-            snprintf(cmd, sizeof(cmd), "pgrep -P %d", superPid);
-
-            fp = popen(cmd, "r");
-            if (fp == NULL)
-            {
-                LE_ERROR("Can not run: %s, error: %m(%d)", cmd, errno);
-                return false;
-            }
-            else
-            {
-                while (NULL != fgets(oneline, sizeof(oneline), fp))
-                {
-                    processIdTmp = atoi(oneline);
-                    if (processIdTmp == processId)
-                    {
-                        // Event though the 'pclose' failed, mark it as FOUND
-                        if (pclose(fp) == -1)
-                        {
-                            LE_ERROR("pclose failed: %m");
-                        }
-
-                        return true;
-                    }
-                }
-
-                // Not found the expected PID
-                if (pclose(fp) == -1)
-                {
-                    LE_ERROR("pclose failed: %m");
-                }
-
-                return false;
-            }
-        }
-        else
-        {
-            LE_INFO("No matching PID found for: %s", procName);
-            return false;
+            LE_WARN("Failed to fclose: %m");
         }
     }
-    else
-    {
-        LE_WARN("Process[%u] is not a TelAF process", processId);
-        if (pclose(fp) == -1)
-        {
-            LE_ERROR("pclose failed: %m");
-        }
-        return false;
-    }
+
+    return matched;
 }
 
 //--------------------------------------------------------------------------------------------------
