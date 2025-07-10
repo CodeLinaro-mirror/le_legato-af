@@ -632,15 +632,13 @@ static le_result_t CreateSupplementaryGroups
 {
     appRef->numSupplementGids = 0;
 
-#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
-    // Create the default supplementary group when DLT is enabled.
+    // Create the default supplementary group for DLT logging.
     gid_t dltGid;
     if (user_CreateGroup("dlt", &dltGid) != LE_FAULT)
     {
         appRef->supplementGids[0] = dltGid;
         appRef->numSupplementGids = 1;
     }
-#endif
 
     // Get an iterator to the supplementary groups list in the config.
     le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
