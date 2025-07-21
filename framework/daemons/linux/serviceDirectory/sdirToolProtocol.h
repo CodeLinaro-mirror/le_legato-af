@@ -48,6 +48,9 @@ typedef enum
 
     LE_SDTP_MSGID_FIND_SERVICE,     ///< Get the service information by service's user and server
                                     ///  interface name.
+    LE_SDTP_MSGID_SUBSCRIBE_EVENT,  ///< Subscribe service availability events.
+    LE_SDTP_MSGID_SERVICE_AVAIL,    ///< Event to notify the service is available.
+    LE_SDTP_MSGID_SERVICE_UNAVAIL,  ///< Event to notify the service is unavailable.
 }
 le_sdtp_MsgType_t;
 

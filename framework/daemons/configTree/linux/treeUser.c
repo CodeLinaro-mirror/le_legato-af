@@ -7,7 +7,7 @@
  *  trees.  In the future, tree accessibility permissions will also be add to these objects.
  *
  *  Copyright (C) Sierra Wireless Inc.
- *  Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  */
 // -------------------------------------------------------------------------------------------------
@@ -120,34 +120,56 @@ static bool IsTelafApp
     pid_t processId  ///< [IN] Process ID.
 )
 {
-    char cmd[128];
-    FILE *fp;
-    char oneline[128];
-    pid_t processIdTmp;
+    pid_t ppid;
+    bool matched = false;
 
-    // get the sub processes of supervisor
-    snprintf(cmd, sizeof(cmd), "pgrep -P $(pgrep '%s')", "supervisor");
+    // Buffer is enough for all cases.
+    char cmd[256];
 
-    fp = popen(cmd, "r");
-    if (!fp)
+    // Enough for process name.
+    char pname[256];
+
+    // The 'supervisor' is the direct parent for 'configTree' daemon.
+    pid_t superPid = getppid();
+
+    snprintf(cmd, sizeof(cmd), "/proc/%d/stat", processId);
+
+    FILE *fp = fopen(cmd, "r");
+    if (fp == NULL)
     {
-        LE_INFO("Cannot run: %s, errno： %d (%m)", cmd, errno);
+        LE_ERROR("Failed to open %s: %m", cmd);
         return false;
     }
 
-    while (fgets(oneline, sizeof(oneline), fp))
+    // The format is fixed, just check the 4th field for PPID.
+    if (fscanf(fp, "%*d (%255[^)]) %*c %d", pname, &ppid) ==  EOF)
     {
-        processIdTmp = atoi(oneline);
-        if (processIdTmp == processId)
+        LE_ERROR("Failed to fscanf: %m");
+        goto close_fp;
+    }
+
+#ifdef LE_CONFIG_DEBUG
+    LE_DEBUG("Name: %s", pname);
+    LE_DEBUG("PPID: %d", ppid);
+#endif
+
+    // Compare the PPID with 'supervisor' PID
+    if (ppid == superPid)
+    {
+        matched = true;
+    }
+
+close_fp:
+
+    if (fp != NULL)
+    {
+        if (fclose(fp) != 0)
         {
-            pclose(fp);
-            return true;
+            LE_WARN("Failed to fclose: %m");
         }
     }
 
-    LE_WARN("Process[%u] is not a TelAF process", processId);
-    pclose(fp);
-    return false;
+    return matched;
 }
 
 //--------------------------------------------------------------------------------------------------

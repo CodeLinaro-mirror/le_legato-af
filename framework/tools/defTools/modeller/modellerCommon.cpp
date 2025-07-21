@@ -20,10 +20,10 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Binds a client-side interface to a service provided by the root user.
+ * Binds a client-side interface to a service provided by the tafcore user.
  */
 //--------------------------------------------------------------------------------------------------
-static void BindToRootService
+static void BindToTafcoreService
 (
     model::App_t* appPtr,       ///< App the interface belongs to.
     model::ApiClientInterfaceInstance_t* ifInstancePtr,    ///< Interface to be bound.
@@ -36,7 +36,7 @@ static void BindToRootService
     bindingPtr->clientAgentName = appPtr->name;
     bindingPtr->clientIfName = ifInstancePtr->name;
     bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
-    bindingPtr->serverAgentName = "root";
+    bindingPtr->serverAgentName = "tafcore";
     bindingPtr->serverIfName = serviceName;
     ifInstancePtr->bindingPtr = bindingPtr;
 }
@@ -134,12 +134,12 @@ void EnsureClientInterfacesBound
         // If le_cfg API, then bind it to the one served by the root user.
         if (ifInstancePtr->ifPtr->internalName == "le_cfg")
         {
-            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+            BindToTafcoreService(appPtr, ifInstancePtr, "le_cfg");
         }
         // If le_wdog API, then bind it to the one served by the root user.
         else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
         {
-            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+            BindToTafcoreService(appPtr, ifInstancePtr, "le_wdog");
         }
         // At this point, we know it's an error, just need to figure out which
         // type of error message to report (depending on whether the interface
@@ -230,12 +230,12 @@ void EnsureClientInterfacesSatisfied
                         // If this is an le_cfg API, bind it to the one offered by the root user.
                         if (ifInstancePtr->ifPtr->internalName == "le_cfg")
                         {
-                            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+                            BindToTafcoreService(appPtr, ifInstancePtr, "le_cfg");
                         }
                         // If this is an le_wdog API, bind it to the one offered by the root user.
                         else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
                         {
-                            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+                            BindToTafcoreService(appPtr, ifInstancePtr, "le_wdog");
                         }
                         else
                         {

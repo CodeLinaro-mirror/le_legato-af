@@ -79,7 +79,7 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "            ( echo \"app.name=$name\" && $\n"
         "              echo \"app.md5=$$md5\" && $\n"
         "              echo \"app.version=$version\" && $\n"
-        "              echo \"legato.version=`cat $$LEGATO_ROOT/version`\" $\n"
+        "              echo \"telaf.version=`cat $$LEGATO_ROOT/version`\" $\n"
         "            ) > $out\n"
         "\n"
 

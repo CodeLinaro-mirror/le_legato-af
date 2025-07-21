@@ -294,60 +294,76 @@ Cap_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- *
- *Configure ambient capabilities
- *
- **/
+ * Clear all 'inheritable' capabilities for current thread.
+ */
 //--------------------------------------------------------------------------------------------------
-static le_result_t ConfigCapabilities
+static le_result_t ClearInheritableCaps(void)
+{
+    struct __user_cap_header_struct head = {0};
+    struct __user_cap_data_struct data[2] = {{0}, {0}};
+
+    head.version = _LINUX_CAPABILITY_VERSION_3;
+    head.pid = 0;
+
+    // Get the original capabilities for current thread.
+    if (capget(&head, data) == -1)
+    {
+        LE_ERROR("Failed to get capabilities: %m");
+        return LE_FAULT;
+    }
+
+    /* Reset all inheritable capabilities */
+    data[0].inheritable = 0U;
+    data[1].inheritable = 0U;
+
+    if (capset(&head, data) == -1)
+    {
+        LE_ERROR("Failed to set capabilities: %m");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set 'inheritable' capabilities based on the configuration from configTree for current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetConfiugredCaps
 (
     const int* capListPtr,
     size_t numOfCaps
 )
 {
-    if (numOfCaps == 0)
-    {
-        LE_INFO("No capabilties setting.");
-        return LE_OK;
-    }
+    uint64_t caps = 0;
+    int i = 0;
 
-    if (capListPtr == NULL)
-    {
-        LE_ERROR("Invalid capListPtr.");
-        return LE_BAD_PARAMETER;
-    }
+    struct __user_cap_data_struct data[2] = {{0}, {0}};
+    struct __user_cap_header_struct head = {0};
+    head.version = _LINUX_CAPABILITY_VERSION_3;
+    head.pid = 0;
 
-    Cap_t TafCapVar;
-    memset(&TafCapVar, 0, sizeof(Cap_t));
-
-    // Check kernel capability version.
-    TafCapVar.head.version = TELAF_CAPABILITY_VERSION;
-    if (capget(&(TafCapVar.head), NULL) || (TafCapVar.head.version != TELAF_CAPABILITY_VERSION))
+    // Get the original capabilities for current thread.
+    if (capget(&head, data) == -1)
     {
-        LE_ERROR("Unsupported kernel capability version.");
+        LE_ERROR("Failed to get capabilities: %m");
         return LE_FAULT;
     }
 
-    // Get current capabilities.
-    if (capget(&(TafCapVar.head), &(TafCapVar.u[0].set)))
-    {
-        LE_ERROR("Failed to get current capabilities.");
-        return LE_FAULT;
-    }
-
-    // By default the inheritable capability set is empty which prevents ambient capability
-    // from setting via prctl() thus we need first add desired capabilities into inheritable set
-    //  before setting ambient set.
-    int i;
+    // Set 'inheritable' for subproc.
     for (i = 0; i < numOfCaps; ++i)
     {
-        int value = capListPtr[i];
-        TafCapVar.raise_cap(value, CAP_INHERITABLE);
+        caps |= ( 1ULL << capListPtr[i] );
     }
 
-    if (capset(&(TafCapVar.head), &(TafCapVar.u[0].set)))
+    /* Reset all inheritable capabilities */
+    data[0].inheritable = (uint32_t)(caps & 0xFFFFFFFF);
+    data[1].inheritable = (uint32_t)(caps >> 32);
+
+    if (capset(&head, data) == -1)
     {
-        LE_ERROR("Failed to set current capabilities.");
+        LE_ERROR("Failed to set capabilities: %m");
         return LE_FAULT;
     }
 
@@ -362,6 +378,51 @@ static le_result_t ConfigCapabilities
             LE_ERROR("Failed to prctl(PR_CAP_AMBIENT) for cap(%d).", capListPtr[i]);
             return LE_FAULT;
         }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Configure capabilities according to the adef file settings
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_result_t ConfigCapabilities
+(
+    const int* capListPtr,
+    size_t numOfCaps
+)
+{
+    le_result_t rst = LE_FAULT;
+
+    rst = ClearInheritableCaps();
+    if (rst != LE_OK)
+    {
+        LE_ERROR("ClearInheritableCaps failed");
+        return rst;
+    }
+
+    if (numOfCaps == 0)
+    {
+        LE_INFO("No capabilties setting.");
+        return LE_OK;
+    }
+
+    if (capListPtr == NULL)
+    {
+        LE_ERROR("Invalid capListPtr.");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Set 'inheritable' & 'ambient' caps.
+    rst = SetConfiugredCaps(capListPtr, numOfCaps);
+    if (rst != LE_OK)
+    {
+        LE_ERROR("SetConfiugredCaps failed");
+        return rst;
     }
 
     // Setting the secure bit of SECBIT_NO_SETUID_FIXUP stops the kernel from adjusting the

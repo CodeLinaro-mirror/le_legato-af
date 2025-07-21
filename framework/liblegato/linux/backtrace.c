@@ -172,29 +172,125 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
 
 static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, size_t bufLen)
 {
-    void *retSp[14];
+    const struct sigcontext *ctxPtr =
+        (const struct sigcontext *) &(((const ucontext_t *) infoPtr)->uc_mcontext);
+    const mcontext_t* mcontextPtr =
+        (const mcontext_t*) &(((const ucontext_t *)infoPtr)->uc_mcontext);
+
+    void* pcPtr = NULL;
+    void* spPtr = NULL;
+    void* lrPtr = NULL;
+    void* fpPtr = NULL;
+    void* retSp[32];
     size_t nRetSp;
-    int n;
+    uintptr_t* addr = NULL;
+    void** framePtr = NULL;
+    void** preFramePtr = NULL;
+    int n = 0;
+
+#if defined(__aarch64__)
+    pcPtr = (void*)ctxPtr->pc;              // program counter.
+    spPtr = (void*)ctxPtr->sp;              // stack pointer.
+    lrPtr = (void*)(mcontextPtr->regs[30]); // link register.
+    fpPtr = (void*)(mcontextPtr->regs[29]); // frame pointer.
+#endif
+
 #if LE_CONFIG_ENABLE_SEGV_HANDLER
-    if(0 == setjmp(SigEnv))
+    struct sigaction sa, saveSaSegV;
+    int ret;
+
+    // Register signal jump handler to ensure that the process can be terminated
+    // if catching SEGV signal during dumping the backtrace and stack.
+    sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))SigSegVHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags =  SA_RESETHAND | SA_NODEFER;
+    ret = sigaction( SIGSEGV, &sa, &saveSaSegV);
+    if (ret)
     {
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
-        nRetSp = backtrace(&retSp[0], 14);
-        // Skip HandleSignal() and <signal handler called> frames
-        for (n = skip; n < nRetSp; n++)
-        {
-            snprintf(buf, bufLen,
-                     "#%d : %p\n", n - skip, (void*)retSp[n]);
-            SIG_WRITE(buf, strlen(buf));
-        }
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
+        snprintf(buf, bufLen, "sigaction returns %d\n", ret);
+        SIG_WRITE(buf, strlen(buf));
     }
+
+    if(0 == setjmp(SigEnv))
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+    {
+        if ((spPtr != NULL) && (lrPtr != NULL) && (fpPtr != NULL) && (pcPtr != NULL))
+        {
+            // Dump the CPU register snapshot of crash point.
+            snprintf(buf, bufLen,
+                "PC: %016" PRIxPTR " SP: %016" PRIxPTR " LR: %016" PRIxPTR " FP: %016" PRIxPTR "\n",
+                (uintptr_t)pcPtr, (uintptr_t)spPtr, (uintptr_t)lrPtr, (uintptr_t)fpPtr);
+            SIG_WRITE(buf, strlen(buf));
+
+            // Dump 1K bytes of stack.
+            for (addr = (uintptr_t*)spPtr, n = 0; n < 128; n += 8, addr += 8)
+            {
+                snprintf(buf, bufLen, "%016" PRIxPTR ": %016" PRIxPTR " %016" PRIxPTR " "
+                    "%016" PRIxPTR " %016" PRIxPTR " %016" PRIxPTR " %016" PRIxPTR " "
+                    "%016" PRIxPTR " %016" PRIxPTR "\n", (uintptr_t)addr,
+                    addr[0], addr[1], addr[2], addr[3],
+                    addr[4], addr[5], addr[6], addr[7]);
+                SIG_WRITE(buf, strlen(buf));
+            }
+        }
+    }
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
+    else
+    {
+        snprintf(buf, bufLen, "Catching SEGV while dumping the stack\n");
+        SIG_WRITE(buf, strlen(buf));
+    }
+
+    ret = sigaction( SIGSEGV, &sa, NULL );
+    if (ret)
+    {
+        snprintf(buf, bufLen, "sigaction returns %d\n", ret);
+        SIG_WRITE(buf, strlen(buf));
+    }
+
+    if (0 == sigsetjmp(SigEnv, 1))
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+    {
+        if ((pcPtr != NULL) && (fpPtr != NULL))
+        {
+            // Retrieve the backtrace frames from stack. Set frame[0] = pc.
+            nRetSp = 0;
+            retSp[nRetSp++] = pcPtr;
+            framePtr = (void**)fpPtr;
+            while ((framePtr != NULL) && (framePtr < ((void**)fpPtr + 1024*1024)) &&
+                   (framePtr > preFramePtr) && (nRetSp < 32))
+            {
+                retSp[nRetSp++] = *(framePtr+1);
+                preFramePtr = framePtr;
+                framePtr = (void**)(*framePtr);
+            }
+
+            snprintf(buf, bufLen, "Total backtrace frames cnt = %" PRIuS "\n", nRetSp);
+            SIG_WRITE(buf, strlen(buf));
+
+            // Dump the backtrace symbols.
+            backtrace_symbols_fd(&retSp[0], nRetSp, STDERR_FILENO);
+        }
+        else
+        {
+            // Retrieve the backtrace frames by backtrace() API.
+            nRetSp = backtrace(&retSp[0], 32);
+
+            // Skip HandleSignal() and <signal handler called> frames
+            // Dump the backtrace symbols.
+            backtrace_symbols_fd(&retSp[skip], nRetSp-skip, STDERR_FILENO);
+        }
+    }
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
     else
     {
         snprintf(buf, bufLen,
                  "Catching SEGV while dumping the backtrace\n");
         SIG_WRITE(buf, strlen(buf));
     }
+
+    // Restore the signal handler to previous one.
+    (void)sigaction( SIGSEGV, &saveSaSegV, NULL );
 #endif // LE_CONFIG_ENABLE_SEGV_HANDLER
 }
 
