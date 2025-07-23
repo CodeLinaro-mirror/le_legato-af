@@ -172,11 +172,6 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
 
 static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, size_t bufLen)
 {
-    const struct sigcontext *ctxPtr =
-        (const struct sigcontext *) &(((const ucontext_t *) infoPtr)->uc_mcontext);
-    const mcontext_t* mcontextPtr =
-        (const mcontext_t*) &(((const ucontext_t *)infoPtr)->uc_mcontext);
-
     void* pcPtr = NULL;
     void* spPtr = NULL;
     void* lrPtr = NULL;
@@ -189,6 +184,11 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
     int n = 0;
 
 #if defined(__aarch64__)
+    const struct sigcontext *ctxPtr =
+        (const struct sigcontext *) &(((const ucontext_t *) infoPtr)->uc_mcontext);
+    const mcontext_t* mcontextPtr =
+        (const mcontext_t*) &(((const ucontext_t *)infoPtr)->uc_mcontext);
+
     pcPtr = (void*)ctxPtr->pc;              // program counter.
     spPtr = (void*)ctxPtr->sp;              // stack pointer.
     lrPtr = (void*)(mcontextPtr->regs[30]); // link register.
