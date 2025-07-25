@@ -380,6 +380,20 @@ static le_result_t SetConfiugredCaps
         }
     }
 
+    // Drop all capabilities from bounding set except those in caps
+    uint64_t capMask = 1ULL;
+    for (int capId = 0; capId <= CAP_LAST_CAP; capId++)
+    {
+        if (!(caps & capMask))
+        {
+            if (prctl(PR_CAPBSET_DROP, capId, 0, 0, 0) == -1)
+            {
+                LE_ERROR("Failed to drop capability %d from bounding set: %m", capId);
+                return LE_FAULT;
+            }
+        }
+        capMask <<= 1;  // Shift for next capability
+    }
     return LE_OK;
 }
 
