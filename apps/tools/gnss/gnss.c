@@ -68,6 +68,7 @@ static le_gnss_PositionHandlerRef_t PositionHandlerRef;
 static taf_locGnss_CapabilityChangeHandlerRef_t CapabilityHandlerRef;
 static taf_locGnss_NmeaHandlerRef_t NmeaHandlerRef;
 
+static le_mutex_Ref_t gnssMutexRef = NULL;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -5005,6 +5006,7 @@ static void PositionHandlerFunction
         {
             time(&FirstWatchReportTime);
         }
+        le_mutex_Lock(gnssMutexRef);
         GetPosInfo(positionSampleRef);
         GetSatelliteStatus(positionSampleRef);
         le_gnss_FixState_t state;
@@ -5031,6 +5033,7 @@ static void PositionHandlerFunction
         printf("\n************************ End *************************\n");
         // Release provided Position sample reference
         le_gnss_ReleaseSampleRef(positionSampleRef);
+        le_mutex_Unlock(gnssMutexRef);
 
         time(&FinishTime);
         int arrvFirstEventIn = (int) difftime(FirstWatchReportTime, StartTime);
@@ -5056,12 +5059,15 @@ static void PositionHandlerFunction
             {
                 le_thread_Sleep(earlyArrvOfFirstReport+residualWchTimeSec);
             }
+            PositionHandlerRef = NULL;
             GnssMainFunction();
         }
     }
     else
     {
         int status = EXIT_FAILURE;
+
+        le_mutex_Lock(gnssMutexRef);
 
         if (strcmp(ParamsName, "posState") == 0)
         {
@@ -5241,12 +5247,19 @@ static void PositionHandlerFunction
         {
             status = GetLeapSecondsUnc(positionSampleRef);
         }
+
         le_gnss_ReleaseSampleRef(positionSampleRef);
+
+        le_mutex_Unlock(gnssMutexRef);
+
         ExitApp = true;
         if (PositionHandlerRef != NULL)
         {
             le_gnss_RemovePositionHandler(PositionHandlerRef);
         }
+
+        PositionHandlerRef = NULL;
+
         GnssMainFunction();
     }
 }
@@ -6299,6 +6312,9 @@ COMPONENT_INIT
     {
         LE_INFO("Launch Gnss tool for 'gnss' command\n");
     }
+
+    gnssMutexRef = le_mutex_CreateNonRecursive("GnssMutex");
+
     GnssMainFunction();
 }
 

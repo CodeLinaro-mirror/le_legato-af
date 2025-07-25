@@ -1374,7 +1374,7 @@ static void WriteSubReason
         LE_INFO("'/data/telaf' does not exist, create it.");
     }
 
-    file_WriteStr("/data/telaf/bootReason", subReason, 0);
+    file_WriteStr("/data/telaf/bootReason", subReason, 0644);
     sync();
 }
 
