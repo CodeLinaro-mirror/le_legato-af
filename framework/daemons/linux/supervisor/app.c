@@ -4038,9 +4038,11 @@ void app_Delete
     app_Ref_t appRef                    ///< [IN] Reference to the application to delete.
 )
 {
-    CleanupAppSmackSettings(appRef);
-
-    CleanupResourceCfg(appRef);
+    if (smack_IsEnabled())
+    {
+        CleanupAppSmackSettings(appRef);
+        CleanupResourceCfg(appRef);
+    }
 
     // Remove the resource limits.
     resLim_CleanupApp(appRef);
@@ -4529,7 +4531,7 @@ le_result_t app_Start
 
     // Set SMACK rules for this app.
     // Setup the runtime area in the file system.
-    if ( (SetSmackRules(appRef) != LE_OK) ||
+    if ( (smack_IsEnabled() && SetSmackRules(appRef) != LE_OK) ||
          (SetupAppArea(appRef) != LE_OK) )
     {
         LE_ERROR("Failed to set Smack rules or set up app area.");
