@@ -58,7 +58,7 @@ case "$1" in
         # just like: -v /proc/sys/net/core/wmem_max:/proc/sys/net/core/wmem_max
         # but presently, we don't want to do this to impact the host, just ignore them
         if [ -z "${TELAF_IN_CONTAINER}" ]; then
-            sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
+            sysctl -w net.unix.max_dgram_qlen=64 >/dev/null || \
                 echo "Failed to set net.unix.max_dgram_qlen"
             sysctl -w net.core.wmem_max=4194304 >/dev/null || \
                 echo "Failed to set net.core.wmem_max"
