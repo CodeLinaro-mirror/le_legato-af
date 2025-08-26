@@ -4085,7 +4085,10 @@ void create_cilPath(const char* seNamePtr, const char* sePathPtr)
         sePathPtr, seNamePtr);
     LE_INFO("CIL %s\n", createCil);
 
-    system(createCil);
+    if(system(createCil))
+    {
+        LE_WARN("system call return none-zero");
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4458,7 +4461,12 @@ le_result_t semodule_TryInstall
              goto module_cleanup;
         }
 
-        fread(dataPp, 1, dataLen, fp);
+        if (fread(dataPp, 1, dataLen, fp) <= 0)
+        {
+            retVal = LE_FAULT;
+            goto module_cleanup;
+        }
+
         if (memcmp(dataPp, dataPtr, dataLen) == 0)
         {
             LE_INFO("Module %s.pp does not change, Skip", seNamePtr);
@@ -4549,7 +4557,7 @@ le_result_t app_Start
         snprintf(installPath, LIMIT_M_PATH_BYTES, "%s%s%s", appRef->installDirPath, "/", "read-only/");
         semodule_Restore(installPath);
 
-        char realPath[LIMIT_M_PATH_BYTES];
+        char realPath[PATH_MAX];
         if (realpath(installPath, realPath) != NULL)
         {
             LE_INFO("Real path for this app: %s", realPath);

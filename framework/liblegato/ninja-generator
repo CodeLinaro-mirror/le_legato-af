@@ -100,6 +100,10 @@ base_cflags_name="${legato_target_caps}_CFLAGS"
 
 CFLAGS="${!base_cflags_name}"
 
+base_ldflags_name="${legato_target_caps}_LDFLAGS"
+TARGET_LDFLAGS="${!base_ldflags_name}"
+NINJA_LDFLAGS="$NINJA_LDFLAGS ${TARGET_LDFLAGS}"
+
 used_ninja_configs=
 modules=
 

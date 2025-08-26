@@ -1917,7 +1917,10 @@ static int RunCurrentSystem
         case EXIT_FAILURE:
 
             // Request a wakeup source for start program (timeout: 10s)
-            system("echo start 10000000000 > /sys/power/wake_lock");
+            if (system("echo start 10000000000 > /sys/power/wake_lock"))
+            {
+                LE_WARN("Request wakelock failed");
+            }
 
             // Dump the last 100 lines from logread excluding Legato: { INFO, DBUG,-WRN-} to
             // prevent pollution by DEBUG, INFO or WRN messages.

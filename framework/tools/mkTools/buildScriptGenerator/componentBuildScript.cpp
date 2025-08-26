@@ -183,7 +183,8 @@ void ComponentBuildScriptGenerator_t::GenerateRunPathLdFlags
     // DT_RUNPATH is set using linker parameters --enable-new-dtags and -rpath.
     // $ORIGIN is a way of referring to the location of the executable (or shared library) file
     // when it is loaded by the dynamic linker/loader at runtime.
-    script << " -Wl,--enable-new-dtags,-rpath=\"\\$$ORIGIN/../lib:/legato/systems/current/lib";
+    script << " -Wl,--enable-new-dtags,-z,relro,-z,now,-z,noexecstack,"
+               "-rpath=\"\\$$ORIGIN/../lib:/legato/systems/current/lib";
 
     // When building for execution on the build host, add the localhost bin/lib directory.
     if (buildParams.target == "localhost" || buildParams.target == "simulation")
