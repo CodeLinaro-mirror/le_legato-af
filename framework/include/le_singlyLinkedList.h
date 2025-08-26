@@ -478,11 +478,11 @@ bool le_sls_IsListCorrupted
  * Simple iteration through a singly linked list
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_SLS_FOREACH(listPtr, iteratorPtr, type, member)              \
-    for ((iteratorPtr) = CONTAINER_OF(le_sls_Peek(listPtr), type, member); \
-         &((iteratorPtr)->member);                                      \
-         (iteratorPtr) = CONTAINER_OF(le_sls_PeekNext((listPtr),&((iteratorPtr)->member)), \
-                                      type, member))
+
+#define LE_SLS_FOREACH(listPtr, it, type, member)                                      \
+    for (le_sls_Link_t* __link__ = le_sls_Peek((listPtr));                              \
+         __link__ != NULL && ((it) = CONTAINER_OF(__link__, type, member), true);       \
+         __link__ = le_sls_PeekNext((listPtr), __link__))
 
 
 

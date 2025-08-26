@@ -750,7 +750,11 @@ void create_cilPath(const char* seNamePtr, const char* sePathPtr)
         sePathPtr, seNamePtr);
     LE_INFO("CIL %s\n", createCil);
 
-    system(createCil);
+    if(system(createCil))
+    {
+        LE_INFO("system call return none-zero");
+    };
+
 }
 
 le_result_t semodule_Extract
@@ -1029,7 +1033,13 @@ le_result_t semodule_TryInstall
              goto module_cleanup;
         }
 
-        fread(dataPp, 1, dataLen, fp);
+        if (fread(dataPp, 1, dataLen, fp) <= 0)
+        {
+            retVal = LE_FAULT;
+            LE_ERROR("Failed to read dataPp");
+            goto module_cleanup;
+        }
+
         if (memcmp(dataPp, dataPtr, dataLen) == 0)
         {
             LE_INFO("Module %s.pp does not change, Skip", seNamePtr);
