@@ -1375,7 +1375,6 @@ static void WriteSubReason
     }
 
     file_WriteStr("/data/telaf/bootReason", subReason, 0644);
-    sync();
 }
 
 #if LE_CONFIG_DEBUG
@@ -1920,9 +1919,6 @@ static int RunCurrentSystem
             // Request a wakeup source for start program (timeout: 10s)
             system("echo start 10000000000 > /sys/power/wake_lock");
 
-            // Sync file systems before rebooting.
-            sync();
-
             // Dump the last 100 lines from logread excluding Legato: { INFO, DBUG,-WRN-} to
             // prevent pollution by DEBUG, INFO or WRN messages.
             retCode = system("logread | "
@@ -1933,8 +1929,7 @@ static int RunCurrentSystem
                 LE_DEBUG("Failed to dump logs");
             }
 
-            // Sync again file systems before rebooting.
-            sync();
+            // Sync file systems guaranteed by graceful shutdown.
 
             // If the file NoRebootFile is present, do not request a reboot
             if (0 == access(NoRebootFile, R_OK))

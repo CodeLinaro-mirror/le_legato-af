@@ -3430,12 +3430,22 @@ void tdb_MergeTree
     // We have a tree file to write to, so stream the new tree to it then close the output file.
     le_result_t writeResult = tdb_WriteTreeNode(originalTreeRef->rootNodeRef, filePtr);
 
+    // The following 2 steps is to ensure power-cut safety.
+    // Step 1. Flush the file stream buffer to the kernel.
+    LE_EMERG_IF(fflush(filePtr) != 0,
+        "An error occurred while flushing config file '%s' buffer (%s).",
+        filePath, LE_ERRNO_TXT(errno));
+
+    // Step 2. Flush the kernel buffer to disk.
+    LE_EMERG_IF(fsync(fileno(filePtr)) == -1,
+        "An error occurred while syncing config file '%s' to disk (%s).",
+        filePath, LE_ERRNO_TXT(errno));
+
+    LE_DEBUG("Changes have been merged to tree '%s' and committed to the filesystem.", filePath);
+
     int retVal = fclose(filePtr);
     LE_EMERG_IF(retVal == EOF,
                 "An error occurred while closing the tree file: %s", LE_ERRNO_TXT(errno));
-
-    sync();
-    LE_DEBUG("Changes have been merged to tree '%s' and committed to the filesystem.", filePath);
 
     // Finally remove the old version of the tree file, if there is one.
     if (writeResult == LE_OK)
