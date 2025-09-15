@@ -158,13 +158,22 @@ endif
 
 export GCC_PREFIX := $(GCC_PREFIX)
 
+# Note, some of the default CFLAGS for MKTOOLS was added in both functions "GenerateBuildRules"
+# and "GenerateRunPathLdFlags".
+export DEFAULT_CFLAGS := -Wl,-z,noexecstack -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O
+export DEFAULT_LDCFLAGS := -Wl,-z,relro,-z,now,-z,noexecstack
+
 # Separate the C and C++ flags
 C_FLAGS=$(shell echo $(MKTOOLS_X_C_FLAGS) | grep -oP '(?<=-C )[^ ]+')
 X_FLAGS=$(shell echo $(MKTOOLS_X_C_FLAGS) | grep -oP '(?<=-X )[^ ]+')
+C_FLAGS += $(DEFAULT_CFLAGS)
+X_FLAGS += $(DEFAULT_CFLAGS)
 
-# Export for "Makefile.framework" and "framework/liblegato/ninja-generator"
+# Export for "Makefile.framework", "liblegato/ninja-generator", liblegato.so, libjansson.so and le_pa_start.so.
 export $(TARGET_CAPS)_CFLAGS += $(C_FLAGS)
 export $(TARGET_CAPS)_CXXFLAGS += $(X_FLAGS)
+export $(TARGET_CAPS)_LDFLAGS += $(DEFAULT_LDCFLAGS)
+
 MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
 MKTOOLS_FLAGS +=$(addprefix --cxxflags=,$($(TARGET_CAPS)_CXXFLAGS))
 

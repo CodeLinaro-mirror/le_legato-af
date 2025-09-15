@@ -232,6 +232,8 @@ else # not LE_CONFIG_QMI
   PA_START_SRCS       := $(LINUX_SRC_DIR)/start/default/pa_start.c
 endif # end not LE_CONFIG_QMI
 
+PA_START_LDFLAGS    += $($(TARGET_CAPS)_LDFLAGS)
+
 # Source files for startSystem executable
 START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
               $(LINUX_SRC_DIR)/common/ima.c
