@@ -244,6 +244,27 @@ LE_SHARED le_result_t le_socket_Connect
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Shutdown the socket connection.
+ *
+ * - @c SHUT_RD    = Disables further receive operations
+ * - @c SHUT_WR    = Disables further send operations
+ * - @c SHUT_RDWR  = Disables further send and receive operations
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_UNSUPPORTED   Not supported
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_Shutdown
+(
+    le_socket_Ref_t    ref,   ///< [IN] Socket context reference
+    int                how    ///< [IN] Shutdown direction
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Close the socket connection.
  *
  * @return

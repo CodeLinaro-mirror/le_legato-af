@@ -186,6 +186,35 @@ le_result_t netSocket_Disconnect
     return LE_OK;
 }
 
+/**
+ * Gracefully shutdown the socket connection
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t netSocket_Shutdown
+(
+    int fd,      ///< [IN] Socket file descriptor
+    int how      ///< [IN] Shutdown direction
+)
+{
+    if (fd == -1)
+    {
+        return LE_FAULT;
+    }
+
+    if( (how != SHUT_RD) && (how != SHUT_WR) && (how != SHUT_RDWR))
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    shutdown(fd, how);
+    return LE_OK;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Write to the socket file descriptor an amount of data in a blocking way
