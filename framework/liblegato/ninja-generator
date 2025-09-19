@@ -77,8 +77,12 @@ function AddSources()
 # List all of the object files
 function ListObjects()
 {
-    for source in "${!LIBLEGATO_FILES[@]}"; do
-        printf " %s" "${LIBLEGATO_FILES[$source]}"
+    # Get sorted keys from the associative array
+    sorted_keys=($(printf "%s\n" "${!LIBLEGATO_FILES[@]}" | sort))
+
+    # Print the sorted list of object files
+    for key in "${sorted_keys[@]}"; do
+        printf " %s" "${LIBLEGATO_FILES[$key]}"
     done
 }
 
@@ -172,7 +176,8 @@ if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
     cat >>$NINJA_SCRIPT <<EOF
 rule DynamicLink
   description = Dynamic linking liblegato
-  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
+  command = $CC -shared -Wl,--build-id=0x\`realpath \$out --relative-to=\$\$LEGATO_ROOT \$
+            | sha1sum | awk '{print \$\$1}'\` -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
             && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
 
 EOF
@@ -180,7 +185,8 @@ else
     cat >>$NINJA_SCRIPT <<EOF
 rule DynamicLink
   description = Dynamic linking liblegato
-  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
+  command = $CC -shared -Wl,--build-id=0x\`realpath \$out --relative-to=\$\$LEGATO_ROOT \$
+            | sha1sum | awk '{print \$\$1}'\` -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
 
 EOF
 fi

@@ -75,7 +75,8 @@ void LinuxBuildScriptGenerator_t::GenerateBuildRules
               "  command = " << cCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
-        script << " -Wl,--build-id -g";
+        script <<" -Wl,--build-id=0x`realpath $out --relative-to=$$LEGATO_ROOT"
+                 " | sha1sum | awk '{print $$1}'` -g";
     }
     script << " -shared -o $out $in $ldFlags";
     if (!buildParams.debugDir.empty())
@@ -91,7 +92,8 @@ void LinuxBuildScriptGenerator_t::GenerateBuildRules
               "  command = " << cxxCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
-        script << " -Wl,--build-id -g";
+        script <<" -Wl,--build-id=0x`realpath $out --relative-to=$$LEGATO_ROOT"
+                 " | sha1sum | awk '{print $$1}'` -g";
     }
     script << " -shared -o $out $in $ldFlags";
     if (!buildParams.debugDir.empty())
@@ -107,7 +109,8 @@ void LinuxBuildScriptGenerator_t::GenerateBuildRules
               "  command = " << cCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
-        script << " -Wl,--build-id -g";
+        script <<" -Wl,--build-id=0x`realpath $out --relative-to=$$LEGATO_ROOT"
+                 " | sha1sum | awk '{print $$1}'` -g";
     }
     if (!buildParams.noPie)
     {
@@ -127,7 +130,8 @@ void LinuxBuildScriptGenerator_t::GenerateBuildRules
               "  command = " << cxxCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
-        script << " -Wl,--build-id -g";
+        script <<" -Wl,--build-id=0x`realpath $out --relative-to=$$LEGATO_ROOT"
+                 " | sha1sum | awk '{print $$1}'` -g";
     }
     if (!buildParams.noPie)
     {

@@ -24,7 +24,8 @@ DefFileFragment_t::DefFileFragment_t
 )
 //--------------------------------------------------------------------------------------------------
 :   path(path::MakeAbsolute(filePath)),
-    pathMd5(md5(path::MakeCanonical(path))),
+    pathMd5(md5(path::GetRelative(path::MakeCanonical(path),
+        path::MakeCanonical(envVars::GetRequired("LEGATO_ROOT"))))),
     version(0),
     firstTokenPtr(NULL),
     lastTokenPtr(NULL)
