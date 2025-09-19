@@ -180,6 +180,10 @@ void BuildScriptGenerator_t::GenerateCFlags
     const std::string& target = buildParams.target;
     std::string sysrootOption;
 
+    std::string telafRootPath = envVars::Get("TELAF_ROOT");
+    std::string legatoRootPath = envVars::Get("LEGATO_ROOT");
+    std::string sysRootPath = envVars::Get("LEGATO_SYSROOT");
+
     if (!buildParams.sysrootDir.empty())
     {
         sysrootOption = "--sysroot=" + buildParams.sysrootDir;
@@ -193,6 +197,9 @@ void BuildScriptGenerator_t::GenerateCFlags
     else
     {
         script << " " << sysrootOption <<
+            " -fmacro-prefix-map=" << legatoRootPath << "=" << "." // Use relative-path.
+            " -fmacro-prefix-map=" << telafRootPath << "=" << "."
+            " -fmacro-prefix-map=" << sysRootPath << "=" << "."
             " -MMD -MF $out.d"
             " -Wall" // Enable all warnings.
             " -Werror" // Treat all warnings as errors.

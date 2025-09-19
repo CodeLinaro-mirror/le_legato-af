@@ -435,6 +435,82 @@ std::string MakeRelative
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Computes the relative path from a reference directory to a target absolute path.
+ *
+ * This function compares the directory components of two absolute paths and constructs a relative
+ * path from the reference path to the target path. It uses ".." to traverse up from the reference
+ * path and appends the remaining segments of the target path. If the paths do not share any common
+ * base, it still returns a valid relative path using full ".." traversal.
+ *
+ * Example:
+ *   absPath = "/a/b/c/d/file.txt"
+ *   refPath = "/a/b/x/y"
+ *   Output: "../../c/d/file.txt"
+ *
+ *   absPath = "/abc/edf"
+ *   refPath = "/ghi/opq"
+ *   Output: "../../abc/edf"
+ *
+ * absPath The absolute path to the target file or directory.
+ * refPath The absolute reference path from which to compute the relative path.
+ *
+ * @return std::string The relative path from refPath to absPath.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string GetRelative
+(
+    const std::string& absPath,    ///< Absolute file path.
+    const std::string& refPath     ///< Reference path.
+)
+{
+    if (absPath.empty() || refPath.empty())
+    {
+        std::string errMsg = "Invalid parameter";
+        throw mk::Exception_t(mk::format(LE_I18N("error: '%s'."), errMsg));
+    }
+
+    auto splitPath = [](const std::string& path) -> std::vector<std::string>
+    {
+        std::vector<std::string> parts;
+        std::stringstream ss(path);
+        std::string item;
+        while (std::getline(ss, item, '/'))
+        {
+            if (!item.empty()) parts.push_back(item);
+        }
+        return parts;
+    };
+
+    std::vector<std::string> absParts = splitPath(absPath);
+    std::vector<std::string> refParts = splitPath(refPath);
+
+    size_t i = 0;
+    while (i < absParts.size() && i < refParts.size() && absParts[i] == refParts[i])
+    {
+        ++i;
+    }
+
+    std::string result;
+
+    // Add ".." for each unmatched segment in refPath
+    for (size_t j = i; j < refParts.size(); ++j)
+    {
+        result += "../";
+    }
+
+    // Add remaining segments from absPath
+    for (size_t j = i; j < absParts.size(); ++j)
+    {
+        result += absParts[j];
+        if (j + 1 < absParts.size()) result += "/";
+    }
+
+    return result.empty() ? "." : result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Clean all the '/./', '//', and '/../' nodes out of a path, follow symlinks, and makes the
  * path absolute.
  *
