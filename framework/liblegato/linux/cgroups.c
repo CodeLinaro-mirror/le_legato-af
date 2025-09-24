@@ -1066,15 +1066,20 @@ le_result_t cgrp_Delete
  *      The name of the sub-system.
  */
 //--------------------------------------------------------------------------------------------------
-#ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
+
 const char* cgrp_SubSysName
 (
     cgrp_SubSys_t subsystem         ///< Sub-system.
 )
 {
+#ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     return SubSysName[subsystem];
-}
+#else
+    static const char* SubSysName[] = {"V2"};
+    return SubSysName[subsystem];
 #endif
+}
+
 
 
 //--------------------------------------------------------------------------------------------------
