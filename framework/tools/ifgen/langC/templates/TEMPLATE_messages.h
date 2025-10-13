@@ -37,7 +37,7 @@ typedef struct __attribute__((packed))
 }
 _Message_t;
 {% for function in functions %}
-#define _MSGID_{{apiBaseName}}_{{function.name}} {{loop.index0}}
+#define _MSGID_{{apiBaseName}}_{{function.name}} {{function.msgId}}
 {%- endfor %}
 
 

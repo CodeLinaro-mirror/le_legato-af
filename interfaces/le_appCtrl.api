@@ -208,6 +208,10 @@
 //--------------------------------------------------------------------------------------------------
 
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
+
 USETYPES le_limit.api;
 
 
@@ -226,7 +230,7 @@ REFERENCE App;
 FUNCTION App GetRef
 (
     string appName[le_limit.APP_NAME_LEN] IN    ///< Name of the app to get the ref for.
-);
+) = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -238,7 +242,7 @@ FUNCTION App GetRef
 FUNCTION ReleaseRef
 (
     App appRef IN   ///< Ref to the app.
-);
+) = 1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -253,7 +257,7 @@ FUNCTION SetRun
     App appRef IN,                              ///< Ref to the app.
     string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
     bool run IN                                 ///< Flag to run the process or not.
-);
+) = 2;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -268,7 +272,7 @@ FUNCTION SetDebug
     App appRef IN,                              ///< Ref to the app.
     string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
     bool debug IN                               ///< Flag to debug the process or not.
-);
+) = 3;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -290,7 +294,7 @@ FUNCTION le_result_t Import
 (
     App appRef IN,                              ///< Ref to the app.
     string path[le_limit.MAX_PATH_LEN] IN       ///< Absolute path to the file to import.
-);
+) = 4;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -312,7 +316,7 @@ FUNCTION le_result_t SetDevicePerm
     App appRef IN,                              ///< Ref to the app.
     string path[le_limit.MAX_PATH_LEN] IN,      ///< Absolute path to the device.
     string permissions[2] IN                    ///< Permission string, "r", "w", "rw".
-);
+) = 5;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -338,7 +342,7 @@ EVENT TraceAttach
 (
     App appRef,                                 ///< Ref to the app.
     TraceAttachHandler attachToPid              ///< Attach handler to register.
-);
+) = (6,7);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -354,7 +358,7 @@ FUNCTION TraceUnblock
 (
     App appRef IN,                              ///< Ref to the app.
     int32 pid IN                                ///< PID of the process to unblock.
-);
+) = 8;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -371,7 +375,7 @@ FUNCTION TraceUnblock
 FUNCTION le_result_t Start
 (
     string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to start.
-);
+) = 9;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -386,5 +390,5 @@ FUNCTION le_result_t Start
 FUNCTION le_result_t Stop
 (
     string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to stop.
-);
+) = 10;
 

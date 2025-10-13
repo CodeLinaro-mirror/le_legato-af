@@ -53,6 +53,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 USETYPES le_limit.api;
 
 //--------------------------------------------------------------------------------------------------
@@ -67,4 +70,4 @@ USETYPES le_limit.api;
 FUNCTION le_result_t ImportCert
 (
     string certPath[le_limit.MAX_PATH_LEN] IN ///< Path to the certificate to import.
-);
+) = 0;

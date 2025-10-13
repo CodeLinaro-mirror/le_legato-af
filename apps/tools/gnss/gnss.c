@@ -5286,6 +5286,9 @@ static void CapabilityHandlerFunction
         {
             le_gnss_RemoveCapabilityChangeHandler(CapabilityHandlerRef);
         }
+
+        CapabilityHandlerRef =  NULL;
+
         GnssMainFunction();
     }
 }
@@ -5320,6 +5323,9 @@ static void NmeaHandlerFunction
         {
             le_gnss_RemoveNmeaHandler(NmeaHandlerRef);
         }
+
+        NmeaHandlerRef = NULL;
+
         GnssMainFunction();
     }
 }

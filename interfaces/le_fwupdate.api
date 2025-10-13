@@ -82,6 +82,11 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum length of a version string, excluding any termination character.
@@ -134,7 +139,7 @@ ENUM UpdateStatus
 FUNCTION le_result_t Download
 (
     file fd IN     ///< File descriptor of the image, opened to the start of the image.
-);
+) = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -161,7 +166,7 @@ FUNCTION le_result_t Download
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t InitDownload
 (
-);
+) = 1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -176,7 +181,7 @@ FUNCTION le_result_t InitDownload
 FUNCTION le_result_t GetResumePosition
 (
     size position  OUT    ///< Update package read position
-);
+) = 2;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -192,7 +197,7 @@ FUNCTION le_result_t GetUpdateStatus
 (
     UpdateStatus status                         OUT, ///< Returned update status
     string statusLabel[STATUS_LABEL_LENGTH_MAX] OUT  ///< Description of the status
-);
+) = 3;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -211,7 +216,7 @@ FUNCTION le_result_t GetUpdateStatus
 FUNCTION le_result_t GetFirmwareVersion
 (
     string version[MAX_VERS_LEN] OUT     ///< Firmware version string
-);
+) = 4;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -231,7 +236,7 @@ FUNCTION le_result_t GetFirmwareVersion
 FUNCTION le_result_t GetBootloaderVersion
 (
     string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
-);
+) = 5;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -251,7 +256,7 @@ FUNCTION le_result_t GetBootloaderVersion
 FUNCTION le_result_t GetAppBootloaderVersion
 (
     string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
-);
+) = 6;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -268,7 +273,7 @@ FUNCTION le_result_t GetAppBootloaderVersion
 FUNCTION le_result_t IsSystemMarkedGood
 (
     bool isSystemGood OUT ///< true if the system is marked good, false otherwise
-);
+) = 7;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -289,7 +294,7 @@ FUNCTION le_result_t IsSystemMarkedGood
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Install
 (
-);
+) = 8;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -313,7 +318,7 @@ FUNCTION le_result_t Install
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t MarkGood
 (
-);
+) = 9;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -334,5 +339,5 @@ FUNCTION le_result_t MarkGood
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t InstallAndMarkGood
 (
-);
+) = 10;
 

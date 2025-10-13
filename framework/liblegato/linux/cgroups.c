@@ -22,7 +22,9 @@
  * Cgroup sub-system names.
  */
 //--------------------------------------------------------------------------------------------------
+#ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
 static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "freezer"};
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -33,6 +35,16 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "
 #define ROOT_PATH                   "/sys/fs/cgroup/telaf"
 #define ROOT_PATH_CGROUP            "/sys/fs/cgroup"
 #define ROOT_NAME                   "cgroupsRoot"
+#ifdef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
+#define CGROUP2_ROOT                "/sys/fs/cgroup"
+#define CGROUP2_CONTROLLERS         "+cpu +memory \n"
+#define CGROUP2_TASKS_FILE          "cgroup.threads"
+#define CGROUP2_CPU_WEIGHT_FILE     "cpu.weight"
+#define CGROUP2_MEMORY_MAX_FILE     "memory.max"
+#define CGROUP2_FREEZE_FILE         "cgroup.freeze"
+#define CGROUP2_EVENTS_FILE         "cgroup.events"
+#define CGROUP2_SKIP_SUBSYSTEM       -1
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,7 +102,7 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "
 //--------------------------------------------------------------------------------------------------
 #define MAX_FREEZE_STATE_BYTES      20
 
-#ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
 //--------------------------------------------------------------------------------------------------
 /**
  * Checks if all cgroup subsystems are mounted.
@@ -165,7 +177,7 @@ void cgrp_Init
     void
 )
 {
-    #ifndef LE_CONFIG_TARGET_SIMULATION
+    #ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     struct statfs st;
 
     // TelAf uses ROOT_PATH to keep its cgroup items, so make sure ROOT_PATH is exist first.
@@ -214,11 +226,89 @@ void cgrp_Init
         }
     }
     #else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    struct stat st;
+    if (stat(CGROUP2_ROOT, &st) != 0 || !S_ISDIR(st.st_mode))
+    {
+        LE_FATAL("Cgroup v2 root '%s' not available.", CGROUP2_ROOT);
+    }
+    FILE *fp = fopen("/proc/self/mountinfo", "r");
+    if (!fp)
+    {
+        LE_FATAL("Failed to open /proc/self/mountinfo %m");
+    }
+    char line[1024];
+    bool mounted = false;
+    while (fgets(line, sizeof(line), fp))
+    {
+        if (strstr(line, CGROUP2_ROOT) && strstr(line, " - cgroup2 "))
+        {
+            mounted = true;
+            break;
+        }
+    }
+    fclose(fp);
+    if (!mounted)
+    {
+        LE_FATAL_IF(mount("none", CGROUP2_ROOT, "cgroup2", 0, NULL) != 0, "Failed to mount cgroup2 at %s. %m", CGROUP2_ROOT);
+    }
+
+    LE_INFO("cgroup2 mounted at %s", CGROUP2_ROOT);
+    if (mkdir(ROOT_PATH, 0755) == -1 && errno != EEXIST)
+    {
+        LE_FATAL("Failed to create cgroup '%s': %m", ROOT_PATH);
+    }
+    else
+    {
+        LE_INFO("Cgroup '%s' is ready.", ROOT_PATH);
+    }
+
+    //Confirm telaf has no tasks before enabling subtree_control
+    char procFile[PATH_MAX];
+    snprintf(procFile, sizeof(procFile), "%s/cgroup.procs", ROOT_PATH);
+
+    FILE* pFile = fopen(procFile, "r");
+    if (!pFile)
+    {
+        LE_FATAL("Failed to open %s: %m", procFile);
+    }
+
+    char lineBuf[64];
+    if (fgets(lineBuf, sizeof(lineBuf), pFile) != NULL)
+    {
+        fclose(pFile);
+        LE_FATAL("Cannot enable subtree_control: telaf cgroup has active tasks: %s", lineBuf);
+    }
+
+    fclose(pFile);
+
+    //Enable controllers in telaf/cgroup.subtree_control
+    char subtreeCtrlPath[PATH_MAX];
+    snprintf(subtreeCtrlPath, sizeof(subtreeCtrlPath), "%s/cgroup.subtree_control", ROOT_PATH);
+
+    FILE* scFile = fopen(subtreeCtrlPath, "a");
+    if (!scFile)
+    {
+        LE_WARN("Could not open %s to enable controllers: %m", subtreeCtrlPath);
+    }
+    else
+    {
+        const char* controllers = CGROUP2_CONTROLLERS;
+        if (fprintf(scFile, "%s", controllers) < 0)
+        {
+            LE_WARN("Failed to enable controllers in '%s': %m", subtreeCtrlPath);
+        }
+        else
+        {
+            LE_INFO("%s Controllers enabled for %s", CGROUP2_CONTROLLERS, ROOT_PATH);
+        }
+        fclose(scFile);
+    }
+
+    LE_INFO("cgroup2 initialized under %s", ROOT_PATH);
     #endif
 }
 
-#ifndef LE_CONFIG_TARGET_SIMULATION
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Opens a cgroup file.
@@ -239,8 +329,12 @@ static int OpenCgrpFile
 {
     // Create the path to the cgroup file.
     char path[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
+    #ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     LE_ASSERT(le_path_Concat("/", path, sizeof(path), SubSysName[subsystem], cgroupNamePtr,
                              fileNamePtr, (char*)NULL) == LE_OK);
+    #else
+    LE_ASSERT(le_path_Concat("/", path, sizeof(path), cgroupNamePtr, fileNamePtr, (char*)NULL) == LE_OK);
+    #endif
 
     // Open the cgroup file.
     int fd;
@@ -258,7 +352,7 @@ static int OpenCgrpFile
 
     return fd;
 }
-#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -282,7 +376,8 @@ static le_result_t WriteToFile
     const char* string              ///< [IN] String to write into the file.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
+    #ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
+
     // Get the length of the string.
     size_t len = strlen(string);
     LE_ASSERT(len > 0);
@@ -323,10 +418,42 @@ static le_result_t WriteToFile
     fd_Close(fd);
 
     return result;
-#else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+
+    #else
+    char path[PATH_MAX];
+
+    size_t len = strlen(string);
+
+    LE_ASSERT(len > 0);
+
+    // Build the full path: /sys/fs/cgroup/telaf/app
+    if (snprintf(path, sizeof(path), "%s/%s/%s", ROOT_PATH, cgroupNamePtr, fileNamePtr) >= sizeof(path))
+    {
+        LE_ERROR("Path too long: file='%s/%s/%s'", ROOT_PATH, cgroupNamePtr, fileNamePtr);
+        return LE_OVERFLOW;
+    }
+
+    FILE* f = fopen(path, "w");
+    if (!f)
+    {
+        LE_ERROR("Failed to open '%s' for writing: %m", path);
+        return LE_FAULT;
+    }
+
+    if (fprintf(f, "%s", string) < 0)
+    {
+        LE_ERROR("Failed to write value '%s' to '%s': %m", string, path);
+        fclose(f);
+        if (errno == ESRCH)
+        {
+            return LE_OUT_OF_RANGE;
+        }
+        return LE_FAULT;
+    }
+
+    fclose(f);
     return LE_OK;
-#endif
+    #endif
 }
 
 
@@ -350,7 +477,6 @@ static le_result_t GetValue
     size_t bufSize                  ///< [IN] Size of the buffer.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the file.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, fileNamePtr, O_RDONLY);
 
@@ -400,13 +526,7 @@ static le_result_t GetValue
     fd_Close(fd);
 
     return result;
-#else
-    bufPtr[0] = '\0';
-    return LE_OK;
-#endif
 }
-
-#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads a PID from the opened procs or tasks file specified by fd.  Updates the file offset of fd.
@@ -445,7 +565,6 @@ static pid_t GetTasksId
 
     return result;
 }
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Modifies the string by removing all trailing white space from the string.
@@ -469,7 +588,6 @@ static void RemoveTrailingWhiteSpace
 
     strPtr[0] = '\0';
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -493,7 +611,7 @@ le_result_t cgrp_Create
     const char* cgroupNamePtr       ///< Name of the cgroup to create.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
 
     // Create the path to the cgroup.
     char path[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
@@ -514,7 +632,21 @@ le_result_t cgrp_Create
         return LE_FAULT;
     }
 #else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/%s", ROOT_PATH, cgroupNamePtr);
+    //Create the cgroup.
+    le_result_t result = le_dir_Make(path, S_IRWXU);
+
+    if (result == LE_DUPLICATE)
+    {
+        LE_DEBUG("Cgroup %s already exists.", path);
+        return LE_DUPLICATE;
+    }
+    else if (result == LE_FAULT)
+    {
+        LE_ERROR("Could not create cgroup %s.", path);
+        return LE_FAULT;
+    }
 #endif
     return LE_OK;
 }
@@ -537,6 +669,7 @@ le_result_t cgrp_AddProc
     pid_t pidToAdd                  ///< PID of the process to add.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     // Convert the pid to a string.
     char pidStr[MAX_DIGITS];
 
@@ -544,9 +677,16 @@ le_result_t cgrp_AddProc
 
     // Write the pid to the file.
     return WriteToFile(subsystem, cgroupNamePtr, PROCS_FILENAME, pidStr);
+#else
+    char path[PATH_MAX], pidStr[MAX_DIGITS];
+
+    snprintf(path, sizeof(path), "%s/%s/%s", ROOT_PATH, cgroupNamePtr, PROCS_FILENAME);
+    LE_ASSERT(snprintf(pidStr, sizeof(pidStr), "%d", pidToAdd) < sizeof(pidStr));
+
+    return WriteToFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, PROCS_FILENAME, pidStr);
+#endif
 }
 
-#ifndef LE_CONFIG_TARGET_SIMULATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads a list of tids/pids from an open file descriptor.  The number of pids in the file may be
@@ -593,7 +733,7 @@ static ssize_t BuildTidList
     }
     return numTids;
 }
-#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -613,9 +753,12 @@ ssize_t cgrp_GetThreadList
     size_t maxTids                  ///< [IN] The maximum number of tids tidListPtr can hold.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     // Open the cgroup's tasks file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, TASKS_FILENAME, O_RDONLY);
+#else
+    int fd = OpenCgrpFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, CGROUP2_TASKS_FILE , O_RDONLY);
+#endif
 
     if (fd < 0)
     {
@@ -632,10 +775,6 @@ ssize_t cgrp_GetThreadList
     }
 
     return numTids;
-#else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
-    return 0;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -656,7 +795,6 @@ ssize_t cgrp_GetProcessesList
     size_t maxPids                  ///< [IN] The maximum number of pids pidListPtr can hold.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
 
     // Open the cgroup's processes file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, PROCS_FILENAME, O_RDONLY);
@@ -676,10 +814,6 @@ ssize_t cgrp_GetProcessesList
     fd_Close(fd);
 
     return numPids;
-#else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
-    return 0;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -765,7 +899,6 @@ ssize_t cgrp_SendSig
     int sig                         ///< [IN] The signal to send.
 )
 {
-#ifndef LE_CONFIG_TARGET_SIMULATION
     // Open the cgroup's procs file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, PROCS_FILENAME, O_RDONLY);
 
@@ -822,10 +955,6 @@ ssize_t cgrp_SendSig
 
     fd_Close(fd);
     return numPids;
-#else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
-    return 1;
-#endif
 
 }
 
@@ -845,9 +974,12 @@ bool cgrp_IsEmpty
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
-    #ifndef LE_CONFIG_TARGET_SIMULATION
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     // Open the cgroup's tasks file for reading.
     int fd = OpenCgrpFile(subsystem, cgroupNamePtr, TASKS_FILENAME, O_RDONLY);
+#else
+    int fd = OpenCgrpFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, CGROUP2_TASKS_FILE , O_RDONLY);
+#endif
 
     if (fd < 0)
     {
@@ -872,11 +1004,7 @@ bool cgrp_IsEmpty
         LE_ERROR("Error reading the '%s' cgroup's tasks.", cgroupNamePtr);
         return false;
     }
-    #else
-    return true;
-    #endif
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -899,9 +1027,12 @@ le_result_t cgrp_Delete
 {
     // Create the path to the cgroup.
     char path[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     LE_ASSERT(le_path_Concat("/", path, sizeof(path), SubSysName[subsystem], cgroupNamePtr,
                              (char*)NULL) == LE_OK);
-
+#else
+    LE_ASSERT(le_path_Concat("/", path, sizeof(path), cgroupNamePtr,(char*)NULL) == LE_OK);
+#endif
     // Attempt to remove the cgroup directory.
     if (rmdir(path) != 0)
     {
@@ -935,13 +1066,20 @@ le_result_t cgrp_Delete
  *      The name of the sub-system.
  */
 //--------------------------------------------------------------------------------------------------
+
 const char* cgrp_SubSysName
 (
     cgrp_SubSys_t subsystem         ///< Sub-system.
 )
 {
+#ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     return SubSysName[subsystem];
+#else
+    static const char* SubSysName[] = {"V2"};
+    return SubSysName[subsystem];
+#endif
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -988,6 +1126,7 @@ le_result_t cgrp_cpu_SetShare
                                     ///  details.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     // Convert the value to a string.
     char shareStr[MAX_DIGITS];
     LE_ASSERT(snprintf(shareStr, sizeof(shareStr), "%zd", share) < sizeof(shareStr));
@@ -997,7 +1136,43 @@ le_result_t cgrp_cpu_SetShare
     {
         return LE_FAULT;
     }
+#else
+    char path[PATH_MAX], shareStr[MAX_DIGITS];
 
+    // 1024 (default in v1) --> 100 (default in v2)
+    if (share < 2)
+    {
+      share = 1;
+    }
+
+    else if (share >= 262144)
+    {
+      share =  10000;
+    }
+
+    else
+    {
+      share = ((share - 2) * 9999 / (262142)) + 1;
+    }
+
+    snprintf(path, sizeof(path), "%s/%s", ROOT_PATH, cgroupNamePtr);
+    LE_ASSERT(snprintf(shareStr, sizeof(shareStr), "%zd", share) < sizeof(shareStr));
+
+    struct stat st;
+    if (stat(path, &st) != 0)
+    {
+        LE_DEBUG("Path does not exist: %s (%m)", path);
+        char dirPath[PATH_MAX];
+        snprintf(dirPath, sizeof(dirPath), "%s/%s", ROOT_PATH, cgroupNamePtr);
+        mkdir(dirPath, 0755);
+    }
+
+    // Write the share value to the file.
+    if (WriteToFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, CGROUP2_CPU_WEIGHT_FILE, shareStr) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+#endif
     return LE_OK;
 }
 
@@ -1019,6 +1194,7 @@ le_result_t cgrp_mem_SetLimit
     size_t limit                    ///< Memory limit in kilobytes.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     // Convert the limit to a string.
     char limitStr[MAX_DIGITS];
 
@@ -1047,7 +1223,34 @@ le_result_t cgrp_mem_SetLimit
         LE_WARN("The memory limit for %s was actually set to %s instead of %s because of either \
 page rounding or memory availability.", cgroupNamePtr, readLimitStr, limitStr);
     }
+#else
 
+    char limitStr[MAX_DIGITS];
+
+    LE_ASSERT(snprintf(limitStr, sizeof(limitStr), "%zd", limit * 1024) < sizeof(limitStr));
+    // Write the limit to the file.
+    if (WriteToFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, CGROUP2_MEMORY_MAX_FILE, limitStr) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+    // Read the limit to see if it was set properly.
+    char readLimitStr[MAX_DIGITS] = {0};
+
+    if (GetValue(CGROUP2_SKIP_SUBSYSTEM,
+                 cgroupNamePtr,
+                 CGROUP2_MEMORY_MAX_FILE,
+                 readLimitStr,
+                 sizeof(readLimitStr)) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    if (strcmp(limitStr, readLimitStr) != 0)
+    {
+        LE_WARN("The memory limit for %s was actually set to %s instead of %s because of either \
+page rounding or memory availability.", cgroupNamePtr, readLimitStr, limitStr);
+    }
+#endif
     return LE_OK;
 }
 
@@ -1069,11 +1272,17 @@ le_result_t cgrp_frz_Freeze
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     if (WriteToFile(CGRP_SUBSYS_FREEZE, cgroupNamePtr, FREEZE_STATE_FILENAME, "FROZEN") != LE_OK)
     {
         return LE_FAULT;
     }
-
+#else
+    if (WriteToFile(CGROUP2_SKIP_SUBSYSTEM , cgroupNamePtr, CGROUP2_FREEZE_FILE, "1\n") != LE_OK)
+    {
+        return LE_FAULT;
+    }
+#endif
     return LE_OK;
 }
 
@@ -1095,11 +1304,17 @@ le_result_t cgrp_frz_Thaw
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     if (WriteToFile(CGRP_SUBSYS_FREEZE, cgroupNamePtr, FREEZE_STATE_FILENAME, "THAWED") != LE_OK)
     {
         return LE_FAULT;
     }
-
+#else
+    if (WriteToFile(CGROUP2_SKIP_SUBSYSTEM, cgroupNamePtr, CGROUP2_FREEZE_FILE, "0\n") != LE_OK)
+    {
+        return LE_FAULT;
+    }
+#endif
     return LE_OK;
 }
 
@@ -1118,6 +1333,7 @@ cgrp_FreezeState_t cgrp_frz_GetState
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     char stateStr[MAX_FREEZE_STATE_BYTES] = {0};
 
     le_result_t result = GetValue(CGRP_SUBSYS_FREEZE,
@@ -1132,7 +1348,6 @@ cgrp_FreezeState_t cgrp_frz_GetState
     {
         return LE_FAULT;
     }
-#ifndef LE_CONFIG_TARGET_SIMULATION
     RemoveTrailingWhiteSpace(stateStr);
 
     if ( (strcmp(stateStr, "THAWED") == 0) ||
@@ -1147,8 +1362,38 @@ cgrp_FreezeState_t cgrp_frz_GetState
 
     LE_FATAL("Unrecognized freeze state '%s'.", stateStr);
 #else
-    LE_INFO("In simulation : '%s' deactivated", __FUNCTION__);
-    return CGRP_FROZEN;
+
+    char stateStr[50] = {0};
+    le_result_t result = GetValue(CGROUP2_SKIP_SUBSYSTEM,
+                                  cgroupNamePtr,
+                                  CGROUP2_EVENTS_FILE,
+                                  stateStr,
+                                  sizeof(stateStr));
+
+    LE_FATAL_IF(result == LE_OVERFLOW, "Freeze state string '%s...' is too long.", stateStr);
+    if (result == LE_FAULT)
+    {
+        return LE_FAULT;
+    }
+
+    RemoveTrailingWhiteSpace(stateStr);
+
+    cgrp_FreezeState_t state = result;
+
+    if (strncmp(stateStr, "frozen ", 7) == 0)
+    {
+        if(strncmp(stateStr, "frozen 1", 7) == 0)
+        {
+          state =  CGRP_FROZEN ;
+        }
+
+        else if(strncmp(stateStr, "frozen 0", 7) == 0)
+        {
+          state =  CGRP_THAWED;
+        }
+    }
+
+    return state;
 #endif
 }
 
@@ -1166,6 +1411,7 @@ ssize_t cgrp_GetMemUsed
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
     char buffer[32] = {0};
     ssize_t result;
 
@@ -1184,6 +1430,42 @@ ssize_t cgrp_GetMemUsed
         result = LE_FAULT;
     }
     return result;
+#else
+    char buffer[32] = {0};
+    ssize_t memUsage = 0;
+    ssize_t swapUsage = 0;
+
+    // Get memory.current
+    if (GetValue(CGROUP2_SKIP_SUBSYSTEM , cgroupNamePtr, "memory.current", buffer, sizeof(buffer)) == LE_OK)
+    {
+        memUsage = strtoll(buffer, NULL, 10);
+        if ((errno == ERANGE) || (errno == EINVAL))
+        {
+            return LE_FAULT;
+        }
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+
+    // Get memory.swap.current (optional: may not exist)
+    if (GetValue(CGROUP2_SKIP_SUBSYSTEM , cgroupNamePtr, "memory.swap.current", buffer, sizeof(buffer)) == LE_OK)
+    {
+        swapUsage = strtoll(buffer, NULL, 10);
+        if ((errno == ERANGE) || (errno == EINVAL))
+        {
+            return LE_FAULT;
+        }
+    }
+    else
+    {
+        // No swap file? Assume 0 swap usage
+        swapUsage = 0;
+    }
+
+    return memUsage + swapUsage;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1199,6 +1481,8 @@ ssize_t cgrp_GetMaxMemUsed
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
+#ifndef LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
+
     char buffer[32] = {0};
     ssize_t result;
 
@@ -1217,4 +1501,8 @@ ssize_t cgrp_GetMaxMemUsed
         result = LE_FAULT;
     }
     return result;
+//No direct support in V2
+#else
+    return cgrp_GetMemUsed(cgroupNamePtr);
+#endif
 }
