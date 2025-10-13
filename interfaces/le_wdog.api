@@ -40,7 +40,6 @@
  */
 //-------------------------------------------------------------------------------------------------
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * Special values that have specific meaning when used as durations in Timeout():
@@ -53,6 +52,10 @@
  * Suspend the watchdog so that it never times out.
  */
 DEFINE TIMEOUT_NEVER = -1;
+
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 
 /**
  * Timeout immediately
@@ -76,7 +79,7 @@ HANDLER ExternalWatchdogHandler
 //-------------------------------------------------------------------------------------------------
 FUNCTION Kick
 (
-);
+) = 0;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -89,7 +92,7 @@ FUNCTION Kick
 FUNCTION Timeout
 (
     int32 milliseconds IN ///< The number of milliseconds until this timer expires
-);
+) = 1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -103,7 +106,7 @@ FUNCTION Timeout
 FUNCTION le_result_t GetWatchdogTimeout
 (
     uint64 milliseconds OUT        ///< The watchdog timeout set for this process
-);
+) = 2;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -117,4 +120,4 @@ FUNCTION le_result_t GetWatchdogTimeout
 FUNCTION le_result_t GetMaxWatchdogTimeout
 (
     uint64 milliseconds OUT        ///< The max watchdog timeout set for this process
-);
+) = 3;

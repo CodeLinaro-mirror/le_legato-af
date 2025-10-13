@@ -196,7 +196,6 @@ class StructMember(object):
 
         self.apiType = apiType
         self.name = name
-        self.comments = []
         self.location = location
 
     def MaxSize(self):
@@ -411,11 +410,12 @@ class Definition(object):
         return "Definition({},{})".format(repr(self.name), repr(self.value))
 
 class Function(object):
-    def __init__(self, returnType, name, location, parameters):
+    def __init__(self, returnType, name, location, parameters,msgId):
         self.returnType = returnType
         self.name = name
         self.parameters = parameters
         self.location = location
+        self.msgId = msgId
 
         if returnType == OLD_HANDLER_TYPE or isinstance(returnType, HandlerType):
             raise Exception ('Functions cannot return handlers')
@@ -449,11 +449,13 @@ class Function(object):
                        [parameter.GetMaxSize(DIR_OUT) for parameter in self.parameters]))
 
 class Event(object):
-    def __init__(self, name, location, parameters):
+    def __init__(self, name, location, parameters,addMsgId,remMsgId):
         self.name = name
         self.parameters = parameters
         self.comment = ""
         self.location = location
+        self.addMsgId = addMsgId
+        self.remMsgId = remMsgId
 
         if len([handler for handler in self.parameters
                 if isinstance(handler.apiType, HandlerType)]) != 1:
@@ -476,8 +478,8 @@ class EventFunction(Function):
 
     These functions get a special type so they can track which events they're associated with.
     """
-    def __init__(self, eventObj, returnType, name, location, parameters):
-        super(EventFunction, self).__init__(returnType, name, location, parameters)
+    def __init__(self, eventObj, returnType, name, location, parameters,msgId):
+        super(EventFunction, self).__init__(returnType, name, location, parameters,msgId)
         self.event = eventObj
 
 
@@ -516,6 +518,9 @@ class Interface(object):
         self.events = collections.OrderedDict()
         self.comments = []
         self.text = None
+        self.api_version = None
+        self.serving_version = None
+        self.apiMsgMaxSize = None
 
     def isTypeNameUsed(self, name):
         return ((name in Interface._basicTypes) or
@@ -606,7 +611,8 @@ class Interface(object):
                                      eventRefType,
                                      "Add%sHandler" % (eventObj.name,),
                                      eventObj.location,
-                                     eventObj.parameters)
+                                     eventObj.parameters,
+                                     eventObj.addMsgId)
         eventAddFunc.comment = \
             "\n Add handler function for EVENT '%s_%s'\n%s" % (self.name,
                                                                eventObj.name,
@@ -616,7 +622,7 @@ class Interface(object):
         eventRemoveFunc = EventFunction(eventObj,
                                         None,
                                         "Remove%sHandler" % (eventObj.name,), eventObj.location,
-                                        [ Parameter(eventRefType, u"handlerRef", eventObj.location) ])
+                                        [ Parameter(eventRefType, u"handlerRef", eventObj.location) ],eventObj.remMsgId)
         eventRemoveFunc.comment = \
             "\n Remove handler function for EVENT '%s_%s'\n" % (self.name,
                                                                 eventObj.name)

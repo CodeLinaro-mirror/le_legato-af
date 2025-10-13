@@ -366,7 +366,23 @@ static le_dls_List_t SubscriptionList = LE_DLS_LIST_INIT;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ClientSubscriptionPoolRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * version format definition carried by the protocolId string
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char magic[5];       ///< Magic id - "TELAF"
+    int tafApiVer;       ///< Framework API version, 1~99
+    int apiVer;			 ///< Api verison defined in API file, 1~999
+    int servingVer;		 ///< Serving api verison provided by service, 1 ~999
+    uint8_t padding[15];	 ///< padding, not used
+}
+ApiVersion_t;
 
+
+//--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 /// Pool from which Client Connection objects are allocated.
 //--------------------------------------------------------------------------------------------------
@@ -708,6 +724,149 @@ static bool IsDuplicateService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extract the serving version info from the ProtocolID
+ * advertised by the server
+ *
+ * @return version
+ *               LE_FAULT, not found a valid version
+ *               LE_OK, with version info filled
+ **/
+
+static le_result_t GetApiVersion(const char* id,ApiVersion_t *apiVer)
+{
+    char idString[LIMIT_MAX_PROTOCOL_ID_BYTES + 1] = { 0 };
+    char* token = NULL;
+    char* savePtr = NULL;
+    le_result_t ret;
+    long val;
+    char* endPtr=NULL;
+
+    if(apiVer==NULL)
+    {
+       LE_ERROR("Null pointer!");
+       return LE_FAULT;
+    }
+
+    // Copy the string for local processing
+    ret = le_utf8_Copy(idString,id,LIMIT_MAX_PROTOCOL_ID_BYTES,NULL);
+    if(ret==LE_OVERFLOW)
+    {
+        // source string is not copied completely
+        LE_ERROR("Can not copy the protocolId string");
+        return LE_FAULT;
+    }
+
+    LE_INFO("idString->%s",idString);
+
+    savePtr = idString;
+
+    // start process the string
+    token = strtok_r(savePtr,"_",&savePtr);
+
+    if(token==NULL)
+    {
+        LE_ERROR("Not a valid version string");
+        return LE_FAULT;
+    }
+
+    // check the magic code
+    if(strncmp(token,"TELAF",5)!=0)
+    {
+        LE_ERROR("Not a valid version string");
+        return LE_FAULT;
+    }
+
+    // fill the magic id
+    apiVer->magic[0] = 'T';
+    apiVer->magic[1] = 'E';
+    apiVer->magic[2] = 'L';
+    apiVer->magic[3] = 'A';
+    apiVer->magic[4] = 'F';
+
+    // Get framework version
+    token = strtok_r(NULL,"_",&savePtr);
+
+    errno = 0;
+    val = strtol(token,&endPtr,10);
+
+    if((errno!=0) || (endPtr==token))
+    {
+        // Can not conver the framework verison
+        LE_ERROR("Can not find a valid framework api version");
+        return LE_FAULT;
+     }
+
+    // valid chek
+    if( (val<1) || (val>99))
+    {
+        LE_ERROR("Not a valid framework api verison:%d",(int)val);
+        return LE_FAULT;
+    }
+
+    apiVer->tafApiVer = (int)val;
+
+    // Get api version
+    token = strtok_r(NULL,"_",&savePtr);
+
+    errno = 0;
+    val = strtol(token,&endPtr,10);
+
+    if((errno!=0) || (endPtr==token))
+    {
+        // Can not conver the framework verison
+        LE_ERROR("Can not find a valid service api version");
+        return LE_FAULT;
+     }
+
+
+    // valid chek
+    if( (val<1) || (val>999))
+    {
+        LE_ERROR("Not a valid service api verison:%d",(int)val);
+        return LE_FAULT;
+    }
+
+    apiVer->apiVer = (int)val;
+
+    // Get serving version
+    token = strtok_r(NULL,"_",&savePtr);
+
+    errno = 0;
+    val = strtol(token,&endPtr,10);
+
+    if((errno!=0) || (endPtr==token))
+    {
+        // Can not conver the framework verison
+        LE_ERROR("Can not find a valid serving api version");
+        return LE_FAULT;
+     }
+
+
+    // valid chek
+    if( (val<1) || (val>999))
+    {
+        LE_ERROR("Not a valid serving api verison:%d",(int)val);
+        return LE_FAULT;
+    }
+
+    apiVer->servingVer = (int)val;
+
+
+    // api verison should >= serving vresion
+    if((apiVer->servingVer) > (apiVer->apiVer))
+    {
+
+        LE_ERROR("service version bigger than api version");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Dispatch a client connection to a server connection.
  *
  * @warning In some error cases, the client or server connection may be closed by this function.
@@ -728,12 +887,17 @@ static le_result_t DispatchToServer
 )
 //--------------------------------------------------------------------------------------------------
 {
+    int clientApiVer = -1;
+    int servingApiVer = -1;
+    le_result_t ret;
+    ApiVersion_t apiVer;
+
     // Check that the client agrees with the server on the protocol ID.
     // If not, drop the client connection without dispatching it to the server.
     if ( 0 != strcmp(clientConnectionPtr->interface.protocolId,
                      serverConnectionPtr->interface.protocolId ) )
     {
-        LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
+        LE_WARN("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
                     "on protocol ID of service '%s' ('%s' vs. '%s').",
                  clientConnectionPtr->userPtr->uid,
                  clientConnectionPtr->userPtr->name,
@@ -744,6 +908,67 @@ static le_result_t DispatchToServer
                  clientConnectionPtr->interface.interfaceName,
                  clientConnectionPtr->interface.protocolId,
                  serverConnectionPtr->interface.protocolId);
+
+        // Check the version, if compatible, will allow to connect
+        // Version str format TELAF_[FRAMEWORK_API_VER]_[SERVICE API VERSION]_[SERVING_VERSION]
+
+        // Get Client API Version
+        ret = GetApiVersion(clientConnectionPtr->interface.protocolId,&apiVer);
+
+        if(ret==LE_OK)
+        {
+            // Get client build API verison
+            clientApiVer = apiVer.apiVer;
+        }
+
+        // Get Service serving API Version
+        ret = GetApiVersion(serverConnectionPtr->interface.protocolId,&apiVer);
+
+        if(ret==LE_OK)
+        {
+            // Get client build API verison
+            servingApiVer = apiVer.servingVer;
+        }
+
+        // Allow client to connect to service only its api version >= serving(min) version
+        if((clientApiVer >= servingApiVer)&&(clientApiVer!=-1)&&(servingApiVer!=-1))
+        {
+            LE_INFO("Connect client API:%d to service api(serving):%d",clientApiVer,servingApiVer);
+
+                // Send the client connection fd to the server.
+                le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
+                                                NULL,   // dataPtr
+                                                0,      // dataSize
+                                                clientConnectionPtr->fd, // fdToSend
+                                                false); // sendCredentials
+
+            if (result == LE_OK)
+            {
+                 LE_DEBUG("Client (uid %u '%s', pid %d) connected to server (uid %u '%s', pid %d) for "
+                        "service '%s' (protocol ID = '%s').",
+                     clientConnectionPtr->userPtr->uid,
+                     clientConnectionPtr->userPtr->name,
+                     clientConnectionPtr->pid,
+                     serverConnectionPtr->userPtr->uid,
+                     serverConnectionPtr->userPtr->name,
+                     serverConnectionPtr->pid,
+                     serverConnectionPtr->interface.interfaceName,
+                     serverConnectionPtr->interface.protocolId);
+
+                     // Close the client connection (it has been handed off to the server now).
+                    CloseClientConnection(clientConnectionPtr);
+               }
+               else
+               {
+                   // The server seems to have failed.
+                   // Leave the client on the waiting list, close the server connection.
+                   CloseServerConnection(serverConnectionPtr);
+
+                   return LE_CLOSED;
+                }
+
+            return LE_OK;
+        }
 
         RejectClient(clientConnectionPtr, LE_FAULT);
     }

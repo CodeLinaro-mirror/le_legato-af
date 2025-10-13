@@ -1807,30 +1807,6 @@ static void StoppingProcsInList
     }
 }
 
-#ifdef LE_CONFIG_TARGET_SIMULATION
-static void KillingProcsInList
-(
-    le_dls_List_t list,              ///< [IN] List of process containers.
-    int sig
-)
-{
-    le_dls_Link_t* procLinkPtr = le_dls_Peek(&list);
-
-    while (procLinkPtr != NULL)
-    {
-        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
-
-        if (proc_GetState(procContainerPtr->procRef) != PROC_STATE_STOPPED)
-        {
-            procContainerPtr->stopHandler = NULL;
-            pid_t pid = proc_GetPID(procContainerPtr->procRef);
-            kill_SendSig(pid, sig);
-        }
-
-        procLinkPtr = le_dls_PeekNext(&list, procLinkPtr);
-    }
-}
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1880,11 +1856,6 @@ static le_result_t KillAppProcs
     // Kill all procs in the app including child processes and forked processes.
     int killSig = (killType == KILL_SOFT) ? SIGTERM: SIGKILL;
     ssize_t numProcs = cgrp_SendSig(CGRP_SUBSYS_FREEZE, appRef->name, killSig);
-
-    #ifdef LE_CONFIG_TARGET_SIMULATION
-    KillingProcsInList(appRef->procs,killSig);
-    KillingProcsInList(appRef->auxProcs,killSig);
-    #endif
 
     if (numProcs == LE_FAULT)
     {
@@ -4038,9 +4009,11 @@ void app_Delete
     app_Ref_t appRef                    ///< [IN] Reference to the application to delete.
 )
 {
-    CleanupAppSmackSettings(appRef);
-
-    CleanupResourceCfg(appRef);
+    if (smack_IsEnabled())
+    {
+        CleanupAppSmackSettings(appRef);
+        CleanupResourceCfg(appRef);
+    }
 
     // Remove the resource limits.
     resLim_CleanupApp(appRef);
@@ -4085,7 +4058,10 @@ void create_cilPath(const char* seNamePtr, const char* sePathPtr)
         sePathPtr, seNamePtr);
     LE_INFO("CIL %s\n", createCil);
 
-    system(createCil);
+    if(system(createCil))
+    {
+        LE_WARN("system call return none-zero");
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4458,7 +4434,12 @@ le_result_t semodule_TryInstall
              goto module_cleanup;
         }
 
-        fread(dataPp, 1, dataLen, fp);
+        if (fread(dataPp, 1, dataLen, fp) <= 0)
+        {
+            retVal = LE_FAULT;
+            goto module_cleanup;
+        }
+
         if (memcmp(dataPp, dataPtr, dataLen) == 0)
         {
             LE_INFO("Module %s.pp does not change, Skip", seNamePtr);
@@ -4529,7 +4510,7 @@ le_result_t app_Start
 
     // Set SMACK rules for this app.
     // Setup the runtime area in the file system.
-    if ( (SetSmackRules(appRef) != LE_OK) ||
+    if ( (smack_IsEnabled() && SetSmackRules(appRef) != LE_OK) ||
          (SetupAppArea(appRef) != LE_OK) )
     {
         LE_ERROR("Failed to set Smack rules or set up app area.");
@@ -4549,7 +4530,7 @@ le_result_t app_Start
         snprintf(installPath, LIMIT_M_PATH_BYTES, "%s%s%s", appRef->installDirPath, "/", "read-only/");
         semodule_Restore(installPath);
 
-        char realPath[LIMIT_M_PATH_BYTES];
+        char realPath[PATH_MAX];
         if (realpath(installPath, realPath) != NULL)
         {
             LE_INFO("Real path for this app: %s", realPath);

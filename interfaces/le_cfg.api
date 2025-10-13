@@ -387,6 +387,9 @@
  */
 //-------------------------------------------------------------------------------------------------
 
+API_VERSION = 1;
+SERVING_VERSION = 1;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference to a tree iterator object.
@@ -463,7 +466,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
 FUNCTION Iterator CreateReadTxn
 (
     string basePath[STR_LEN] IN  ///< Path to the location to create the new iterator.
-);
+) = 0;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -484,7 +487,7 @@ FUNCTION Iterator CreateReadTxn
 FUNCTION Iterator CreateWriteTxn
 (
     string basePath[STR_LEN] IN  ///< Path to the location to create the new iterator.
-);
+) = 1;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -498,7 +501,7 @@ FUNCTION Iterator CreateWriteTxn
 FUNCTION CommitTxn
 (
     Iterator iteratorRef IN  ///< Iterator object to commit.
-);
+) = 2;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -513,7 +516,7 @@ FUNCTION CommitTxn
 FUNCTION CancelTxn
 (
     Iterator iteratorRef IN  ///< Iterator object to close.
-);
+) = 3;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -530,7 +533,7 @@ FUNCTION GoToNode
 (
     Iterator iteratorRef    IN,  ///< Iterator to move.
     string newPath[STR_LEN] IN   ///< Absolute or relative path from the current location.
-);
+) = 4;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -546,7 +549,7 @@ FUNCTION GoToNode
 FUNCTION le_result_t GoToParent
 (
     Iterator iteratorRef IN  ///< Iterator to move.
-);
+) = 5;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -567,7 +570,7 @@ FUNCTION le_result_t GoToParent
 FUNCTION le_result_t GoToFirstChild
 (
     Iterator iteratorRef IN  ///< Iterator object to move.
-);
+) = 6;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -598,7 +601,7 @@ FUNCTION le_result_t GoToFirstChild
 FUNCTION le_result_t GoToNextSibling
 (
     Iterator iteratorRef IN  ///< Iterator to iterate.
-);
+) = 7;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -641,7 +644,7 @@ FUNCTION le_result_t GetPath
     string path[STR_LEN]       IN,  ///< Path to the target node. Can be an absolute path, or
                                     ///< a path relative from the iterator's current position.
     string pathBuffer[STR_LEN] OUT  ///< Absolute path to the iterator's current node.
-);
+) = 8;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -656,7 +659,7 @@ FUNCTION nodeType GetNodeType
     Iterator iteratorRef IN,  ///< Iterator object to use to read from the tree.
     string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
-);
+) = 9;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -673,7 +676,7 @@ FUNCTION le_result_t GetNodeName
     string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
     string name[STR_LEN] OUT  ///< Read the name of the node object.
-);
+) = 10;
 
 
 
@@ -706,7 +709,7 @@ EVENT Change
 (
     string newPath[STR_LEN] IN, ///< Path to the object to watch.
     ChangeHandler handler       ///< Handler to receive change notification
-);
+) = (11,12);
 
 
 
@@ -733,7 +736,7 @@ FUNCTION DeleteNode
     Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
     string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
-);
+) = 13;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -753,7 +756,7 @@ FUNCTION bool IsEmpty
     Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
     string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
-);
+) = 14;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -771,7 +774,7 @@ FUNCTION SetEmpty
     Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
     string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
-);
+) = 15;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -786,7 +789,7 @@ FUNCTION bool NodeExists
     Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
     string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
-);
+) = 16;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -811,7 +814,7 @@ FUNCTION le_result_t GetString
     string value[STR_LEN]        OUT,  ///< Buffer to write the value into.
     string defaultValue[STR_LEN] IN    ///< Default value to use if the original can't be
                                        ///<   read.
-);
+) = 17;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -828,7 +831,7 @@ FUNCTION SetString
     string path[STR_LEN]  IN,  ///< Path to the target node. Can be an absolute path, or
                                ///< a path relative from the iterator's current position.
     string value[STR_LEN] IN   ///< Value to write.
-);
+) = 18;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -858,7 +861,7 @@ FUNCTION le_result_t GetBinary
     uint8 value[BINARY_LEN]         OUT,  ///< Buffer to write the value into.
     uint8 defaultValue[BINARY_LEN]  IN    ///< Default value to use if the original can't be
                                           ///<   read.
-);
+) = 19;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -877,7 +880,7 @@ FUNCTION SetBinary
     string path[STR_LEN]    IN,  ///< Path to the target node. Can be an absolute path, or
                                  ///< a path relative from the iterator's current position.
     uint8 value[BINARY_LEN] IN   ///< Value to write.
-);
+) = 20;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -901,7 +904,7 @@ FUNCTION int32 GetInt
                               ///< a path relative from the iterator's current position.
     int32 defaultValue   IN   ///< Default value to use if the original can't be
                               ///<   read.
-);
+) = 21;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -918,7 +921,7 @@ FUNCTION SetInt
     string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
     int32 value          IN   ///< Value to write.
-);
+) = 22;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -940,7 +943,7 @@ FUNCTION double GetFloat
                               ///< a path relative from the iterator's current position.
     double defaultValue  IN   ///< Default value to use if the original can't be
                               ///<   read.
-);
+) = 23;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -959,7 +962,7 @@ FUNCTION SetFloat
     string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
     double value         IN   ///< Value to write.
-);
+) = 24;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -980,7 +983,7 @@ FUNCTION bool GetBool
                               ///< a path relative from the iterator's current position.
     bool defaultValue    IN   ///< Default value to use if the original can't be
                               ///<   read.
-);
+) = 25;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -997,7 +1000,7 @@ FUNCTION SetBool
     string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
                               ///< a path relative from the iterator's current position.
     bool value           IN   ///< Value to write.
-);
+) = 26;
 
 
 
@@ -1018,7 +1021,7 @@ FUNCTION SetBool
 FUNCTION QuickDeleteNode
 (
     string path[STR_LEN] IN   ///< Path to the node to delete.
-);
+) = 27;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1030,7 +1033,7 @@ FUNCTION QuickDeleteNode
 FUNCTION QuickSetEmpty
 (
     string path[STR_LEN] IN   ///< Absolute or relative path to read from.
-);
+) = 28;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1047,7 +1050,7 @@ FUNCTION le_result_t QuickGetString
     string path[STR_LEN]         IN,   ///< Path to read from.
     string value[STR_LEN]        OUT,  ///< Value read from the requested node.
     string defaultValue[STR_LEN] IN    ///< Default value to use if the original can't be read.
-);
+) = 29;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1059,7 +1062,7 @@ FUNCTION QuickSetString
 (
     string path[STR_LEN]  IN,  ///< Path to the value to write.
     string value[STR_LEN] IN   ///< Value to write.
-);
+) = 30;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -1077,7 +1080,7 @@ FUNCTION le_result_t QuickGetBinary
     uint8 value[BINARY_LEN]         OUT,  ///< Buffer to write the value into.
     uint8 defaultValue[BINARY_LEN]  IN    ///< Default value to use if the original can't be
                                           ///<   read.
-);
+) = 31;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -1088,7 +1091,7 @@ FUNCTION QuickSetBinary
 (
     string path[STR_LEN]    IN,  ///< Path to the target node.
     uint8 value[BINARY_LEN] IN   ///< Value to write.
-);
+) = 32;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -1103,7 +1106,7 @@ FUNCTION int32 QuickGetInt
 (
     string path[STR_LEN] IN,  ///< Path to the value to write.
     int32 defaultValue   IN   ///< Default value to use if the original can't be read.
-);
+) = 33;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1115,7 +1118,7 @@ FUNCTION QuickSetInt
 (
     string path[STR_LEN] IN,  ///< Path to the value to write.
     int32 value          IN   ///< Value to write.
-);
+) = 34;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1133,7 +1136,7 @@ FUNCTION double QuickGetFloat
 (
     string path[STR_LEN] IN,  ///< Path to the value to write.
     double defaultValue  IN   ///< Default value to use if the original can't be read.
-);
+) = 35;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1147,7 +1150,7 @@ FUNCTION QuickSetFloat
 (
     string path[STR_LEN] IN,  ///< Path to the value to write.
     double value         IN   ///< Value to write.
-);
+) = 36;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1162,7 +1165,7 @@ FUNCTION bool QuickGetBool
 (
     string path[STR_LEN]  IN,  ///< Path to the value to write.
     bool defaultValue     IN   ///< Default value to use if the original can't be read.
-);
+) = 37;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1174,4 +1177,4 @@ FUNCTION QuickSetBool
 (
     string path[STR_LEN] IN,  ///< Path to the value to write.
     bool value           IN   ///< Value to write.
-);
+) = 38;

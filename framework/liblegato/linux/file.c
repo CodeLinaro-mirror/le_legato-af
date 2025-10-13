@@ -217,6 +217,12 @@ void file_WriteStr
             }
         }
 
+        // Do fsync to ensure write to the storage.
+        if (fsync(fd) == -1)
+        {
+            LE_FATAL("Unable to do fsync on file '%s' (%m).", filePath);
+        }
+
         fd_Close(fd);
     }
 }

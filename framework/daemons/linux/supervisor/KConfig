@@ -33,4 +33,13 @@ config SUPERV_CGRP_NO_RELEASE_AGENT
   Disable the CGROUP release_agent mechanism for some virtual environments, such as:
   containers of Docker and LXC.
 
+config SUPERV_ENABLE_CGROUP_V2
+  bool "Enable cgroup V2 simulation support or not"
+  depends on LINUX
+  default $(b2k,$(ENABLE_CGROUP_V2))
+  default y if TARGET_SIMULATION
+  ---help---
+  Enable this if the target platform uses cgroup V2
+
+
 endmenu # end "Supervisor"
