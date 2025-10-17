@@ -67,6 +67,7 @@
 static le_gnss_PositionHandlerRef_t PositionHandlerRef;
 static taf_locGnss_CapabilityChangeHandlerRef_t CapabilityHandlerRef;
 static taf_locGnss_NmeaHandlerRef_t NmeaHandlerRef;
+static taf_locGnss_MeasurementHandlerRef_t MeasHandlerRef;
 
 static le_mutex_Ref_t gnssMutexRef = NULL;
 
@@ -5330,6 +5331,118 @@ static void NmeaHandlerFunction
     }
 }
 
+static void MeasurementHandlerFunction
+(
+    taf_locGnss_MeasSampleRef_t measSampleRef,    ///< [IN] Position sample reference
+    void* contextPtr                                  ///< [IN] The context pointer
+)
+{
+    printf("\n******** Measurement Location Information Report ********\n");
+
+    bool val;
+    uint32_t clockValidityMask;
+    size_t gnssMeasLen = TAF_LOCGNSS_MEASUREMENT_INFO_MAX;
+
+    le_gnss_ClockData_t *clockData;
+    le_mem_PoolRef_t clockDataPool = NULL;
+    clockDataPool = le_mem_CreatePool("clockDataPool", sizeof(le_gnss_ClockData_t));
+    clockData = (le_gnss_ClockData_t*) le_mem_ForceAlloc(clockDataPool);
+
+    le_gnss_MeasurementsData_t measData[TAF_LOCGNSS_MEASUREMENT_INFO_MAX];
+    uint32_t measDataMask[TAF_LOCGNSS_MEASUREMENT_INFO_MAX];
+
+    le_result_t result;
+
+    result = le_gnss_GetIsNHz(measSampleRef, &val);
+
+    if(result == LE_OK)
+    {
+        printf("isNHz: %d \n",(int)val);
+    }
+
+    result = le_gnss_GetClockValidityMask(measSampleRef, &clockValidityMask);
+
+    if(result == LE_OK)
+    {
+        printf("clockValidityMask: %" PRIu32 " \n",clockValidityMask);
+    }
+
+    result = le_gnss_GetClockData(measSampleRef, clockData);
+    if(result == LE_OK)
+    {
+        printf("clockData->leapSecond:  %" PRIi16 "\n", clockData->leapSecond);
+        printf("clockData->timeNs:  %" PRIi64 "\n", clockData->timeNs);
+        printf("clockData->timeUncertaintyNs:  %f \n", clockData->timeUncertaintyNs);
+        printf("clockData->fullBiasNs:  %" PRIi64 "\n", clockData->fullBiasNs);
+        printf("clockData->biasNs:  %f\n", clockData->biasNs);
+        printf("clockData->biasUncertaintyNs:  %f\n", clockData->biasUncertaintyNs);
+        printf("clockData->driftNsps:  %f\n", clockData->driftNsps);
+        printf("clockData->driftUncertaintyNsps:  %f\n", clockData->driftUncertaintyNsps);
+        printf("clockData->hwClockDiscontinuityCount:  %" PRIu32 "\n", clockData->hwClockDiscontinuityCount);
+        printf("clockData->elapsedRealTime:  %" PRIu64 "\n", clockData->elapsedRealTime);
+        printf("clockData->elapsedRealTimeUnc:  %" PRIu64 "\n", clockData->elapsedRealTimeUnc);
+        printf("clockData->elapsedgPTPTime:  %" PRIu64 "\n", clockData->elapsedgPTPTime);
+        printf("clockData->elapsedgPTPTimeUnc:  %" PRIu64 "\n", clockData->elapsedgPTPTimeUnc);
+    }
+
+    result = le_gnss_GetMeasurementsData(measSampleRef, measData, &gnssMeasLen);
+    if(result == LE_OK)
+    {
+        printf("gnssMeasLen: %d\n",(int)gnssMeasLen);
+        for(size_t i=0;i<gnssMeasLen;i++){
+            printf("svId: %" PRIi16 "\n",measData[i].svId);
+            printf("svType: %" PRIu32 "\n", measData[i].svType);
+            printf("timeOffsetNs: %f\n", measData[i].timeOffsetNs);
+            printf("stateMask: %" PRIu32 "\n", measData[i].stateMask);
+            printf("receivedSvTimeNs: %" PRIi64 "\n", measData[i].receivedSvTimeNs);
+            printf("receivedSvTimeSubNs: %f\n", measData[i].receivedSvTimeSubNs);
+            printf("receivedSvTimeUncertaintyNs: %" PRIi64 "\n", measData[i].receivedSvTimeUncertaintyNs);
+            printf("carrierToNoiseDbHz: %f\n", measData[i].carrierToNoiseDbHz);
+            printf("pseudorangeRateMps: %f\n", measData[i].pseudorangeRateMps);
+            printf("pseudorangeRateUncertaintyMps: %f\n", measData[i].pseudorangeRateUncertaintyMps);
+            printf("adrStateMask: %" PRIu32 "\n", measData[i].adrStateMask);
+            printf("adrMeters: %f\n", measData[i].adrMeters);
+            printf("adrUncertaintyMeters: %f\n", measData[i].adrUncertaintyMeters);
+            printf("carrierFrequencyHz: %f\n", measData[i].carrierFrequencyHz);
+            printf("carrierCycles: %" PRIi64 "\n", measData[i].carrierCycles);
+            printf("carrierPhase: %f\n", measData[i].carrierPhase);
+            printf("carrierPhaseUncertainty: %f\n", measData[i].carrierPhaseUncertainty);
+            printf("multipathIndicator: %d\n", (int)measData[i].multipathIndicator);
+            printf("signalToNoiseRatioDb: %f\n", measData[i].signalToNoiseRatioDb);
+            printf("agcLevelDb: %f\n", measData[i].agcLevelDb);
+            printf("gnssSignalType: %" PRIu32 "\n", measData[i].gnssSignalType);
+            printf("basebandCarrierToNoise: %f\n", measData[i].basebandCarrierToNoise);
+            printf("fullInterSignalBias: %f\n", measData[i].fullInterSignalBias);
+            printf("fullInterSignalBiasUncertainty: %f\n", measData[i].fullInterSignalBiasUncertainty);
+        }
+    }
+
+    result = le_gnss_GetMeasDataValidityMask(measSampleRef, measDataMask, &gnssMeasLen);
+    if(result == LE_OK)
+    {
+        LE_TEST_INFO("gnssMeasLen: %d\n",(int)gnssMeasLen);
+        for(size_t i=0;i<gnssMeasLen;i++){
+            printf("measDataMask[%zu]: %" PRIu32 "\n",i,measDataMask[i]);
+        }
+    }
+
+    le_gnss_ReleaseMeasSampleRef(measSampleRef);
+
+    time(&FinishTime);
+
+    if ((int) difftime(FinishTime, StartTime) >= WatchPeriod)
+    {
+        if (MeasHandlerRef != NULL)
+        {
+            le_gnss_RemoveMeasurementHandler(MeasHandlerRef);
+        }
+
+        MeasHandlerRef = NULL;
+
+        GnssMainFunction();
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to enable gnss and monitor its information.
@@ -5411,6 +5524,23 @@ static int WatchGnssNmeaInfo
     LE_ASSERT(NmeaHandlerRef != NULL);
 
     printf("Watch NMEA data for %ds\n", watchPeriod);
+
+    return EXIT_SUCCESS;
+}
+
+static int WatchMeasurementInfo
+(
+    uint32_t watchPeriod          ///< [IN] Watch period in seconds
+)
+{
+    WatchPeriod = watchPeriod;
+
+    time(&StartTime);
+
+    MeasHandlerRef = le_gnss_AddMeasurementHandler(MeasurementHandlerFunction, NULL);
+    LE_ASSERT(MeasHandlerRef != NULL);
+
+    printf("Watch Measurement data for %ds\n", watchPeriod);
 
     return EXIT_SUCCESS;
 }
@@ -6260,6 +6390,44 @@ void GnssMainFunction
                 continue;
             }
             WatchGnssNmeaInfo(nmeawatchPeriod);
+            ExitApp = false;
+        }
+        else if (strcmp(commandPtr, "measwatch") == 0)
+        {
+            if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+            {
+                printf("GNSS is not in active state!\n");
+                continue;
+            }
+
+            const char *measwatchPeriodPtr = TokenArray[1];
+            uint32_t measwatchPeriod = DEFAULT_WATCH_PERIOD;
+            // Check whether any watch period value is specified.
+            if (NULL != measwatchPeriodPtr)
+            {
+                char *endPtr;
+                errno = 0;
+                measwatchPeriod = strtoul(measwatchPeriodPtr, &endPtr, 10);
+
+                if (endPtr[0] != '\0' || errno != 0)
+                {
+                    fprintf(stderr, "Bad watch period value: %s\n", measwatchPeriodPtr);
+                    continue;
+                }
+                if (strcmp(measwatchPeriodPtr, "") == 0)
+                {
+                    //No input of Watch period so use default watch period.
+                    measwatchPeriod = DEFAULT_WATCH_PERIOD;
+                }
+            }
+
+            // Copy the command
+            le_utf8_Copy(ParamsName, commandPtr, sizeof(ParamsName), NULL);
+            if (measwatchPeriod == 0) {
+                printf("Watch Measurement data for %ds\n", measwatchPeriod);
+                continue;
+            }
+            WatchMeasurementInfo(measwatchPeriod);
             ExitApp = false;
         }
         else
