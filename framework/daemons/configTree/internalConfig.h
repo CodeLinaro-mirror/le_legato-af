@@ -63,4 +63,15 @@ time_t ic_GetTransactionTimeout
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Function called to check if the given node exists on system tree.
+ *
+ *  @return True if the given node exists, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool ic_CheckNodeExist
+(
+    const char* nodePath             ///< Path of the node.
+);
 #endif
