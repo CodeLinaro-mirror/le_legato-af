@@ -47,6 +47,8 @@ else
     CFLAGS="$CFLAGS -O2 -fno-omit-frame-pointer"
 fi
 
+CFLAGS="$CFLAGS -fmacro-prefix-map=$LEGATO_ROOT=. -fmacro-prefix-map=$TELAF_ROOT=. -fmacro-prefix-map=$LEGATO_SYSROOT=."
+
 if [ "${LE_CONFIG_ENABLE_DLT_LOGGING}" == "y" ]; then
     NINJA_LDFLAGS="$NINJA_LDFLAGS -ldlt"
 fi
