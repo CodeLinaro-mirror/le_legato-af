@@ -174,7 +174,7 @@ close_fp:
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Get the app name from process cgroup file.
+ *  Get TelAF app name by process ID.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetAppNameByPid
@@ -184,8 +184,11 @@ static le_result_t GetAppNameByPid
     size_t *nameBufSize  ///< [INOUT] App name buffer size.
 )
 {
-    const char *telafSubSys[] = {"freezer"};
-    int subSysNum = sizeof(telafSubSys) / sizeof(telafSubSys[0]);
+#ifndef  LE_CONFIG_SUPERV_ENABLE_CGROUP_V2
+    const char keyWord[] = {":freezer:"};
+#else
+    const char keyWord[] = {"0::"};
+#endif
 
     // If this process is not a TelAF process, don't get app name
     // from cgroup
@@ -195,7 +198,7 @@ static le_result_t GetAppNameByPid
         return LE_FAULT;
     }
 
-    char procPath[LIMIT_MAX_PATH_BYTES] = {0};
+    char procPath[32] = {0};
     (void)snprintf(procPath, sizeof(procPath), "/proc/%d/cgroup", pid);
     FILE* procPathPtr = fopen(procPath, "r");
     if (procPathPtr == NULL)
@@ -204,79 +207,65 @@ static le_result_t GetAppNameByPid
         return LE_FAULT;
     }
 
-    char onelinePtr[LIMIT_MAX_APP_NAME_LEN + 60] = {0};
-    bool isFounded = false;
-    const char delimit[] = ":";
-    char* tokens;
-    char *savePtr = NULL;
-    char *subSystemStr = NULL;
-
-    do
+    char onelinePtr[LIMIT_MAX_PATH_BYTES] = {0};
+    char* groupPtr = NULL;
+    bool isFound = false;
+    while (fgets(onelinePtr, sizeof(onelinePtr), procPathPtr) != NULL)
     {
-        memset(onelinePtr, 0, sizeof(onelinePtr));
-        if (fgets(onelinePtr, sizeof(onelinePtr), procPathPtr) == NULL)
+        onelinePtr[strcspn(onelinePtr, "\n")] = '\0';
+        groupPtr = strstr(onelinePtr, keyWord);
+        if (groupPtr != NULL)
         {
-            break;
-        }
-
-        size_t len = strlen(onelinePtr);
-        if (onelinePtr[len - 1] == '\n')
-        {
-            onelinePtr[len - 1] = '\0';
-        }
-
-        // example string: "5:memory:/tafApp"
-        strtok_r(onelinePtr, delimit, &savePtr);
-        // so the second strtok_r will get "memory"
-        subSystemStr = strtok_r(NULL, delimit, &savePtr);
-        if (subSystemStr == NULL)
-        {
-            continue;
-        }
-
-        for (int loop = 0; loop < subSysNum; loop++)
-        {
-            if (strncmp(subSystemStr, telafSubSys[loop], strlen(telafSubSys[loop])) == 0)
+            groupPtr += strlen(keyWord);
+            groupPtr = strrchr(groupPtr, '/');
+            if ((groupPtr != NULL) && (strlen(groupPtr) >= 2))
             {
-                // finally get "tafApp"
-                tokens = strtok_r(NULL, delimit, &savePtr);
-                if ((tokens == NULL) || (strlen(tokens) <= 1))
-                {
-                    LE_DEBUG("Invalid buf[%s] for string[%s]", onelinePtr, telafSubSys[loop]);
-                    break;
-                }
-                isFounded = true;
+                groupPtr += 1;
+                LE_INFO("Found cgroup name '%s' for pid '%d'", groupPtr, pid);
+                isFound = true;
                 break;
             }
         }
-        if (isFounded == true)
-        {
-            break;
-        }
-    }while (1);
+    }
 
     fclose(procPathPtr);
 
-    if (isFounded == false)
+    if (isFound == false)
     {
-        LE_CRIT("Cannot found subsystem from '%s' for app[%s], pid: %d", onelinePtr, appName, pid);
+        LE_CRIT("Couldn't find valid cgroup name for pid '%d'", pid);
         return LE_NOT_FOUND;
     }
 
-    // Value"nameBufSize" is the max side of TelAF application name. But for legacy application,
-    // "tokens" may be larger than "nameBufSize" as the max size of "tokens" depends on the path
-    // length in Linux. In this case appName will be truncated with nameBufSize.
-    size_t retBufSize = 0;
-    if (le_utf8_Copy(appName, (tokens + 1), *nameBufSize, &retBufSize) == LE_OVERFLOW)
+    char appPath[LIMIT_MAX_APP_NAME_BYTES + 7] = {0};
+    if (snprintf(appPath, sizeof(appPath), "/apps/%s", groupPtr) >= sizeof(appPath))
     {
-        *nameBufSize = retBufSize;
-        LE_WARN("Got truncated during copying process[%d] [%s] to [%s]",
-            pid, tokens, appName);
+        LE_CRIT("App name (%s) size is too long.", groupPtr);
+        return LE_OVERFLOW;
     }
 
-    return LE_OK;
+    if (ic_CheckNodeExist(appPath) == false)
+    {
+        LE_CRIT("cgroup (%s) is not a TelAF app name.", groupPtr);
+        return LE_NOT_FOUND;
+    }
+
+    size_t retBufSize = 0;
+    le_result_t result = le_utf8_Copy(appName, groupPtr, *nameBufSize, &retBufSize);
+    *nameBufSize = retBufSize;
+
+    if (result != LE_OK)
+    {
+        LE_CRIT("Failed to copy appName from cgroup (%s).", groupPtr);
+    }
+
+    return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get executeable name by process ID.
+ */
+//--------------------------------------------------------------------------------------------------
 static le_result_t GetExeNameByPid
 (
     pid_t pid,          ///< [IN] Process ID.

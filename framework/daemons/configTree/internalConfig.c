@@ -297,6 +297,37 @@ bool ic_CheckTreePermission
 
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Function called to check if the given node exists on system tree.
+ *
+ *  @return True if the given node exists, false if not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool ic_CheckNodeExist
+(
+    const char* nodePath             ///< Path of the node.
+)
+{
+    bool isExisted = false;
+
+    ni_IteratorRef_t iteratorRef = ni_CreateIterator(NULL,
+                                                     NULL,
+                                                     tdb_GetTree("system"),
+                                                     NI_READ,
+                                                     nodePath);
+
+    isExisted = ni_NodeExists(iteratorRef, "");
+    ni_Release(iteratorRef);
+
+    return isExisted;
+}
+
+
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  *  Read the current transaction timeout from the configtree's internal data.
