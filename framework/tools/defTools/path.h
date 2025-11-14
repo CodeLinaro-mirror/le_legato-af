@@ -134,6 +134,20 @@ std::string MakeRelative
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a file system relative path for a given file's absolute path to a given reference path
+ *
+ * @return  The relative path.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string GetRelative
+(
+    const std::string& absPath,     ///< The file absolute path.
+    const std::string& refpath      ///< Reference path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Clean all the '/./', '//', and '/../' nodes out of a path, follow symlinks, and make the
  * path absolute.
  *
