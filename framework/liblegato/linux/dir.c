@@ -287,12 +287,8 @@ bool le_dir_IsDir
     struct stat stats;
     if (stat(pathNamePtr, &stats) == -1)
     {
-        if ( (errno == ENOENT) || (errno == ENOTDIR) )
-        {
-            return false;
-        }
-
-        LE_FATAL("Could not stat path '%s'.  %m", pathNamePtr);
+        LE_DEBUG("Could not stat path '%s' (%s).", pathNamePtr, LE_ERRNO_TXT(errno));
+        return false;
     }
 
     return S_ISDIR(stats.st_mode);
