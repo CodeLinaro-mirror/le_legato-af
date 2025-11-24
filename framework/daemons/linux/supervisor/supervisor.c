@@ -546,11 +546,12 @@ static void StartFramework
     fwDaemons_Start();
 
     // Connect to the services we need from the framework daemons.
-    LE_DEBUG("---- Connecting to services ----");
+    LE_INFO("---- Connecting to services ----");
     le_cfg_ConnectService();
     le_cfgAdmin_ConnectService();
     logFd_ConnectService();
     le_instStat_ConnectService();
+    LE_INFO("---- Connected to services ----");
 
     // Cancel the start-up watchdog timer.
     alarm(0);
@@ -559,7 +560,7 @@ static void StartFramework
     kernelModules_Insert();
 
     // Advertise services.
-    LE_DEBUG("---- Advertising the Supervisor's APIs ----");
+    LE_INFO("---- Advertising the Supervisor's APIs ----");
     le_appCtrl_AdvertiseService();
     le_framework_AdvertiseService();
     wdog_AdvertiseService();
@@ -568,6 +569,7 @@ static void StartFramework
     le_appProc_AdvertiseService();
     le_ima_AdvertiseService();
     le_kernelModule_AdvertiseService();
+    LE_INFO("---- Advertised the Supervisor's APIs ----");
 
     // Close stdin (and reopen to /dev/null to be safe).
     // This signals to the parent process that it is now safe to start using the framework.
@@ -586,7 +588,7 @@ static void StartFramework
     if (AppStartMode != APP_START_NONE)
     {
         // Launch all user apps in the config tree that should be launched on system startup.
-        LE_INFO("Auto-starting apps.");
+        LE_INFO("Auto-starting apps (startMode=%d).", AppStartMode);
         apps_AutoStart();
     }
     else
@@ -1022,9 +1024,9 @@ static void SetupSmackOnlyCap
 #if LE_CONFIG_SMACK_ONLYCAP
     // Set onlycap with 'admin' label
     smack_SetOnlyCap("admin");
-    LE_INFO("SMACK onlycap enabled");
+    LE_DEBUG("SMACK onlycap enabled");
 #else /* not LE_CONFIG_SMACK_ONLYCAP */
-    LE_INFO("SMACK onlycap disabled");
+    LE_DEBUG("SMACK onlycap disabled");
 #endif /* end not LE_CONFIG_SMACK_ONLYCAP */
 }
 

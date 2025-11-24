@@ -289,7 +289,7 @@ static void SetRLimitValue
     // Check that the limit does not exceed the maximum.
     if ( (resourceID == RLIMIT_NOFILE) && (value > MAX_LIMIT_FILE_DESCRIPTORS) )
     {
-        LE_ERROR("Resource limit %s is greater than the maximum allowed limit (%d).  Using the \
+        LE_WARN("Resource limit %s is greater than the maximum allowed limit (%d).  Using the \
 maximum allowed value.", resourceName, MAX_LIMIT_FILE_DESCRIPTORS);
 
         value = MAX_LIMIT_FILE_DESCRIPTORS;
@@ -298,7 +298,7 @@ maximum allowed value.", resourceName, MAX_LIMIT_FILE_DESCRIPTORS);
     // Hard and soft limits are the same.
     struct rlimit lim = {value, value};
 
-    LE_INFO("Setting resource limit %s to value %d.", resourceName, (int)lim.rlim_max);
+    LE_DEBUG("Setting resource limit %s to value %d.", resourceName, (int)lim.rlim_max);
     LE_ERROR_IF(setrlimit(resourceID, &lim) == -1,
                 "Could not set resource limit %s (%d).  %m.", resourceName, resourceID);
 }

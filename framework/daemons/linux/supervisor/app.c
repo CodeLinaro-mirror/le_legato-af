@@ -697,6 +697,8 @@ static le_result_t CreateSupplementaryGroups
 
     le_cfg_CancelTxn(cfgIter);
 
+    LE_DEBUG("Group list size for '%s': %"PRIuS, appRef->name, appRef->numSupplementGids);
+
     return LE_OK;
 }
 
@@ -763,7 +765,6 @@ static void InitAppUserName
         le_utf8_Copy(appRef->cfgUser, userName, LIMIT_MAX_USER_NAME_BYTES, NULL);
     }
 
-    LE_INFO("Get username (%s) for app '%s' in configTree", appRef->cfgUser, appRef->name);
     le_cfg_CancelTxn(cfgIter);
     return;
 }
@@ -808,7 +809,7 @@ static le_result_t CreateCapList
             return LE_FAULT;
         }
 
-        LE_INFO("Capability name: %s",capabilityName);
+        LE_DEBUG("Capability name: %s",capabilityName);
 
         int capValue = -1;
         if (GetCapValueFromName(capabilityName, &capValue) != LE_OK)
@@ -835,7 +836,7 @@ static le_result_t CreateCapList
 
     appRef->numOfCapabilities = i + 1;
     le_cfg_CancelTxn(cfgIter);
-    LE_INFO("Capability list size for '%s': %"PRIuS, appRef->name, appRef->numOfCapabilities);
+    LE_DEBUG("Capability list size for '%s': %"PRIuS, appRef->name, appRef->numOfCapabilities);
     return LE_OK;
 }
 
@@ -2312,7 +2313,7 @@ static le_result_t CreateDirLink
     // See if the destination already exists.
     if (DoesLinkExist(appRef, &srcStat, destPath))
     {
-        LE_INFO("Skipping directory link '%s' to '%s': Already exists", srcPtr, destPath);
+        LE_DEBUG("Skipping directory link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
     }
 
@@ -2425,7 +2426,7 @@ static le_result_t CreateFileLink
     // See if the destination already exists.
     if (DoesLinkExist(appRef, &srcStat, destPath))
     {
-        LE_INFO("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
+        LE_DEBUG("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
     }
 
@@ -4510,20 +4511,23 @@ le_result_t app_Start
     app_Ref_t appRef                    ///< [IN] Reference to the application to start.
 )
 {
-    LE_INFO("Starting app '%s'", appRef->name);
+    char username[LIMIT_MAX_USER_NAME_BYTES] = "";
+    user_GetName(appRef->uid, username, sizeof(username));
+
+    LE_INFO("Starting app '%s' with '%s' user", appRef->name, username);
 
     bool moduleLoadFailed = false;
 
     if (appRef->state == APP_STATE_RUNNING)
     {
-        LE_ERROR("Application '%s' is already running.", appRef->name);
+        LE_WARN("Application '%s' is already running.", appRef->name);
 
         return LE_FAULT;
     }
 
     if (framework_IsStopping())
     {
-        LE_ERROR("App '%s' cannot be started because framework is shutting down.",
+        LE_WARN("App '%s' cannot be started because framework is shutting down.",
                  appRef->name);
         return LE_FAULT;
     }
@@ -4663,7 +4667,7 @@ void app_Stop
 
     if (appRef->state == APP_STATE_STOPPED)
     {
-        LE_ERROR("Application '%s' is already stopped.", appRef->name);
+        LE_WARN("Application '%s' is already stopped.", appRef->name);
         return;
     }
 
@@ -5264,8 +5268,15 @@ void app_SigChildHandler
                 LE_EMERG("Process '%s' in app '%s' faulted: Rebooting system.",
                          proc_GetName(procRef),
                          appRef->name);
-
-                *faultActionPtr = FAULT_ACTION_REBOOT;
+                if (framework_IsStopping())
+                {
+                    LE_INFO("Ignore rebooting system because framework is shutting down.");
+                    *faultActionPtr = FAULT_ACTION_STOP_APP;
+                }
+                else
+                {
+                    *faultActionPtr = FAULT_ACTION_REBOOT;
+                }
                 break;
         }
 
