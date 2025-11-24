@@ -1415,14 +1415,14 @@ le_result_t proc_Start
 
     if (procRef->pid != -1)
     {
-        LE_ERROR("Process '%s' (PID: %d) cannot be started because it is already running.",
+        LE_WARN("Process '%s' (PID: %d) cannot be started because it is already running.",
                  procRef->namePtr, procRef->pid);
         return LE_FAULT;
     }
 
     if (framework_IsStopping())
     {
-        LE_ERROR("Process '%s' cannot be started because framework is shutting down.",
+        LE_WARN("Process '%s' cannot be started because framework is shutting down.",
                  procRef->namePtr);
         return LE_FAULT;
     }
