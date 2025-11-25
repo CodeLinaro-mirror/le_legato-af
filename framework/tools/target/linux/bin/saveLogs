@@ -85,8 +85,10 @@ MoveFirstCore()
 }
 
 # Build a list of core files and drop the redundant ones, while moving the latest one to the
-# target directory.
-CORE_LIST=`ls -t $APP_HOME/core?$PROC_NAME* 2> /dev/null`
+# target directory. Note since the maximum process name size included in the original core file
+# name is 15 bytes, we only check at most 15 bytes for the process name here.
+
+CORE_LIST=$(ls -t "$APP_HOME"/core*$(echo "$PROC_NAME" | cut -c1-15)* 2>/dev/null)
 
 DeleteAllButFirst $CORE_LIST
 MoveFirstCore $CORE_LIST

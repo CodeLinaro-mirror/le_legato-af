@@ -187,7 +187,9 @@ ApiFile_t::ApiFile_t
 :   path(p),
     defaultPrefix(path::RemoveSuffix(path::GetLastNode(p), ".api")),
     isIncluded(false),
-    codeGenDir(path::Combine("api", md5(path)))
+    codeGenDir(path::Combine("api",
+        md5(path::GetRelative(path::MakeCanonical(path),
+            path::MakeCanonical(envVars::GetRequired("LEGATO_ROOT"))))))
 //--------------------------------------------------------------------------------------------------
 {
 }
