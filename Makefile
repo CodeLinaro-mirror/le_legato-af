@@ -148,7 +148,7 @@ export TOOLS_ARCH ?= $(HOST_ARCH)
 FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
 
 # Load module definitions
-include $(wildcard $(TELAF_ROOT)/modules/*/moduleDefs)
+include $(wildcard $(TELAF_ROOT)/modules/moduleDefs)
 
 # Read-only setting
 STAGE_SYSTOIMG = stage_systoimg
