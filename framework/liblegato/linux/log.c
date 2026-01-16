@@ -917,7 +917,7 @@ static void DltLogLevelChangeHandler
         return;
     }
 
-    LE_EMERG("Update DLT log level: '%s' -> '%s'", GetDltSeverityStr(DltSession.logLevel),
+    LE_INFO("Update DLT log level: '%s' -> '%s'", GetDltSeverityStr(DltSession.logLevel),
                                                    GetDltSeverityStr(logLevel));
 
     DltSession.logLevel = logLevel;

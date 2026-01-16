@@ -415,7 +415,7 @@ static void RestartApp
     }
     else
     {
-        LE_CRIT("Could not restart application '%s'.", app_GetName(appContainerPtr->appRef));
+        LE_WARN("Could not restart application '%s'.", app_GetName(appContainerPtr->appRef));
 
         DeactivateAppContainer(appContainerPtr);
     }
@@ -799,7 +799,7 @@ static le_result_t LaunchApp
 
     if (appContainerPtr->isActive)
     {
-        LE_ERROR("Application '%s' is already running.", appNamePtr);
+        LE_WARN("Application '%s' is already running.", appNamePtr);
         return LE_DUPLICATE;
     }
 
@@ -1222,7 +1222,7 @@ static void AppStopHandler
             {
                 // App may be missing in some fault cases when shutting down the system.
                 // App has already been cleaned up, so safe to ignore shutdown notification.
-                LE_WARN("Cannot find active app '%s'", appName);
+                LE_INFO("Cannot find active app '%s'", appName);
             }
             else
             {
@@ -1553,13 +1553,13 @@ void apps_AutoStart
                     // exceed the value defined in the macro LE_CONFIG_LIMIT_APP_START_GROUP.
                     if (appStartOrder > LE_CONFIG_LIMIT_APP_START_GROUP)
                     {
-                        LE_INFO("App '%s' was ignore, order is: %d", appName, appStartOrder);
+                        LE_DEBUG("App '%s' was ignored, order is: %d", appName, appStartOrder);
                         continue;
                     }
                     else
 #endif
                     {
-                        LE_INFO("App '%s' start order is: %d", appName, appStartOrder);
+                        LE_DEBUG("App '%s' start order is: %d", appName, appStartOrder);
                     }
                 }
 
@@ -1870,7 +1870,7 @@ static le_result_t appCtrl_Start
         return LE_FAULT;
     }
 
-    LE_DEBUG("Received request to start application '%s'.", appName);
+    LE_INFO("Received request to start application '%s'.", appName);
 
     return LaunchApp(appName);
 }
@@ -2445,11 +2445,9 @@ le_result_t le_appInfo_GetName
     AppContainer_t* appContainerPtr = GetActiveAppWithProc(pid);
     if (appContainerPtr == NULL)
     {
-        LE_WARN("Cannot find a TelAF app object for pid=%d", pid);
         return LE_NOT_FOUND;
     }
     app_Ref_t appRef = appContainerPtr->appRef;
-    LE_DEBUG("pid=%d, TelAF AppName=%s", pid, app_GetName(appRef));
 
     return le_utf8_Copy(appName, app_GetName(appRef), appNameNumElements, NULL);
 }

@@ -1298,8 +1298,7 @@ void kernelModules_Insert(void)
     le_result_t result = le_cfg_GoToFirstChild(iter);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to read /modules config. Result = %d (%s).",
-                 result, LE_RESULT_TXT(result));
+        LE_DEBUG("No kernel modules found in telaf image.");
         le_cfg_CancelTxn(iter);
         return;
     }

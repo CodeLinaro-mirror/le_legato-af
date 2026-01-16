@@ -54,7 +54,7 @@ bool file_Exists
         // ENOENT = the file doesn't exist.  Anything else warrants and error report.
         if (errno != ENOENT)
         {
-            LE_CRIT("Error when trying to stat '%s'. (%m)", filePath);
+            LE_WARN("Error when trying to stat '%s'. (%m)", filePath);
         }
 
         return false;
@@ -69,7 +69,7 @@ bool file_Exists
         }
         else
         {
-            LE_CRIT("Unexpected file system object type (%#o) at path '%s'.",
+            LE_WARN("Unexpected file system object type (%#o) at path '%s'.",
                     fileStatus.st_mode & S_IFMT,
                     filePath);
 

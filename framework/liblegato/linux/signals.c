@@ -449,7 +449,7 @@ static void TermSignalHandler
     int sigNum      ///< [IN] The signal that was received.
 )
 {
-    LE_CRIT("Terminated");
+    LE_WARN("Terminated");
     exit(EXIT_SUCCESS);
 }
 
