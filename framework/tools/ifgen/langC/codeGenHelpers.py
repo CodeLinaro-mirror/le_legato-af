@@ -124,21 +124,21 @@ def FormatHeaderComment(comment):
     """
     Format a header comment into a C-style Doxygen comment
     """
-    commentLines = comment.split(u'\n')
-    prefix = u' *'
-    result = u'/**' + commentLines[0] + u'\n'
+    commentLines = comment.split('\n')
+    prefix = ' *'
+    result = '/**' + commentLines[0] + '\n'
     for commentLine in commentLines[1:-1]:
-        result += prefix + commentLine + u'\n'
-        if commentLine.strip() == u'@verbatim':
-            prefix = u''
-        elif commentLine.strip() == u'@endverbatim':
-            prefix = u' *'
+        result += prefix + commentLine + '\n'
+        if commentLine.strip() == '@verbatim':
+            prefix = ''
+        elif commentLine.strip() == '@endverbatim':
+            prefix = ' *'
     # If comment ends on a trailing newline, replace newline '/' to close the comment, otherwise
     # need a full comment close.  But trailing newline is the common case.
-    if commentLines[-1].strip() == u'':
-        result += u' */'
+    if commentLines[-1].strip() == '':
+        result += ' */'
     else:
-        result += prefix + commentLines[-1] + u'*/'
+        result += prefix + commentLines[-1] + '*/'
     return result
 
 def FormatDirection(direction):
@@ -256,18 +256,18 @@ def FormatParameterPtr(parameter):
 @environmentfilter
 def FormatParameter(env, parameter, forceInput=False, useBaseName=False):
     if isinstance(parameter, interfaceIR.StringParameter):
-        return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
+        return (("const " if forceInput or parameter.direction == interfaceIR.DIR_IN else "") +
                 FormatType(parameter.apiType,useBaseName) +
-                (u" LE_NONNULL " if parameter.direction == interfaceIR.DIR_IN else u" ") +
+                (" LE_NONNULL " if parameter.direction == interfaceIR.DIR_IN else " ") +
                 parameter.name)
     elif isinstance(parameter, interfaceIR.ArrayParameter):
-        return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
+        return (("const " if forceInput or parameter.direction == interfaceIR.DIR_IN else "") +
                 FormatType(parameter.apiType,useBaseName) + "* " + parameter.name + "Ptr")
     elif isinstance(parameter.apiType, interfaceIR.HandlerType):
         return FormatType(parameter.apiType,useBaseName) + " " + parameter.name + "Ptr"
     elif isinstance(parameter.apiType, interfaceIR.StructType):
         if forceInput or parameter.direction == interfaceIR.DIR_IN:
-            return u"const " + FormatType(parameter.apiType) + " * LE_NONNULL " + \
+            return "const " + FormatType(parameter.apiType) + " * LE_NONNULL " + \
                 parameter.name + "Ptr"
         else:
             return FormatType(parameter.apiType,useBaseName) + " * " + parameter.name + "Ptr"
@@ -376,9 +376,9 @@ def GetLocalMessageSize(interface, pointerSize):
         padding = padding + 1
     return padding + max([1] +
                    [GetLocalFunctionMsgSize(function, pointerSize)
-                    for function in interface.functions.values()] +
+                    for function in list(interface.functions.values())] +
                    [handler.GetMessageSize()
-                    for handler in interface.types.values()
+                    for handler in list(interface.types.values())
                     if isinstance(handler, interfaceIR.HandlerType)])
 
 def GetCOutputBufferCount(function):
@@ -391,7 +391,7 @@ def GetCOutputBufferCount(function):
     return outputCount
 
 def GetMaxCOutputBuffers(interface):
-    return max([GetCOutputBufferCount(function) for function in interface.functions.values()])
+    return max([GetCOutputBufferCount(function) for function in list(interface.functions.values())])
 
 #---------------------------------------------------------------------------------------------------
 # Test functions

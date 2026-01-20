@@ -78,7 +78,7 @@ class MyEncoder(JSONEncoder):
                         return v
                 return v
 
-            return {k: convert(k, v) for k, v in o.__dict__.iteritems()}
+            return {k: convert(k, v) for k, v in list(o.__dict__.items())}
         if isinstance(o, interfaceIR.Type):
             return o.__dict__
         if isinstance(o, interfaceIR.Interface):
@@ -112,7 +112,7 @@ def serialize_iface(iface):
             else:
                 return v
 
-        iface.imports = {k: convert(k, v) for k, v in iface.imports.iteritems()}
+        iface.imports = {k: convert(k, v) for k, v in list(iface.imports.items())}
 
     if hasattr(iface, "comments"):
         iface.comments = clean_comments(iface.comments)

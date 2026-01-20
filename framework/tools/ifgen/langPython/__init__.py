@@ -1,4 +1,4 @@
-import codeGenHelpers
+from . import codeGenHelpers
 
 import sys
 sys.path.append('../')

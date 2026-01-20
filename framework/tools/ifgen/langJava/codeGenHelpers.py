@@ -26,21 +26,21 @@ def FormatHeaderComment(comment):
     """
     Format a header comment into a C-style Doxygen comment
     """
-    commentLines = comment.split(u'\n')
-    prefix = u' *'
-    result = u'/**' + commentLines[0] + u'\n'
+    commentLines = comment.split('\n')
+    prefix = ' *'
+    result = '/**' + commentLines[0] + '\n'
     for commentLine in commentLines[1:-1]:
-        result += prefix + commentLine + u'\n'
-        if commentLine.strip() == u'@verbatim':
-            prefix = u''
-        elif commentLine.strip() == u'@endverbatim':
-            prefix = u' *'
+        result += prefix + commentLine + '\n'
+        if commentLine.strip() == '@verbatim':
+            prefix = ''
+        elif commentLine.strip() == '@endverbatim':
+            prefix = ' *'
     # If comment ends on a trailing newline, replace newline '/' to close the comment, otherwise
     # need a full comment close.  But trailing newline is the common case.
-    if commentLines[-1].strip() == u'':
-        result += u' */'
+    if commentLines[-1].strip() == '':
+        result += ' */'
     else:
-        result += prefix + commentLines[-1] + u'*/'
+        result += prefix + commentLines[-1] + '*/'
     return result
 
 _BasicTypeMapping = {
@@ -113,7 +113,7 @@ def GetDefaultValue(apiType):
     """Produce Java default value for an API type"""
     try:
         return _LiteralInitMapping[_BasicTypeMapping[apiType]]
-    except KeyError, e:
+    except KeyError as e:
         return "null"
 
 @contextfilter
