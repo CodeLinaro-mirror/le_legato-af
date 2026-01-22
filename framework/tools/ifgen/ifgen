@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7 -E
+#!/usr/bin/python3 -E
 #
 # Code generator main program
 #
@@ -128,7 +128,7 @@ def AddGeneratedFiles(parser, langPkg):
                         default=False,
                         help='Generate all files')
 
-    for key, value in langPkg.GeneratedFiles.iteritems():
+    for key, value in langPkg.GeneratedFiles.items():
         parser.add_argument('--gen-%s' % (key),
                             dest="gen_%s" %(key.replace('-', '_')),
                             action='store_true',
@@ -159,17 +159,17 @@ def ParseArguments(parser, argList):
     return args
 
 def AddImportsToSet(interface, importSet):
-    for key, value in interface.imports.iteritems():
+    for key, value in interface.imports.items():
         AddImportsToSet(value, importSet)
     importSet[interface.name] = interface
 
 def GetImports(interface):
     """Recursively get all the interfaces an iterface depends on (including itself)"""
     ImportSet=collections.OrderedDict()
-    for key, value in interface.imports.iteritems():
+    for key, value in interface.imports.items():
         AddImportsToSet(value, ImportSet)
 
-    return ImportSet.values()
+    return list(ImportSet.values())
 
 def ImportLangPkg(lang):
 
@@ -181,7 +181,7 @@ def ImportLangPkg(lang):
         langPkg = importlib.import_module(langDir)
     except ImportError:
         # Can't find the package to import
-        print >> sys.stderr, "ERROR: language '%s' not available" % langDir
+        print("ERROR: language '%s' not available" % langDir, file=sys.stderr)
         sys.exit(1)
 
     logging.info("Generating interface glue for language '%s'" % langDir)
@@ -200,16 +200,16 @@ def CalcHash(interface):
         hashText = "v3," + repr(interface)
 
     h = hashlib.md5()
-    h.update( hashText )
+    h.update(hashText.encode("utf-8"))
     hashValue = h.hexdigest()
 
     return hashValue, hashText
 
 
 def _TailAllTypes(interface, typeList, seenImports):
-    for typeName, typeItem in interface.types.iteritems():
+    for typeName, typeItem in interface.types.items():
         typeList.append(typeItem)
-    for importName, importItem in interface.imports.iteritems():
+    for importName, importItem in interface.imports.items():
         if importName in seenImports:
             break
         seenImports.append(importName)
@@ -266,14 +266,14 @@ def Main():
     # If we just want the import list, then print it out and exit
     if args.getImportList:
         importInterfaces = GetImports(interface)
-        print "\n".join([interface.path for interface in importInterfaces])
+        print("\n".join([interface.path for interface in importInterfaces]))
         sys.exit(0)
 
     # Calculate the hashValue, as it is always needed
     # if there is version for API, do not use hash
     if interface.api_version and interface.serving_version:
         if interface.api_version > 999 or interface.serving_version > 999:
-            print >> sys.stderr, "ERROR: the version string is not valid"
+            print("ERROR: the version string is not valid", file=sys.stderr)
             sys.exit(1)
         # telaf.lnx.1.1, framework version is 11
         FRAMEWORK_VER = "11"
@@ -281,7 +281,7 @@ def Main():
         servingVerStr = "{:03}".format(interface.serving_version)
         fileName = args.apiFileName
         if len(fileName) > 19:
-            print >> sys.stderr,"Error: API file name should NOT exceed 19 chars"
+            print("Error: API file name should NOT exceed 19 chars", file=sys.stderr)
             sys.exit(1)
         hashText = fileName.ljust(19,'~') + ":" + FRAMEWORK_VER + ":"
         hashText = hashText + apiVerStr
@@ -296,14 +296,14 @@ def Main():
     if args.hash:
         if args.dump:
             # Print out the text used for generating the hash
-            print hashText
+            print(hashText)
         else:
-            print hashValue
+            print(hashValue)
         sys.exit(0)
 
     # Handle the --dump argument here.  No need to generate any code
     if args.dump:
-        print interface
+        print(interface)
         sys.exit(0)
 
     # Set up the jinja2 environment
@@ -345,7 +345,7 @@ def Main():
     allTypes = AllTypes(interface)
 
     # Generate requested files from templates
-    for fileType, fileName in langPkg.GeneratedFiles.iteritems():
+    for fileType, fileName in langPkg.GeneratedFiles.items():
         if args.gen_all or getattr(args, 'gen_%s' % ( fileType.replace('-', '_') )):
             if args.outputDir == '-':
                 if args.gen_all:
@@ -358,22 +358,22 @@ def Main():
                     os.makedirs(destDir)
             Template = TemplateEnvironment.get_template(fileName % ('TEMPLATE'))
             # check to make sure no duplicate message id for functions
-            tempFuncs = interface.functions.values()
+            tempFuncs = list(interface.functions.values())
             msgIdList = []
            
             for func in tempFuncs:
                 msgIdList.append(func.msgId)
 
             if((len(msgIdList)!= len(set(msgIdList))) and (len(msgIdList)!= 0)):
-                print >> sys.stderr, "ERROR: duplicate message ids in the API file:" + repr(msgIdList)
+                print("ERROR: duplicate message ids in the API file:" + repr(msgIdList), file=sys.stderr)
                 sys.exit(1)
             
             if interface.apiMsgMaxSize and interface.apiMsgMaxSize < interface.getMessageSize():
-                print >> sys.stderr, "ERROR: API defined max message size(%d) NOT big engough(%d)" % (interface.apiMsgMaxSize,interface.getMessageSize())
+                print("ERROR: API defined max message size(%d) NOT big engough(%d)" % (interface.apiMsgMaxSize,interface.getMessageSize()), file=sys.stderr)
                 sys.exit(1)
             
             if interface.apiMsgMaxSize == None:
-               print >> sys.stderr, "WARN: API NOT define max message size, use calculated one - %d" % (interface.getMessageSize())
+               print("WARN: API NOT define max message size, use calculated one - %d" % (interface.getMessageSize()), file=sys.stderr)
                interface.apiMsgMaxSize = interface.getMessageSize()
                 
             Template.stream(args=args,
@@ -385,12 +385,12 @@ def Main():
                             idString=hashValue,
                             messageSize=interface.apiMsgMaxSize,
                             # Break-out various aspects of the interface for convenience
-                            imports=interface.imports.keys(),
-                            types=interface.types.values(),
+                            imports=list(interface.imports.keys()),
+                            types=list(interface.types.values()),
                             allTypes=allTypes,
-                            definitions=interface.definitions.values(),
-                            functions=interface.functions.values(),
-                            events=interface.events.values(),
+                            definitions=list(interface.definitions.values()),
+                            functions=list(interface.functions.values()),
+                            events=list(interface.events.values()),
                             fileComments=interface.comments,
                             # But also provide the interface itself, in case it's needed
                             interface=interface

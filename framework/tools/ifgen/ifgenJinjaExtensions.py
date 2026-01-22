@@ -81,5 +81,4 @@ def IsRemoveHandlerFunction(functionObj):
 @contextfunction
 def AnyFilter(context, iterable, filterName):
     filterFunc = context.environment.tests.get(filterName)
-    return any(itertools.imap(lambda item: filterFunc(item),
-                              iterable))
+    return any([filterFunc(item) for item in iterable])

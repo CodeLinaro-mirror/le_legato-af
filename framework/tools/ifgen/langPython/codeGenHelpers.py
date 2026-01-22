@@ -22,8 +22,8 @@ def FormatHeaderComment(comment):
     """
     Format a header comment into a Python comment
     """
-    commentLines = comment.split(u'\n')
-    return "'''" + u'\n'.join([line.rstrip() for line in commentLines]) + "'''"
+    commentLines = comment.split('\n')
+    return "'''" + '\n'.join([line.rstrip() for line in commentLines]) + "'''"
 
 def DecoratorNameForEvent(event):
     return CamelCaseToUnderscores(event.name) + "_handler"
