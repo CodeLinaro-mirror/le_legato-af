@@ -622,7 +622,7 @@ class Interface(object):
         eventRemoveFunc = EventFunction(eventObj,
                                         None,
                                         "Remove%sHandler" % (eventObj.name,), eventObj.location,
-                                        [ Parameter(eventRefType, u"handlerRef", eventObj.location) ],eventObj.remMsgId)
+                                        [ Parameter(eventRefType, "handlerRef", eventObj.location) ],eventObj.remMsgId)
         eventRemoveFunc.comment = \
             "\n Remove handler function for EVENT '%s_%s'\n" % (self.name,
                                                                 eventObj.name)
@@ -654,9 +654,9 @@ class Interface(object):
             # Include a 1-byte TagID
             padding = padding + 1
         return padding + max([1] +
-                       [function.GetMessageSize() for function in self.functions.values()] +
+                       [function.GetMessageSize() for function in list(self.functions.values())] +
                        [handler.GetMessageSize()
-                        for handler in self.types.values() if isinstance(handler, HandlerType)])
+                        for handler in list(self.types.values()) if isinstance(handler, HandlerType)])
 
     def usesHandlers(self):
         """
@@ -664,7 +664,7 @@ class Interface(object):
 
         If no function uses handlers, some code may be optimized out.
         """
-        for function in self.functions.values():
+        for function in list(self.functions.values()):
             if any([isinstance(parameter.apiType, HandlerType) \
                     for parameter in function.parameters]):
                 return True
@@ -673,31 +673,31 @@ class Interface(object):
     def __str__(self):
         resultStr  = "=== Interface ===\n"
         resultStr += "Imports:\n"
-        for importKey, importValue in self.imports.iteritems():
+        for importKey, importValue in list(self.imports.items()):
             resultStr += "    %s\n" % (importKey,)
         resultStr += "\n";
         resultStr += "Definitions:\n"
-        for defnKey, defnValue in self.definitions.iteritems():
+        for defnKey, defnValue in list(self.definitions.items()):
             resultStr += "    %s\n" % (str(defnValue))
         resultStr += "\n";
         resultStr += "Types:\n"
-        for typeKey, typeValue in self.types.iteritems():
+        for typeKey, typeValue in list(self.types.items()):
             resultStr += "    %s\n" % (str(typeValue))
         resultStr += "\n";
         resultStr += "Functions:\n"
-        for functionKey, functionValue in self.functions.iteritems():
+        for functionKey, functionValue in list(self.functions.items()):
             resultStr += "    %s\n" % (str(functionValue))
         resultStr += "\n";
         resultStr += "Events:\n"
-        for eventKey, eventValue in self.events.iteritems():
+        for eventKey, eventValue in list(self.events.items()):
             resultStr += "    %s\n" % (str(eventValue))
         return resultStr
 
     def __repr__(self):
         return "<Interface Imports:[{}] Definitions:[{}] Types:[{}] Functions:[{}] Events:[{}]>"\
             .format(
-                ','.join([repr(apiImport) for apiImport in self.imports.itervalues()]),
-                ','.join([repr(definition) for definition in self.definitions.itervalues()]),
-                ','.join([repr(apiType) for apiType in self.types.itervalues()]),
-                ','.join([repr(function) for function in self.functions.itervalues()]),
-                ','.join([repr(event) for event in self.events.itervalues()]))
+                ','.join([repr(apiImport) for apiImport in list(self.imports.values())]),
+                ','.join([repr(definition) for definition in list(self.definitions.values())]),
+                ','.join([repr(apiType) for apiType in list(self.types.values())]),
+                ','.join([repr(function) for function in list(self.functions.values())]),
+                ','.join([repr(event) for event in list(self.events.values())]))

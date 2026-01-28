@@ -4,7 +4,7 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
-import codeGenHelpers
+from . import codeGenHelpers
 
 def AddLangArgumentGroup(parser):
     parser.add_argument('--async-server',

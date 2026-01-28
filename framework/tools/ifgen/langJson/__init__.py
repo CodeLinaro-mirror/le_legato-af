@@ -4,7 +4,7 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
-import codeGenHelpers
+from . import codeGenHelpers
 # No extra arguments, no helpers needed, and only one generated file -- for rpcConfig
 def AddLangArgumentGroup(parser):
     pass

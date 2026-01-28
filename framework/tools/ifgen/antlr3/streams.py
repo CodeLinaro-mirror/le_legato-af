@@ -31,7 +31,7 @@
 # end[licence]
 
 import codecs
-from StringIO import StringIO
+from io import StringIO
 
 from antlr3.constants import DEFAULT_CHANNEL, EOF
 from antlr3.tokens import Token, CommonToken
@@ -342,7 +342,7 @@ class ANTLRStringStream(CharStream):
         CharStream.__init__(self)
 
         # The data being scanned
-        self.strdata = unicode(data)
+        self.strdata = str(data)
         self.data = [ord(c) for c in self.strdata]
 
         # How many characters are actually in the buffer
@@ -793,7 +793,7 @@ class CommonTokenStream(TokenStream):
         if start > stop:
             return None
 
-        if isinstance(types, (int, long)):
+        if isinstance(types, int):
             # called with a single type, wrap into set
             types = set([types])
 

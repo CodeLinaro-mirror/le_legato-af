@@ -456,7 +456,7 @@ void user_Init
 
     // Check if /etc is writable and register the result for further checks
     IsEtcWritable = (0 == access( PASSWORD_FILE, W_OK ) ? true : false);
-    LE_INFO("/etc is %swritable", IsEtcWritable ? "" : "NOT ");
+    LE_DEBUG("/etc is %swritable", IsEtcWritable ? "" : "NOT ");
 
     filePtr = fopen(LOGIN_DEF_FILE, "r"); // Read mode
 
@@ -557,7 +557,7 @@ void user_Init
             }
             while (pwdPtr || (EINTR == err));
             fclose(filePtr);
-            LE_INFO("Found %u appLegato for app translation table.", NbAppsInTranslationTable);
+            LE_DEBUG("Found %u appLegato for app translation table.", NbAppsInTranslationTable);
         }
 
         // Allocate the pool for apps translation table
@@ -1511,7 +1511,6 @@ le_result_t user_CreateGroup
 
     if (result == LE_OK)
     {
-        LE_WARN("Group '%s' already exists.", groupNamePtr);
         if (IsEtcWritable)
         {
             le_atomFile_CancelStream(groupFilePtr);

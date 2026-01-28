@@ -940,7 +940,7 @@ void smack_Init
     void
 )
 {
-    LE_INFO("********* SMACK policy settings are disabled in the Legato Framework ONLY. *********");
+    LE_DEBUG("********* SMACK policy settings are disabled in the Legato Framework ONLY. *********");
 }
 
 

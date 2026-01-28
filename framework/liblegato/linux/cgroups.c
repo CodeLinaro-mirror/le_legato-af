@@ -181,9 +181,9 @@ void cgrp_Init
     struct statfs st;
 
     // TelAf uses ROOT_PATH to keep its cgroup items, so make sure ROOT_PATH is exist first.
-    if (file_Exists(ROOT_PATH) == false)
+    if (le_dir_IsDir(ROOT_PATH) == false)
     {
-        LE_INFO("The path %s doesn't exist, create it", ROOT_PATH);
+        LE_INFO("Creating cgroup fs path %s.", ROOT_PATH);
         if (statfs(ROOT_PATH_CGROUP, &st) < 0)
         {
             LE_ERROR("Cannot get attr from %s", ROOT_PATH_CGROUP);

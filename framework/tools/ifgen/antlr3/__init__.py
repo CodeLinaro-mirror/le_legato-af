@@ -144,9 +144,9 @@ __version__ = '3.4'
 # API versions. 'HEAD' is only used by unittests.
 compatible_api_versions = ['HEAD', 1]
 
-from constants import *
-from dfa import *
-from exceptions import *
-from recognizers import *
-from streams import *
-from tokens import *
+from .constants import *
+from .dfa import *
+from .exceptions import *
+from .recognizers import *
+from .streams import *
+from .tokens import *

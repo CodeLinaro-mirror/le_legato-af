@@ -14,6 +14,10 @@
 #include "smack.h"
 #include "sysPaths.h"
 #include "wait.h"
+#include <sys/capability.h>
+#include <sys/prctl.h>
+
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -24,6 +28,8 @@
 typedef struct
 {
     char            path[LIMIT_MAX_PATH_BYTES];     // Path to the daemon's executable.
+    int             unneededCapList[LIMIT_MAX_NUM_CAPABILITIES]; // Unneeded capability list.
+    size_t          capNum;                         // Number of capabilities in list.
     pid_t           pid;                            // The daemon's pid.
 }
 DaemonObj_t;
@@ -59,20 +65,15 @@ DaemonObj_t;
  */
 //--------------------------------------------------------------------------------------------------
 
+static DaemonObj_t FrameworkDaemons[] = {
+    {SYSTEM_BIN_PATH "/serviceDirectory", {-1}, 0, -1},
+    {SYSTEM_BIN_PATH "/logCtrlDaemon", {CAP_BLOCK_SUSPEND}, 1, -1},
+    {SYSTEM_BIN_PATH "/configTree", {-1}, 0, -1},
+    {SYSTEM_BIN_PATH "/updateDaemon", {-1}, 0, -1},
 #if ! defined (LE_CONFIG_FLAVOR_LXC)
-static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", -1},
-                                          {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
-                                          {SYSTEM_BIN_PATH "/configTree", -1},
-                                          {SYSTEM_BIN_PATH "/updateDaemon", -1},
-                                          {SYSTEM_BIN_PATH "/watchdog", -1},
-                                          {SYSTEM_BIN_PATH "/deviceManager", -1} };
-#else
-static DaemonObj_t FrameworkDaemons[] = { {SYSTEM_BIN_PATH "/serviceDirectory", -1},
-                                          {SYSTEM_BIN_PATH "/logCtrlDaemon", -1},
-                                          {SYSTEM_BIN_PATH "/configTree", -1},
-                                          {SYSTEM_BIN_PATH "/updateDaemon", -1},
-                                          {SYSTEM_BIN_PATH "/watchdog", -1} };
+    {SYSTEM_BIN_PATH "/deviceManager", {-1}, 0, -1},
 #endif
+    {SYSTEM_BIN_PATH "/watchdog", {CAP_BLOCK_SUSPEND}, 1, -1}};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -98,6 +99,82 @@ static fwDaemons_ShutdownHandler_t IntermediateShutdownHandler = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static fwDaemons_ShutdownHandler_t ShutdownHandler = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Configure capabilities according to the adef file settings
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+static void RemoveUnneededCapabilities
+(
+    const int* capListPtr,
+    size_t numOfCaps
+)
+{
+    if (numOfCaps <= 0)
+    {
+        return;
+    }
+
+    if ((numOfCaps > LIMIT_MAX_NUM_CAPABILITIES) || (capListPtr == NULL))
+    {
+        LE_ERROR("Invalid parameter.");
+        return;
+    }
+
+    struct __user_cap_data_struct data[2] = {{0}, {0}};
+    struct __user_cap_header_struct head = {0};
+    head.version = _LINUX_CAPABILITY_VERSION_3;
+    head.pid = 0;
+    int i, idx;
+    uint32_t bit = 0;
+
+    // Get the original capabilities of current process.
+    if (capget(&head, data) == -1)
+    {
+        LE_ERROR("Failed to get capabilities.");
+        return;
+    }
+
+    // Remove given capabilities from effective,permitted,inheritable sets.
+    for (i = 0; i < numOfCaps; i++)
+    {
+        idx = capListPtr[i]/32;
+        bit = 1<<(capListPtr[i]%32);
+        data[idx].effective &= ~bit;
+        data[idx].permitted &= ~bit;
+        data[idx].inheritable &= ~bit;
+    }
+
+    if (capset(&head, data) == -1)
+    {
+        LE_ERROR("Failed to set capabilities.");
+        return;
+    }
+
+    // Remove given capabilities from Ambient set.
+    for (i = 0; i < numOfCaps; i++)
+    {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_LOWER, capListPtr[i], 0, 0) == -1)
+        {
+            LE_ERROR("prctl(PR_CAP_AMBIENT_CLEAR_FLAG) failed for cap(%d).", capListPtr[i]);
+            continue;
+        }
+    }
+
+    // Remove given capabilities from Bounding set.
+    for (i = 0; i < numOfCaps; i++)
+    {
+        if (prctl(PR_CAPBSET_DROP, capListPtr[i]) == -1)
+        {
+            LE_ERROR("prctl(PR_CAPBSET_DROP) failed for cap(%d).", capListPtr[i]);
+            continue;
+        }
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -219,6 +296,7 @@ static void StartDaemon
     DaemonObj_t* daemonPtr      ///< [IN] The daemon to start.
 )
 {
+    LE_FATAL_IF(daemonPtr == NULL, "Invalid daemonPtr.");
     const char* daemonNamePtr = le_path_GetBasenamePtr(daemonPtr->path, "/");
 
     // Create a synchronization pipe.
@@ -259,16 +337,8 @@ static void StartDaemon
         // Close all non-standard fds.
         fd_CloseAllNonStd();
 
-        // Update daemon needs CAP_MAC_ADMIN during the update process
-        if (strcmp(daemonPtr->path, SYSTEM_BIN_PATH "/updateDaemon") == 0)
-        {
-            LE_INFO("Setting updateDaemon with admin label.");
-            smack_SetMyLabel("admin");
-        }
-        else
-        {
-            smack_SetMyLabel("framework");
-        }
+        // Remove unneeded capabilities.
+        RemoveUnneededCapabilities(daemonPtr->unneededCapList, daemonPtr->capNum);
 
         // Launch the child program.  This should not return unless there was an error.
         execl(daemonPtr->path, daemonNamePtr, (char*)NULL);
@@ -492,7 +562,7 @@ static int ShutdownNextDaemon
         }
 
         // Kill the current daemon.
-        LE_WARN("Killing framework daemon '%s'.",
+        LE_INFO("Killing framework daemon '%s'.",
                 le_path_GetBasenamePtr(FrameworkDaemons[daemonIndex].path, "/"));
         kill_Soft(FrameworkDaemons[daemonIndex].pid, KILL_TIMEOUT);
     }

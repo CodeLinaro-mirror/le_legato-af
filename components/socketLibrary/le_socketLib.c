@@ -550,6 +550,51 @@ le_result_t le_socket_Disconnect
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Shutdown the socket connection.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_UNSUPPORTED   Not supported
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_Shutdown
+(
+    le_socket_Ref_t    ref,   ///< [IN] Socket context reference
+    int                how    ///< [IN] Shutdown direction
+)
+{
+    le_result_t status = LE_OK;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if( (how != SHUT_RD) && (how != SHUT_WR) && (how != SHUT_RDWR))
+    {
+        LE_ERROR("Bad parameter how");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->isSecure)
+    {
+        // TODO: Implement secure socket shutdown
+        LE_WARN("Secure socket shutdown not implemented yet");
+        status = LE_UNSUPPORTED;
+    }
+    else
+    {
+        status = netSocket_Shutdown(contextPtr->fd, how);
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send data through the socket.
  *
  * @return

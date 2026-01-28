@@ -19,19 +19,19 @@ def StripPostComment(comment):
 
 def StripPreComment(comment):
     """Get text from C-style doxygen comment."""
-    commentLines=comment[3:-2].split(u'\n')
+    commentLines=comment[3:-2].split('\n')
     strippedCommentLines=[]
     inVerbatim=False
     for commentLine in commentLines:
         if commentLine.startswith (' *'):
              commentLine = commentLine[2:]
         strippedCommentLines.append(commentLine)
-        if commentLine.strip() == u'@verbatim':
+        if commentLine.strip() == '@verbatim':
             inVerbatim = True
-        elif commentLine.strip() == u'@endverbatim':
+        elif commentLine.strip() == '@endverbatim':
             inVerbatim = False
 
-    result = u'\n'.join(strippedCommentLines)
+    result = '\n'.join(strippedCommentLines)
     return result
 
 
@@ -244,7 +244,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -285,7 +285,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -326,7 +326,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -383,7 +383,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -443,7 +443,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -534,7 +534,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -607,14 +607,14 @@ class interfaceParser(Parser):
 
 
 
-            except KeyError, e:
+            except KeyError as e:
 
                 self.emitErrorMessage(self.getErrorHeaderForToken(retval.start) +
                                       " No definition for {}".format(self.input.toString(retval.start, self.input.LT(-1))))
                 self.compileErrors += 1
 
 
-            except TypeError, e:
+            except TypeError as e:
 
                 self.emitErrorMessage(self.getErrorHeaderForToken(retval.start) +
                                       " {} is not an integer definition".format(self.input.toString(retval.start, self.input.LT(-1))))
@@ -697,7 +697,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -783,7 +783,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -870,7 +870,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -957,7 +957,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1020,7 +1020,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1162,7 +1162,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1208,7 +1208,7 @@ class interfaceParser(Parser):
                             
                     try:
                         typeObj = self.iface.findType(IDENTIFIER17.text)
-                    except KeyError, e:
+                    except KeyError as e:
                         self.compileErrors += 1
                         self.emitErrorMessage(self.getErrorHeaderForToken(IDENTIFIER17) +
                                               " Unknown type {}".format(e))
@@ -1227,7 +1227,7 @@ class interfaceParser(Parser):
                             
                     try:
                         typeObj = self.iface.findType(SCOPED_IDENTIFIER18.text)
-                    except KeyError, e:
+                    except KeyError as e:
                         self.compileErrors += 1
                         self.emitErrorMessage(self.getErrorHeaderForToken(SCOPED_IDENTIFIER18) +
                                               " Unknown type {}".format(e))
@@ -1238,7 +1238,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1295,7 +1295,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1330,7 +1330,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1381,7 +1381,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1447,7 +1447,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1529,7 +1529,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1582,7 +1582,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1635,7 +1635,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1677,7 +1677,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1757,7 +1757,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1821,7 +1821,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1886,7 +1886,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -1983,7 +1983,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2058,7 +2058,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2159,7 +2159,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2228,7 +2228,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2315,7 +2315,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2482,7 +2482,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
 
                 # Report recognition exceptions here with default handling.  Do not want them to get caught
                 # by generic handler below
@@ -2490,7 +2490,7 @@ class interfaceParser(Parser):
                 self.recover(self.input, re)
 
 
-            except Exception, e:
+            except Exception as e:
 
                 self.emitErrorMessage(self.getErrorHeaderForToken(self.getCurrentInputSymbol(self.input))
                                       + " " + str(e))
@@ -2542,7 +2542,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2602,7 +2602,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2650,7 +2650,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2955,7 +2955,7 @@ class interfaceParser(Parser):
 
 
 
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
 
@@ -2970,44 +2970,44 @@ class interfaceParser(Parser):
     # lookup tables for DFA #14
 
     DFA14_eot = DFA.unpack(
-        u"\15\uffff"
+        "\15\uffff"
         )
 
     DFA14_eof = DFA.unpack(
-        u"\15\uffff"
+        "\15\uffff"
         )
 
     DFA14_min = DFA.unpack(
-        u"\1\25\1\uffff\1\15\1\13\1\15\2\uffff\2\13\4\15"
+        "\1\25\1\uffff\1\15\1\13\1\15\2\uffff\2\13\4\15"
         )
 
     DFA14_max = DFA.unpack(
-        u"\1\55\1\uffff\1\55\1\46\1\55\2\uffff\2\13\4\55"
+        "\1\55\1\uffff\1\55\1\46\1\55\2\uffff\2\13\4\55"
         )
 
     DFA14_accept = DFA.unpack(
-        u"\1\uffff\1\1\3\uffff\1\2\1\3\6\uffff"
+        "\1\uffff\1\1\3\uffff\1\2\1\3\6\uffff"
         )
 
     DFA14_special = DFA.unpack(
-        u"\15\uffff"
+        "\15\uffff"
         )
 
 
     DFA14_transition = [
-        DFA.unpack(u"\1\2\27\uffff\1\1"),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\4\27\uffff\1\6\3\uffff\1\3\3\uffff\1\5"),
-        DFA.unpack(u"\1\11\10\uffff\1\12\17\uffff\1\7\1\uffff\1\10"),
-        DFA.unpack(u"\1\4\27\uffff\1\6\7\uffff\1\5"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\13"),
-        DFA.unpack(u"\1\14"),
-        DFA.unpack(u"\1\4\27\uffff\1\6\7\uffff\1\5"),
-        DFA.unpack(u"\1\4\27\uffff\1\6\7\uffff\1\5"),
-        DFA.unpack(u"\1\4\27\uffff\1\6\7\uffff\1\5"),
-        DFA.unpack(u"\1\4\27\uffff\1\6\7\uffff\1\5")
+        DFA.unpack("\1\2\27\uffff\1\1"),
+        DFA.unpack(""),
+        DFA.unpack("\1\4\27\uffff\1\6\3\uffff\1\3\3\uffff\1\5"),
+        DFA.unpack("\1\11\10\uffff\1\12\17\uffff\1\7\1\uffff\1\10"),
+        DFA.unpack("\1\4\27\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack(""),
+        DFA.unpack(""),
+        DFA.unpack("\1\13"),
+        DFA.unpack("\1\14"),
+        DFA.unpack("\1\4\27\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack("\1\4\27\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack("\1\4\27\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack("\1\4\27\uffff\1\6\7\uffff\1\5")
     ]
 
     # class definition for DFA #14
@@ -3019,51 +3019,51 @@ class interfaceParser(Parser):
     # lookup tables for DFA #16
 
     DFA16_eot = DFA.unpack(
-        u"\24\uffff"
+        "\24\uffff"
         )
 
     DFA16_eof = DFA.unpack(
-        u"\24\uffff"
+        "\24\uffff"
         )
 
     DFA16_min = DFA.unpack(
-        u"\3\25\1\34\1\13\1\15\4\47\1\15\2\uffff\1\34\1\13\4\53\1\34"
+        "\3\25\1\34\1\13\1\15\4\47\1\15\2\uffff\1\34\1\13\4\53\1\34"
         )
 
     DFA16_max = DFA.unpack(
-        u"\1\33\2\25\1\52\1\33\1\55\4\53\1\55\2\uffff\1\34\1\33\4\53\1\34"
+        "\1\33\2\25\1\52\1\33\1\55\4\53\1\55\2\uffff\1\34\1\33\4\53\1\34"
         )
 
     DFA16_accept = DFA.unpack(
-        u"\13\uffff\1\1\1\2\7\uffff"
+        "\13\uffff\1\1\1\2\7\uffff"
         )
 
     DFA16_special = DFA.unpack(
-        u"\24\uffff"
+        "\24\uffff"
         )
 
 
     DFA16_transition = [
-        DFA.unpack(u"\1\1\5\uffff\1\2"),
-        DFA.unpack(u"\1\3"),
-        DFA.unpack(u"\1\3"),
-        DFA.unpack(u"\1\5\15\uffff\1\4"),
-        DFA.unpack(u"\1\6\10\uffff\1\7\1\10\5\uffff\1\11"),
-        DFA.unpack(u"\1\12\7\uffff\1\14\5\uffff\1\14\21\uffff\1\13"),
-        DFA.unpack(u"\1\16\3\uffff\1\15"),
-        DFA.unpack(u"\1\16\3\uffff\1\15"),
-        DFA.unpack(u"\1\16\3\uffff\1\15"),
-        DFA.unpack(u"\1\16\3\uffff\1\15"),
-        DFA.unpack(u"\1\12\7\uffff\1\14\5\uffff\1\14\21\uffff\1\13"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\5"),
-        DFA.unpack(u"\1\17\10\uffff\1\20\1\21\5\uffff\1\22"),
-        DFA.unpack(u"\1\23"),
-        DFA.unpack(u"\1\23"),
-        DFA.unpack(u"\1\23"),
-        DFA.unpack(u"\1\23"),
-        DFA.unpack(u"\1\5")
+        DFA.unpack("\1\1\5\uffff\1\2"),
+        DFA.unpack("\1\3"),
+        DFA.unpack("\1\3"),
+        DFA.unpack("\1\5\15\uffff\1\4"),
+        DFA.unpack("\1\6\10\uffff\1\7\1\10\5\uffff\1\11"),
+        DFA.unpack("\1\12\7\uffff\1\14\5\uffff\1\14\21\uffff\1\13"),
+        DFA.unpack("\1\16\3\uffff\1\15"),
+        DFA.unpack("\1\16\3\uffff\1\15"),
+        DFA.unpack("\1\16\3\uffff\1\15"),
+        DFA.unpack("\1\16\3\uffff\1\15"),
+        DFA.unpack("\1\12\7\uffff\1\14\5\uffff\1\14\21\uffff\1\13"),
+        DFA.unpack(""),
+        DFA.unpack(""),
+        DFA.unpack("\1\5"),
+        DFA.unpack("\1\17\10\uffff\1\20\1\21\5\uffff\1\22"),
+        DFA.unpack("\1\23"),
+        DFA.unpack("\1\23"),
+        DFA.unpack("\1\23"),
+        DFA.unpack("\1\23"),
+        DFA.unpack("\1\5")
     ]
 
     # class definition for DFA #16
@@ -3075,55 +3075,55 @@ class interfaceParser(Parser):
     # lookup tables for DFA #20
 
     DFA20_eot = DFA.unpack(
-        u"\25\uffff"
+        "\25\uffff"
         )
 
     DFA20_eof = DFA.unpack(
-        u"\25\uffff"
+        "\25\uffff"
         )
 
     DFA20_min = DFA.unpack(
-        u"\3\25\1\15\1\13\3\15\2\uffff\4\47\1\15\1\13\4\53\1\15"
+        "\3\25\1\15\1\13\3\15\2\uffff\4\47\1\15\1\13\4\53\1\15"
         )
 
     DFA20_max = DFA.unpack(
-        u"\1\33\2\25\1\52\1\33\3\45\2\uffff\4\53\1\45\1\33\4\53\1\45"
+        "\1\33\2\25\1\52\1\33\3\45\2\uffff\4\53\1\45\1\33\4\53\1\45"
         )
 
     DFA20_accept = DFA.unpack(
-        u"\10\uffff\1\1\1\2\13\uffff"
+        "\10\uffff\1\1\1\2\13\uffff"
         )
 
     DFA20_special = DFA.unpack(
-        u"\25\uffff"
+        "\25\uffff"
         )
 
 
     DFA20_transition = [
-        DFA.unpack(u"\1\1\5\uffff\1\2"),
-        DFA.unpack(u"\1\3"),
-        DFA.unpack(u"\1\3"),
-        DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
-        u"\1\11\4\uffff\1\4"),
-        DFA.unpack(u"\1\12\10\uffff\1\13\1\14\5\uffff\1\15"),
-        DFA.unpack(u"\1\7\24\uffff\1\10\2\uffff\1\11"),
-        DFA.unpack(u"\1\7\24\uffff\1\10\2\uffff\1\11"),
-        DFA.unpack(u"\1\7\24\uffff\1\10\2\uffff\1\11"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\17\3\uffff\1\16"),
-        DFA.unpack(u"\1\17\3\uffff\1\16"),
-        DFA.unpack(u"\1\17\3\uffff\1\16"),
-        DFA.unpack(u"\1\17\3\uffff\1\16"),
-        DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
-        u"\1\11"),
-        DFA.unpack(u"\1\20\10\uffff\1\21\1\22\5\uffff\1\23"),
-        DFA.unpack(u"\1\24"),
-        DFA.unpack(u"\1\24"),
-        DFA.unpack(u"\1\24"),
-        DFA.unpack(u"\1\24"),
-        DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
-        u"\1\11")
+        DFA.unpack("\1\1\5\uffff\1\2"),
+        DFA.unpack("\1\3"),
+        DFA.unpack("\1\3"),
+        DFA.unpack("\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
+        "\1\11\4\uffff\1\4"),
+        DFA.unpack("\1\12\10\uffff\1\13\1\14\5\uffff\1\15"),
+        DFA.unpack("\1\7\24\uffff\1\10\2\uffff\1\11"),
+        DFA.unpack("\1\7\24\uffff\1\10\2\uffff\1\11"),
+        DFA.unpack("\1\7\24\uffff\1\10\2\uffff\1\11"),
+        DFA.unpack(""),
+        DFA.unpack(""),
+        DFA.unpack("\1\17\3\uffff\1\16"),
+        DFA.unpack("\1\17\3\uffff\1\16"),
+        DFA.unpack("\1\17\3\uffff\1\16"),
+        DFA.unpack("\1\17\3\uffff\1\16"),
+        DFA.unpack("\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
+        "\1\11"),
+        DFA.unpack("\1\20\10\uffff\1\21\1\22\5\uffff\1\23"),
+        DFA.unpack("\1\24"),
+        DFA.unpack("\1\24"),
+        DFA.unpack("\1\24"),
+        DFA.unpack("\1\24"),
+        DFA.unpack("\1\7\10\uffff\1\5\1\uffff\1\6\11\uffff\1\10\2\uffff"
+        "\1\11")
     ]
 
     # class definition for DFA #20
