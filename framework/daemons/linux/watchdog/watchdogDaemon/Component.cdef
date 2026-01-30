@@ -25,9 +25,9 @@ requires:
     component:
     {
     #if ${LE_CONFIG_TARGET_SIMULATION} = y
-        $TELAF_ROOT/simulation/stub/taf_simula_wdog
+        $SIMULATION_ROOT/stub/taf_simula_wdog
     #elif ${LE_CONFIG_FLAVOR_LXC} = y
-        $TELAF_ROOT/simulation/stub/taf_simula_wdog
+        $SIMULATION_ROOT/stub/taf_simula_wdog
     #else
         $TELAF_ROOT/components/tafWatchdog/taf_pa_wdog
     #endif
