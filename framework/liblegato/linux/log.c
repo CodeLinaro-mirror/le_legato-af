@@ -1092,6 +1092,9 @@ void log_DltInit
         le_utf8_Copy(DltSession.ctxId, envCtxIdPtr, sizeof(DltSession.ctxId), NULL);
     }
 
+    setenv("TAF_DLT_APP_ID", DltSession.appId, 0);
+    setenv("TAF_DLT_CTX_ID", DltSession.ctxId, 0);
+
     // Register DLT APPID and CTXID with descriptions.
     DLT_REGISTER_APP(DltSession.appId, DltSession.appDesc);
     dlt_register_context_ll_ts(&DltSession.ctxHandle, DltSession.ctxId, DltSession.ctxDesc,
