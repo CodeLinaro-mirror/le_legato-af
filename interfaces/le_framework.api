@@ -52,6 +52,19 @@ FUNCTION le_result_t Stop
 (
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reboots the system.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_DUPLICATE if the framework is in the process of shutting down (perhaps someone else has
+ *                   already requested the framework be stopped or restarted).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Reboot
+(
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
