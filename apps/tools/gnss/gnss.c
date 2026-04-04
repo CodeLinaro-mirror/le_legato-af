@@ -256,6 +256,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- bodyFrameData --> Get Kinematics information related to body parameters\n"
          "\t\t\t\t\t- xtraStatus --> Get the device's xtra status\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
+         "\t\t\t\t\t- navigationMask       --> Get the navigation Solution Mask used for fix\n"
+         "\t\t\t\t\t- dgnssMonitorStationIds --> Gets the dgnss station ID's\n"
          "\t\t\tset constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
@@ -304,6 +306,14 @@ void PrintGnssHelp
          "\t\t\tset minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tset minGpsWeek <minGpsWeek value>\n"
+         "\t\t\tCreateDgnssSource <Format>\n"
+         "\t\t\t\t- Create DGNSS Source. Format:\n"
+         "\t\t\t\t\t- 1 ---> RTCM_3\n"
+         "\t\t\t\t\t- 2 ---> 3GPP_RTK_R15\n\n"
+         "\t\t\tReleaseDgnssSource sourceRef\n"
+         "\t\t\t\t- Release the active DGNSS Source.\n\n"
+         "\t\t\tInjectCorrectionData sourceRef <FilePath>\n"
+         "\t\t\t\t- Inject correction data from the specified file path.\n\n"
          "\t\t\twatch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
@@ -2810,6 +2820,251 @@ static int GetLeapSecondsUnc
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets navigation mask value.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetNavigationMask
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t navSolutionMask;
+    le_result_t result;
+
+    result = le_gnss_GetNavigationSolution(positionSampleRef,&navSolutionMask);
+
+    if (LE_OK == result)
+    {
+        printf("Navigation solution Mask: %d \n", navSolutionMask);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets navigation mask value.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetDgnssStationIds
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint16_t dgnssStationIds[TAF_LOCGNSS_MAX_MONITOR_STATION_IDS ];
+    size_t idsLen = TAF_LOCGNSS_MAX_MONITOR_STATION_IDS ;
+    le_result_t result;
+
+    LE_INFO("GetDgnssStationIds");
+    result = le_gnss_GetDgnssStationIds(positionSampleRef, dgnssStationIds, &idsLen);
+
+    if (LE_OK == result)
+    {
+        if (idsLen > 0){
+            printf("Dgnss SVs:");
+            for(size_t i = 0; i < idsLen; i++) {
+                printf("%d \n", dgnssStationIds[i]);
+            }
+        }else{
+            printf("No DgnssStation ID available!! \n");
+        }
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function creates a DGNSS source.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int CreateDgnssSource
+(
+    const char* formatPtr      ///< [IN] DGNSS Data Format (1=RTCM_3, 2=3GPP_RTK_R15)
+)
+{
+    char *end;
+    uint32_t formatInt = strtoul(formatPtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad DGNSS format: %s\n", formatPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_gnss_DgnssFormat_t dgnssFormat;
+
+    switch (formatInt)
+    {
+        case 1:
+            dgnssFormat = TAF_LOCGNSS_DGNSS_FORMAT_RTCM_3;
+            printf("Creating DGNSS Source with format RTCM_3\n");
+            break;
+        case 2:
+            dgnssFormat = TAF_LOCGNSS_DGNSS_FORMAT_3GPP_RTK_R15;
+            printf("Creating DGNSS Source with format 3GPP_RTK_R15\n");
+            break;
+        default:
+            printf("Unknown format. Using default/unknown (0)\n");
+            dgnssFormat = TAF_LOCGNSS_DGNSS_FORMAT_UNKNOWN;
+            break;
+    }
+
+    taf_locGnss_DgnssSourceRef_t sourceRef = NULL;
+
+    sourceRef = le_gnss_CreateDgnssSource(dgnssFormat);
+
+    LE_INFO("reference created : %p", sourceRef);
+
+    if (sourceRef != NULL)
+    {
+        printf("DgnssSource created : %p\n", sourceRef);
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (sourceRef != NULL) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function releases the DGNSS source.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ReleaseDgnssSource
+(
+    taf_locGnss_DgnssSourceRef_t sourceRef
+)
+{
+    le_result_t releaseResult;
+
+    releaseResult = le_gnss_ReleaseDgnssSource(sourceRef);
+
+    LE_INFO("sourceRef: %p", sourceRef);
+
+    if(releaseResult == LE_OK){
+        printf("ReleaseDgnssSource success for sourceRef: %p!!\n", sourceRef);
+    }
+    else
+    {
+        printf("No resource available in this session to release!! \n");
+    }
+
+    return (LE_OK == releaseResult) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function reads a file and injects the data as correction data.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int InjectCorrectionData
+(
+    taf_locGnss_DgnssSourceRef_t sourceRef,
+    const char* filePath
+)
+{
+    le_result_t result;
+
+    LE_INFO("sourceRef: %p", sourceRef);
+    LE_INFO("filePath: %s", filePath);
+
+    FILE* file = fopen(filePath, "rb");
+    if (!file)
+    {
+        LE_ERROR("Cannot open file");
+        return EXIT_FAILURE;
+    }
+
+    const size_t CHUNK_SIZE = 2048;
+    uint8_t buffer[CHUNK_SIZE];
+
+    size_t bytesRead;
+    size_t sequenceNumber = 0;
+
+    while ((bytesRead = fread(buffer, 1, CHUNK_SIZE, file)) > 0)
+    {
+        sequenceNumber++;
+
+        LE_INFO("Injecting chunk %zu, Size: %zu bytes",
+                sequenceNumber, bytesRead);
+
+        printf("sequence number: %zu, bytesRead:%zu \n",sequenceNumber, bytesRead);
+
+        result = le_gnss_InjectDgnssCorrection(
+                    sourceRef,
+                    buffer,
+                    bytesRead);
+
+        if (result != LE_OK)
+        {
+            LE_ERROR("Injection failed at chunk %zu, result=%d \n",
+                     sequenceNumber, result);
+            fclose(file);
+            return EXIT_FAILURE;
+        }
+
+        LE_INFO("Chunk %zu injected successfully \n", sequenceNumber);
+    }
+
+    if (ferror(file))
+    {
+        LE_ERROR("File read error occurred");
+        fclose(file);
+        return EXIT_FAILURE;
+    }
+
+    fclose(file);
+
+    LE_INFO("All chunks injected successfully. Total chunks: %zu \n",
+            sequenceNumber);
+
+    printf("InjectionSuccess!!");
+    return EXIT_SUCCESS;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets position sample's UTC leap seconds in advance
  *
  * @return
@@ -5247,6 +5502,14 @@ static void PositionHandlerFunction
         {
             status = GetLeapSecondsUnc(positionSampleRef);
         }
+        else if (0 == strcmp(ParamsName, "navigationMask"))
+        {
+            status = GetNavigationMask(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "dgnssMonitorStationIds"))
+        {
+            status = GetDgnssStationIds(positionSampleRef);
+        }
 
         le_gnss_ReleaseSampleRef(positionSampleRef);
 
@@ -5691,7 +5954,9 @@ static void GetGnssParams
              (0 == strcmp(params, "gnssData"))||
              (0 == strcmp(params,"gPTPTime"))||
              (0 == strcmp(params,"drSolutionStatus"))||
-             (0 == strcmp(params,"LeapSecondsUnc")))
+             (0 == strcmp(params,"LeapSecondsUnc")) ||
+             (0 == strcmp(params, "dgnssMonitorStationIds")) ||
+             (0 == strcmp(params, "navigationMask")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -6428,6 +6693,47 @@ void GnssMainFunction
             }
             WatchMeasurementInfo(measwatchPeriod);
             ExitApp = false;
+        }
+        else if (strcmp(commandPtr, "CreateDgnssSource") == 0)
+        {
+            const char *formatPtr = TokenArray[1];
+            if (formatPtr == NULL)
+            {
+                printf("Format parameter is NULL. Usage: CreateDgnssSource <1|2>\n");
+                continue;
+            }
+            CreateDgnssSource(formatPtr);
+        }
+        else if (strcmp(commandPtr, "ReleaseDgnssSource") == 0)
+        {
+            const char *formatPtr = TokenArray[1];
+            if (formatPtr == NULL)
+            {
+                printf("Format parameter is NULL.\n");
+                continue;
+            }
+            uintptr_t value = (uintptr_t)strtoull(formatPtr, NULL, 0);
+            taf_locGnss_DgnssSourceRef_t sourceRef = (taf_locGnss_DgnssSourceRef_t)value;
+            ReleaseDgnssSource(sourceRef);
+        }
+        else if (strcmp(commandPtr, "InjectCorrectionData") == 0)
+        {
+            const char *formatPtr = TokenArray[1];
+            if (formatPtr == NULL)
+            {
+                printf("Format parameter is NULL.\n");
+                continue;
+            }
+            uintptr_t value = (uintptr_t)strtoull(formatPtr, NULL, 0);
+            taf_locGnss_DgnssSourceRef_t sourceRef = (taf_locGnss_DgnssSourceRef_t)value;
+
+            const char *filePathPtr = TokenArray[2];
+            if (filePathPtr == NULL)
+            {
+                printf("File path parameter is NULL. Usage: InjectCorrectionData <path>\n");
+                continue;
+            }
+            InjectCorrectionData(sourceRef, filePathPtr);
         }
         else
         {

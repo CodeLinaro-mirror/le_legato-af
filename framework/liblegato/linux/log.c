@@ -10,6 +10,7 @@
 #include "legato.h"
 
 #include "limit.h"
+#include "sysPaths.h"
 #include "log.h"
 #include "logDaemon/logDaemon.h"
 #include "logPlatform.h"
@@ -971,7 +972,7 @@ static DltLogLevelType ConverToDltLevel
             return DLT_LOG_INFO;
     }
 }
-#else
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1007,7 +1008,6 @@ static int ConvertToSyslogLevel
             return LOG_EMERG;
     }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1024,6 +1024,10 @@ static void LogMessage
     if (DltSession.initialized)
     {
         DLT_LOG(DltSession.ctxHandle, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
+    }
+    else
+    {
+        syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
     }
 #else
     syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
@@ -1067,16 +1071,28 @@ void log_DltInit
     char  procPath[LIMIT_MAX_PATH_BYTES] = { 0 };
     char  appPath[LIMIT_MAX_PATH_BYTES] = { 0 };
     char* appName = NULL;
+    ssize_t len;
 
     if ((snprintf(procPath, sizeof(procPath), "/proc/%d/exe", getpid()) < sizeof(procPath)) &&
-        (readlink(procPath, appPath, sizeof(appPath)) > 0))
+        ((len = readlink(procPath, appPath, sizeof(appPath) - 1)) > 0))
     {
+        // Ensure null termination.
+        appPath[len] = '\0';
+
         // Get the program name from the executable Path.
         appName = le_path_GetBasenamePtr(appPath, "/");
 
         // Set the APPID and APPDesc.
         le_utf8_Copy(DltSession.appDesc, appName, sizeof(DltSession.appDesc), NULL);
         le_utf8_Copy(DltSession.appId, BuildAppId(appName), sizeof(DltSession.appId), NULL);
+
+        // Do not log to DLT for some internal tools to improve bootup/shutdown KPI.
+        if ((strcmp(appPath, SYSTEM_BIN_PATH"/_appStopClient") == 0) ||
+            (strcmp(appPath, SYSTEM_BIN_PATH"/app") == 0) ||
+            (strcmp(appPath, SYSTEM_BIN_PATH"/sdir") == 0))
+        {
+            return;
+        }
     }
 
     const char* envAppIdPtr = getenv("TAF_DLT_APP_ID");
@@ -1092,11 +1108,18 @@ void log_DltInit
         le_utf8_Copy(DltSession.ctxId, envCtxIdPtr, sizeof(DltSession.ctxId), NULL);
     }
 
+    setenv("TAF_DLT_APP_ID", DltSession.appId, 0);
+    setenv("TAF_DLT_CTX_ID", DltSession.ctxId, 0);
+
     // Register DLT APPID and CTXID with descriptions.
     DLT_REGISTER_APP(DltSession.appId, DltSession.appDesc);
     dlt_register_context_ll_ts(&DltSession.ctxHandle, DltSession.ctxId, DltSession.ctxDesc,
                                DltSession.logLevel, DLT_TRACE_STATUS_OFF);
     DLT_REGISTER_LOG_LEVEL_CHANGED_CALLBACK(DltSession.ctxHandle, DltLogLevelChangeHandler);
+
+    // Set 100ms (10*10ms) timeout in dlt atexit handler to improve shutdown KPI if the DLT daemon
+    // is stopped before telaf.
+    dlt_set_resend_timeout_atexit(10);
 
     // DLT logging initialization is done.
     DltSession.initialized = true;
@@ -1140,10 +1163,10 @@ void fa_log_Init
     // Initialize DLT session.
     memset(&DltSession, 0, sizeof(DltSession));
     log_DltInit();
-#else
+#endif
     // Otherwise use syslogd as the default log system.
     openlog("TelAF", 0, LOG_USER);
-#endif
+
 }
 
 //--------------------------------------------------------------------------------------------------
