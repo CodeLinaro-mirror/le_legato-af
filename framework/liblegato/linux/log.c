@@ -62,6 +62,9 @@ typedef struct le_log_Session
                                         ///  Log messages with severity less than this are ignored.
     le_sls_List_t keywordList;          ///< The list of keywords for this component.
     le_sls_Link_t link;                 ///< The link used for linking with the SessionList.
+    le_log_LevelChangeHandlerFunc_t levelChangeHandler;     ///< Optional PA log level change
+                                                            ///<  callback.
+    void                           *levelChangeContextPtr;  ///< Context pointer for the callback.
 }
 LogSession_t;
 
@@ -383,6 +386,13 @@ static void SetLogLevelFilter
     {
         // Set this component's level.
         sessionPtr->level = levelFilter;
+
+        // Notify the PA callback if registered for this session.
+        if (sessionPtr->levelChangeHandler != NULL)
+        {
+            sessionPtr->levelChangeHandler((le_log_Level_t)levelFilter,
+                                           sessionPtr->levelChangeContextPtr);
+        }
     }
 
     Unlock();
@@ -410,6 +420,8 @@ static LogSession_t* CreateSession
     logSessionPtr->level = DefaultLogSession.level;
     logSessionPtr->keywordList = LE_SLS_LIST_INIT;
     logSessionPtr->link = LE_SLS_LINK_INIT;
+    logSessionPtr->levelChangeHandler = NULL;
+    logSessionPtr->levelChangeContextPtr = NULL;
 
     Lock();
 
@@ -892,6 +904,13 @@ static void UpdateLeLogLevel
             log_GetSeverityStr(sessionPtr->level), log_GetSeverityStr(logLevel));
 
         sessionPtr->level = logLevel;
+
+        // Notify the PA callback if registered for this session.
+        if (sessionPtr->levelChangeHandler != NULL)
+        {
+            sessionPtr->levelChangeHandler(logLevel, sessionPtr->levelChangeContextPtr);
+        }
+
         sessionLinkPtr = le_sls_PeekNext(&SessionList, sessionLinkPtr);
     }
 }
@@ -1108,9 +1127,6 @@ void log_DltInit
         le_utf8_Copy(DltSession.ctxId, envCtxIdPtr, sizeof(DltSession.ctxId), NULL);
     }
 
-    setenv("TAF_DLT_APP_ID", DltSession.appId, 0);
-    setenv("TAF_DLT_CTX_ID", DltSession.ctxId, 0);
-
     // Register DLT APPID and CTXID with descriptions.
     DLT_REGISTER_APP(DltSession.appId, DltSession.appDesc);
     dlt_register_context_ll_ts(&DltSession.ctxHandle, DltSession.ctxId, DltSession.ctxDesc,
@@ -1310,6 +1326,33 @@ __attribute__((deprecated)) le_log_SessionRef_t log_RegComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Registers a log level change callback on a log session.
+ *
+ * The callback is invoked whenever the session's log level is changed externally, either via
+ * the Log Control Daemon (log tool / IPC) or via DLT.  This allows a service component to
+ * forward log level changes to an underlying PA library.
+ *
+ * The callback is invoked outside the internal log mutex.
+ * Pass NULL as handlerPtr to deregister an existing callback.
+ */
+//--------------------------------------------------------------------------------------------------
+void _le_log_SetLevelChangeCallback
+(
+    le_log_SessionRef_t              logSession, ///< [IN] Log session.
+    le_log_LevelChangeHandlerFunc_t  handlerPtr, ///< [IN] Callback function, or NULL to deregister.
+    void                            *contextPtr  ///< [IN] Opaque context pointer.
+)
+{
+    LE_ASSERT(logSession != NULL);
+
+    Lock();
+    logSession->levelChangeHandler = handlerPtr;
+    logSession->levelChangeContextPtr = contextPtr;
+    Unlock();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Builds the log message and sends it to the logging system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1492,6 +1535,34 @@ void fa_log_SetFilterLevel
 {
     LE_ASSERT(logSession != NULL);
     logSession->level = level;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a pointer to the DLT context handle used by the log system.
+ *
+ * This is intended for use by PA (Platform Adaptor) libraries that need to share the same
+ * DLT context as the Legato log system.  The returned pointer should be treated as an opaque
+ * handle and cast to DltContext* by the caller if DLT logging is enabled.
+ *
+ * @return
+ *      Pointer to the DLT context handle (DltContext*) if DLT logging is enabled.
+ *      NULL if DLT logging is not enabled.
+ */
+//--------------------------------------------------------------------------------------------------
+void* log_GetDltContextHandlePtr
+(
+    void
+)
+{
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    if (DltSession.initialized)
+    {
+        return (void*)&DltSession.ctxHandle;
+    }
+#endif
+    return NULL;
 }
 
 
