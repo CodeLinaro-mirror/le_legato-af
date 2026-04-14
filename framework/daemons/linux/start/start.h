@@ -20,4 +20,7 @@
 /// Manual Legato restart requested
 #define LE_START_EXIT_MANUAL_RESTART         3
 
+/// Manual system reboot requested
+#define LE_START_EXIT_REBOOT                 4
+
 #endif // LEGATO_SRC_START_INCLUDE_GUARD
