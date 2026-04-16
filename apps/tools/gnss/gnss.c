@@ -3806,11 +3806,12 @@ static int GetSatelliteInfoEx
         {
             if((svInfo[i].satId != 0)&&(svInfo[i].satId != UINT8_MAX))
             {
-                printf("[%02d] SVid %03d - C%01d - U%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
+                printf("[%02d] SVid %03d - C%01d - U%d - DgnssU%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
                         , index++
                         , svInfo[i].satId
                         , svInfo[i].satConst
                         , svInfo[i].satUsed
+                        , svInfo[i].satUsedDgnss
                         , svInfo[i].satTracked
                         , svInfo[i].satSnr
                         , svInfo[i].satAzim
