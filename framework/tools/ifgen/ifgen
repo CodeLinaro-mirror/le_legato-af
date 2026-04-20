@@ -307,9 +307,12 @@ def Main():
         sys.exit(0)
 
     # Set up the jinja2 environment
+    extensions = []
+    if hasattr(jinja2, "ext"):
+        extensions.append("jinja2.ext.with_")
     TemplateEnvironment = jinja2.Environment(
         loader=jinja2.PackageLoader(langPkg.__name__),
-        extensions=['jinja2.ext.with_'],
+        extensions=extensions,
         autoescape=False,
         keep_trailing_newline=True
     )
