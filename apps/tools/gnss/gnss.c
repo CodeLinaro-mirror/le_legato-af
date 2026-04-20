@@ -58,6 +58,8 @@
 #define CONSTELLATION_NAVIC         0x80
 // @}
 
+#define MERKLE_XML_PATH "/etc/OSNMA_MerkleTree.xml"
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Position handler reference.
@@ -314,6 +316,10 @@ void PrintGnssHelp
          "\t\t\t\t- Release the active DGNSS Source.\n\n"
          "\t\t\tInjectCorrectionData sourceRef <FilePath>\n"
          "\t\t\t\t- Inject correction data from the specified file path.\n\n"
+         "\t\t\tset configureOsnma <Enable/disable Galileo OSNMA>\n"
+         "\t\t\t\t- 1- Enable 0-Disable\n"
+         "\t\t\tInjectMerkleTree\n"
+         "\t\t\t\t- Inject Merkle tree information for OSNMA authentication\n\n"
          "\t\t\twatch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
@@ -5241,6 +5247,77 @@ static int DoPosFix
     return EXIT_FAILURE;
 }
 
+static int InjectMerkleTree
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+
+    result = le_gnss_InjectMerkleTreeInformationByPath(MERKLE_XML_PATH);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to inject merkle tree information\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter (invalid path or XML)\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+static int ConfigureOsnma
+(
+    const char* galOSNMAPtr           ///< [IN] Enable/disable Galileo OSNMA
+)
+{
+    char *end = NULL;
+    uint16_t galOsnma = strtoul(galOSNMAPtr, &end, BASE10);
+
+    if (end == galOSNMAPtr || *end != '\0')
+    {
+        printf("Bad Galielo OSNMA : %s\n", galOSNMAPtr);
+        return EXIT_FAILURE;
+    }
+
+    if (galOsnma != 0 && galOsnma != 1)
+    {
+        printf("Galileo OSNMA must be 0 or 1, got: %d\n", galOsnma);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_ConfigureOsnma(galOsnma);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure Galileo OSNMA\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -6064,6 +6141,10 @@ static int SetGnssParams
     {
         status = ConfigureSecondaryBandConstellations(argValPtr);
     }
+    else if (0 == strcmp(argNamePtr, "configureOsnma"))
+    {
+        status = ConfigureOsnma(argValPtr);
+    }
     else
     {
         printf("Bad parameter request: %s\n", argNamePtr);
@@ -6735,6 +6816,10 @@ void GnssMainFunction
                 continue;
             }
             InjectCorrectionData(sourceRef, filePathPtr);
+        }
+        else if (strcmp(commandPtr, "InjectMerkleTree") == 0)
+        {
+            InjectMerkleTree();
         }
         else
         {
