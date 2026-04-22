@@ -39,8 +39,6 @@ void cm_sim_PrintSimHelp
             "\tcm sim imsi\n\n"
             "To get the SIM ICCID (integrated circuit card identifier):\n"
             "\tcm sim iccid\n\n"
-            "To get the SIM EID (identifier for the embedded Universal Integrated Circuit Card):\n"
-            "\tcm sim eid\n\n"
             "To get the sim phone number:\n"
             "\tcm sim number\n\n"
             "To enter pin code:\n"
@@ -382,35 +380,6 @@ int cm_sim_GetSimIccid
 
 //-------------------------------------------------------------------------------------------------
 /**
- * This function will attempt to get the SIM EID.
- *
- * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
- */
-//-------------------------------------------------------------------------------------------------
-int cm_sim_GetSimEid
-(
-    void
-)
-{
-    char eid[LE_SIM_EID_BYTES];
-    le_result_t res;
-    int ret = EXIT_SUCCESS;
-
-    res = le_sim_GetEID(SimId, eid, sizeof(eid));
-
-    if (LE_OK != res)
-    {
-        eid[0] = '\0';
-        ret = EXIT_FAILURE;
-    }
-
-    cm_cmn_FormatPrint("EID", eid);
-
-    return ret;
-}
-
-//-------------------------------------------------------------------------------------------------
-/**
  * This function will attempt to get the SIM phone number.
  *
  * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
@@ -563,10 +532,6 @@ int cm_sim_GetSimInfo
             ret = EXIT_FAILURE;
         }
         if (EXIT_SUCCESS != cm_sim_GetNetworkOperator())
-        {
-            ret = EXIT_FAILURE;
-        }
-        if (EXIT_SUCCESS != cm_sim_GetSimEid())
         {
             ret = EXIT_FAILURE;
         }
@@ -1078,10 +1043,6 @@ void cm_sim_ProcessSimCommand
     else if (strcmp(command, "iccid") == 0)
     {
         exit(cm_sim_GetSimIccid());
-    }
-    else if (strcmp(command, "eid") == 0)
-    {
-        exit(cm_sim_GetSimEid());
     }
     else if (strcmp(command, "imsi") == 0)
     {
