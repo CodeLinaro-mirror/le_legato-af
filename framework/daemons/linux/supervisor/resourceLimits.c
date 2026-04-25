@@ -156,7 +156,7 @@
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_LIMIT_MAX_FILE_SYSTEM_BYTES             131072
 #define DEFAULT_LIMIT_MAX_MQUEUE_BYTES                  512
-#define DEFAULT_LIMIT_MAX_THREADS                       300
+#define DEFAULT_LIMIT_MAX_THREADS                       600
 #define DEFAULT_LIMIT_MAX_QUEUED_SIGNALS                100
 #define DEFAULT_LIMIT_MAX_MEMORY_BYTES                  40960000
 #define DEFAULT_LIMIT_CPU_SHARE                         1024
