@@ -27,6 +27,7 @@ class LinuxComponentBuildScriptGenerator_t : public ComponentBuildScriptGenerato
         virtual void GetDependentLibLdFlags(model::Component_t* componentPtr);
 
         void GenerateComponentLinkStatement(model::Component_t* componentPtr) override;
+        void GenerateComponentMainExtraFlags(model::Component_t* componentPtr) override;
 
     public:
         explicit LinuxComponentBuildScriptGenerator_t(
