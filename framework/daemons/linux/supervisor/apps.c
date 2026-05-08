@@ -189,6 +189,7 @@ typedef struct AppContainer
     void* traceAttachContextPtr;          ///< Context for the client's trace attach handler.
     le_timer_Ref_t CheckAppStopTimer;     ///< Timer for waiting APP stop
     int AppStopTryCount;                  ///< Counter number for retrying to mark the stopped APP
+    int StartGroup;                       ///< Start group order.
 }
 AppContainer_t;
 
@@ -624,6 +625,9 @@ static le_result_t CreateApp
         return LE_NOT_FOUND;
     }
 
+    // Get startGroup.
+    int startGroup = le_cfg_GetInt(appCfg, "startGroup", LIMIT_MAX_START_GROUP_NUM);
+
     // Create the app object.
     app_Ref_t appRef = app_Create(configPath);
 
@@ -645,6 +649,7 @@ static le_result_t CreateApp
     containerPtr->traceAttachContextPtr = NULL;
     containerPtr->CheckAppStopTimer = NULL;
     containerPtr->AppStopTryCount = 0;
+    containerPtr->StartGroup = startGroup;
 
     // Add this app to the inactive list.
     le_dls_Queue(&InactiveAppsList, &(containerPtr->link));
@@ -1497,6 +1502,22 @@ bool RecordGreaterThan(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
     appName_t  *bPtr = CONTAINER_OF(bLinkPtr, appName_t , link);
 
     return (aPtr->startGroup < bPtr->startGroup);
+}
+
+bool OrderCompare(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
+{
+    AppContainer_t  *aPtr = CONTAINER_OF(aLinkPtr, AppContainer_t , link);
+    AppContainer_t  *bPtr = CONTAINER_OF(bLinkPtr, AppContainer_t , link);
+
+    return (aPtr->StartGroup > bPtr->StartGroup);
+}
+
+void apps_SetShutdownSequence
+(
+    void
+)
+{
+    le_dls_Sort(&ActiveAppsList, OrderCompare);
 }
 
 //--------------------------------------------------------------------------------------------------
