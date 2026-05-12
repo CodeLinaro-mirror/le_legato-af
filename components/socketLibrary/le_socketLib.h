@@ -206,7 +206,7 @@ LE_SHARED le_result_t le_socket_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a certificate to the socket in order to make the connection secure
+ * Add root CA certificates to the socket in order to make the connection secure.
  *
  * @return
  *  - LE_OK            Function success
@@ -218,8 +218,91 @@ LE_SHARED le_result_t le_socket_Delete
 LE_SHARED le_result_t le_socket_AddCertificate
 (
     le_socket_Ref_t   ref,             ///< [IN] Socket context reference
-    const uint8_t*    certificatePtr,  ///< [IN] Certificate Pointer
-    size_t            certificateLen   ///< [IN] Certificate Length
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnCertificate
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnPrivateKey
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    pkeyPtr,         ///< [IN] Private key pointer
+    size_t            pkeyLen          ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetCipherSuites
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           cipherIdx        ///< [IN] Cipher suite index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAuthType
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           auth             ///< [IN] Authentication type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ALPN protocol list in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAlpnProtocolList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char**      alpnList         ///< [IN] ALPN protocol list pointer
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -240,6 +323,30 @@ LE_SHARED le_result_t le_socket_AddCertificate
 LE_SHARED le_result_t le_socket_Connect
 (
     le_socket_Ref_t    ref   ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Secures an existing connection by performing TLS negotiation.
+ *
+ * @note
+ *   - Certificate must be added beforehand via @c le_socket_AddCertificate() to succeed
+ *   - Only supported on RTOS based systems
+ *
+ * @return
+ *  - LE_OK                 Function success
+ *  - LE_BAD_PARAMETER      Invalid parameter
+ *  - LE_NOT_FOUND          Certificate not found
+ *  - LE_CLOSED             Socket is not connected
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SecureConnection
+(
+    le_socket_Ref_t   ref              ///< [IN] Socket context reference
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -515,6 +622,51 @@ LE_SHARED le_result_t le_socket_SendTo
     size_t           dataLen,       ///< [IN] Data length
     const char*      ipAddrPtr,     ///< [IN] Peer address pointer
     uint16_t         port           ///< [IN] Peer port
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetTlsVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           tlsVersion       ///< [IN] Supported TLS version (Minor version number)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_socket_GetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_socket_SetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
+    int                      err_code           ///< [IN] INT error code
 );
 
 #endif  // LE_SOCKET_LIB_H
