@@ -1353,7 +1353,7 @@ COMPONENT_INIT
     // Create and lock a dummy file used to ensure that only a single instance of the Supervisor
     // will run.  If we cannot lock the file than another instance of the Supervisor must be running
     // so exit.
-    if (le_flock_TryCreate(SUPERVISOR_INSTANCE_FILE, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU) < 0)
+    if (le_flock_TryCreate(SUPERVISOR_INSTANCE_FILE, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRUSR | S_IWUSR) < 0)
     {
         LE_FATAL("Another instance of the Supervisor is already running.  Terminating this instance.");
     }
