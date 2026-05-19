@@ -813,6 +813,7 @@ static void BeginShutdown
     // down the apps shutdown handler will trigger the shutdown of the framework itself.
     apps_SetShutdownHandler(ShutdownFramework);
 
+    apps_SetShutdownSequence();
     apps_Shutdown();
 }
 
