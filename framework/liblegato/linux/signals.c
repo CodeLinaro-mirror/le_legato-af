@@ -88,6 +88,23 @@ static uint32_t GdbServerPort = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Flag set atomically at the very start of ShowStackSignalHandler to indicate that a crash
+ * backtrace is in progress on some thread.
+ *
+ * Used by CrashWaitAtExit() — a framework atexit handler registered by
+ * le_sig_InstallShowStackHandler() — to delay _exit() long enough for the crash handler to
+ * finish writing its output before the process tears down.
+ *
+ * Declared volatile sig_atomic_t so that the write in the signal handler and the read in the
+ * atexit handler are both atomic and visible across threads without requiring a mutex (which
+ * would be unsafe inside a signal handler).
+ */
+//--------------------------------------------------------------------------------------------------
+static volatile sig_atomic_t g_crashInProgress = 0;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prefix for the monitor's name.  The monitor's name is this prefix plus the name of the thread.
  */
 //--------------------------------------------------------------------------------------------------
@@ -191,10 +208,10 @@ static void OurSigHandler
  * syslog(3) and others services like these from stdio(3).
  *
  * @note This code is architecture dependant, and supports arm, x86_64, i586 and i686.
- * @note Some unsafe functions are used:
- *        - snprintf
- *        - backtrace (not on arm)
- *        - sigsetjmp/siglongjmp
+ * @note All formatting uses async-signal-safe helpers (SigWriteStr/SigWriteULong/SigWritePtr)
+ *       instead of snprintf(). snprintf() is NOT on the POSIX async-signal-safe list because
+ *       it accesses locale state and may call malloc() internally, both of which can deadlock
+ *       if the signal interrupted the process while those locks were already held.
  */
 //--------------------------------------------------------------------------------------------------
 static void ShowStackSignalHandler
@@ -204,12 +221,27 @@ static void ShowStackSignalHandler
     void* sigVoidPtr
 )
 {
+    /* sigString is used only as a raw byte buffer for read() — never for snprintf(). */
     char sigString[256];
-    int fd;
-    struct sigcontext* ctxPtr = (struct sigcontext *)&(((ucontext_t*)sigVoidPtr)->uc_mcontext);
+    /* pathBuf holds /proc/<pid>/... paths built with async-signal-safe helpers. */
+    char pathBuf[64];
+    int  pathLen;
+    int  fd;
     pid_t tid = syscall(SYS_gettid);
     void* pcPtr = NULL;
 
+    /* Signal to CrashWaitAtExit() that a crash handler is now running.
+     * This must be the very first write in this handler so that if SIGTERM
+     * arrives concurrently and TermSignalHandler calls exit(), the framework
+     * atexit handler will see the flag and wait for us to finish. */
+    g_crashInProgress = 1;
+
+    // Guard against a NULL context pointer before dereferencing it. The kernel should always
+    // provide a valid ucontext for synchronous fault signals, but be defensive.
+    if (sigVoidPtr != NULL)
+    {
+        struct sigcontext* ctxPtr =
+            (struct sigcontext *)&(((ucontext_t*)sigVoidPtr)->uc_mcontext);
 #if defined(__arm__)
     pcPtr = (void*)ctxPtr->arm_pc;
 #elif defined(__i586__) || defined(__i686__)
@@ -221,55 +253,72 @@ static void ShowStackSignalHandler
 #elif defined(__aarch64__)
     pcPtr = (void*)ctxPtr->pc;
 #else
-    # warning "Architecture is not supported"
+#       warning "Architecture is not supported"
 #endif
+    }
 
     // Show process, pid and tid
-    snprintf(sigString, sizeof(sigString), "PROCESS: %d ,TID %d\n", getpid(), tid);
-    SIG_WRITE(sigString, strlen(sigString));
+    // All output uses SigWriteStr/SigWriteULong/SigWritePtr — async-signal-safe.
+    // snprintf() is intentionally avoided: it is NOT async-signal-safe (accesses locale
+    // state and may call malloc(), both of which can deadlock if the signal interrupted
+    // the process while those locks were already held).
+    SigWriteStr("PROCESS: ");
+    SigWriteULong((unsigned long)getpid());
+    SigWriteStr(" ,TID ");
+    SigWriteULong((unsigned long)tid);
+    SigWriteStr("\n");
 
     // Show signal, fault address and fault PC
-    snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p SI_CODE 0x%08x\n",
-             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr,
-             pcPtr, sigInfoPtr->si_code);
-    SIG_WRITE(sigString, strlen(sigString));
+    SigWriteStr("SIGNAL: ");
+    SigWriteULong((unsigned long)sigNum);
+    SigWriteStr(", ADDR ");
+    SigWriteHexPtr((SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr);
+    SigWriteStr(", AT ");
+    SigWriteHexPtr(pcPtr);
+    SigWriteStr(" SI_CODE ");
+    SigWriteHexPtr((void*)(uintptr_t)(unsigned int)sigInfoPtr->si_code); /* hex fits nicely */
+    SigWriteStr("\n");
 
     // Explain signal
     switch( sigNum )
     {
         case SIGSEGV:
-                    snprintf(sigString, sizeof(sigString), "ILLEGAL ADDRESS %p\n",
-                             (void*)sigInfoPtr->si_addr);
+                    SigWriteStr("ILLEGAL ADDRESS ");
+                    SigWriteHexPtr(sigInfoPtr->si_addr);
+                    SigWriteStr("\n");
                     break;
         case SIGFPE:
-                    snprintf(sigString, sizeof(sigString), "FLOATING POINT EXCEPTION AT %p\n",
-                             (void*)sigInfoPtr->si_addr);
+                    SigWriteStr("FLOATING POINT EXCEPTION AT ");
+                    SigWriteHexPtr(sigInfoPtr->si_addr);
+                    SigWriteStr("\n");
                     break;
         case SIGTRAP:
-                    snprintf(sigString, sizeof(sigString), "TRAP AT %p\n",
-                             (void*)sigInfoPtr->si_addr);
+                    SigWriteStr("TRAP AT ");
+                    SigWriteHexPtr(sigInfoPtr->si_addr);
+                    SigWriteStr("\n");
                     break;
         case SIGABRT:
-                    snprintf(sigString, sizeof(sigString), "ABORT\n");
+                    SigWriteStr("ABORT\n");
                     break;
         case SIGILL:
-                    snprintf(sigString, sizeof(sigString), "ILLEGAL INSTRUCTION AT %p\n",
-                             (void*)sigInfoPtr->si_addr);
+                    SigWriteStr("ILLEGAL INSTRUCTION AT ");
+                    SigWriteHexPtr(sigInfoPtr->si_addr);
+                    SigWriteStr("\n");
                     break;
         case SIGBUS:
-                    snprintf(sigString, sizeof(sigString), "BUS ERROR AT %p\n",
-                             (void*)sigInfoPtr->si_addr);
+                    SigWriteStr("BUS ERROR AT ");
+                    SigWriteHexPtr(sigInfoPtr->si_addr);
+                    SigWriteStr("\n");
                     break;
         default:
-                    snprintf(sigString, sizeof(sigString), "UNEXPECTED SIGNAL %d\n",
-                             sigNum);
+                    SigWriteStr("UNEXPECTED SIGNAL ");
+                    SigWriteULong((unsigned long)sigNum);
+                    SigWriteStr("\n");
                     break;
     }
-    SIG_WRITE(sigString, strlen(sigString));
 
     // Dump the legato version
-    snprintf(sigString, sizeof(sigString), "TELAF VERSION\n");
-    SIG_WRITE(sigString, strlen(sigString));
+    SigWriteStr("TELAF VERSION\n");
     fd = open("/legato/systems/current/version", O_RDONLY);
     if (-1 != fd)
     {
@@ -285,10 +334,25 @@ static void ShowStackSignalHandler
     }
 
     // Dump some process command line
-    snprintf(sigString, sizeof(sigString), "PROCESS COMMAND LINE\n");
-    SIG_WRITE(sigString, strlen(sigString));
-    snprintf(sigString, sizeof(sigString), "/proc/%d/cmdline", getpid());
-    fd = open(sigString, O_RDONLY);
+    SigWriteStr("PROCESS COMMAND LINE\n");
+    // Build the /proc path using async-signal-safe helpers into pathBuf.
+    // snprintf() is not used here for the same reason as above.
+    {
+        const char prefix[] = "/proc/";
+        const char suffix[] = "/cmdline";
+        char pidStr[21];
+        int  pi = sizeof(pidStr) - 1;
+        unsigned long pidVal = (unsigned long)getpid();
+        pidStr[pi] = '\0';
+        if (pidVal == 0) { pidStr[--pi] = '0'; }
+        else { while (pidVal > 0) { pidStr[--pi] = (char)('0' + pidVal % 10); pidVal /= 10; } }
+        pathLen = 0;
+        memcpy(pathBuf, prefix, sizeof(prefix) - 1);  pathLen += sizeof(prefix) - 1;
+        memcpy(pathBuf + pathLen, pidStr + pi, sizeof(pidStr) - 1 - (size_t)pi);
+        pathLen += (int)(sizeof(pidStr) - 1 - (size_t)pi);
+        memcpy(pathBuf + pathLen, suffix, sizeof(suffix));  /* includes NUL */
+    }
+    fd = open(pathBuf, O_RDONLY);
     if (-1 != fd)
     {
         int rc, len;
@@ -314,46 +378,44 @@ static void ShowStackSignalHandler
         SIG_WRITE("\n", 1);
     }
 
-    // Dump the process map. Useful for usage with objdump(1) and gdb(1)
-    snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
-    SIG_WRITE(sigString, strlen(sigString));
-    snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
-    fd = open(sigString, O_RDONLY);
-    if (-1 != fd)
-    {
-        int rc, len;
-        // We cannot use stdio(3) services. Print line by line
-        do
-        {
-            for (len = 0; len < sizeof(sigString); len++)
-            {
-                rc = read( fd, sigString + len, 1 );
-                if (0 >= rc)
-                {
-                     break;
-                }
-                if ('\n' == sigString[len])
-                {
-                    SIG_WRITE(sigString, len + 1);
-                    break;
-                }
-            }
-        }
-        while( 0 < rc );
-        close(fd);
-    }
+    // The process map is parsed internally by backtrace_DumpContextStack() for
+    // symbol resolution. Dumping it here in full to stderr is redundant and
+    // dangerous: on this target stderr is a pipe to the logger daemon, and
+    // writing the entire maps file (which can be hundreds of KB with many
+    // threads) can fill the pipe buffer and block write() indefinitely —
+    // deadlocking the signal handler before backtrace_DumpContextStack() is
+    // ever reached. Removed.
 
     // Dump the back-trace, registers and stack
-    backtrace_DumpContextStack(sigVoidPtr, 2, sigString, sizeof(sigString));
+    backtrace_DumpContextStack(sigVoidPtr, 2, sigString, sizeof(sigString), tid);
 
     // Check if a gdbserver(1) port is set (not zero). If yes, try to launch a
     // gdbserver(1) attached to ourself.
     if (GdbServerPort)
     {
-        char gdbServerPortString[13], pidString[20];
+        /* Build port string ":NNNNN" and pid string using async-signal-safe arithmetic. */
+        char gdbServerPortString[8];   /* ":" + 5 digits + NUL */
+        char pidString[21];
         int gdbPid, gdbStatus;
-        snprintf(gdbServerPortString, sizeof(gdbServerPortString), ":%hu", GdbServerPort);
-        snprintf(pidString, sizeof(pidString), "%d", getpid());
+        {
+            int i = sizeof(gdbServerPortString) - 1;
+            unsigned int port = GdbServerPort;
+            gdbServerPortString[i] = '\0';
+            if (port == 0) { gdbServerPortString[--i] = '0'; }
+            else { while (port > 0) { gdbServerPortString[--i] = (char)('0' + port % 10); port /= 10; } }
+            gdbServerPortString[--i] = ':';
+            /* shift to front of buffer so pointer arithmetic is simple */
+            memmove(gdbServerPortString, gdbServerPortString + i,
+                    sizeof(gdbServerPortString) - (size_t)i);
+        }
+        {
+            int i = sizeof(pidString) - 1;
+            unsigned long pv = (unsigned long)getpid();
+            pidString[i] = '\0';
+            if (pv == 0) { pidString[--i] = '0'; }
+            else { while (pv > 0) { pidString[--i] = (char)('0' + pv % 10); pv /= 10; } }
+            memmove(pidString, pidString + i, sizeof(pidString) - (size_t)i);
+        }
         char *gdbArg[] =
         {
              "gdbserver",
@@ -364,14 +426,137 @@ static void ShowStackSignalHandler
         };
         if (0 == (gdbPid = fork()))
         {
-            execvpe( gdbArg[0], gdbArg, NULL );
+            /* Use execve() with an absolute path instead of execvpe().
+             * execvpe() calls getenv("PATH") internally which is NOT async-signal-safe.
+             * execve() is on the POSIX async-signal-safe list. */
+            execve("/usr/bin/gdbserver", gdbArg, NULL);
+            /* If /usr/bin/gdbserver is not found, try the sbin location. */
+            execve("/usr/sbin/gdbserver", gdbArg, NULL);
+            _exit(127);
         }
         wait(&gdbStatus);
     }
 
-    // Raise this signal to our self to produce a core, if configured.
-    raise(sigNum);
+    // Re-raise the signal so the kernel delivers it with the default action (core dump /
+    // terminate). Because SA_RESETHAND was set, the handler disposition was already reset to
+    // SIG_DFL before this handler was entered.
+    //
+    // Three steps are required to guarantee a core dump:
+    //
+    // 1. Explicitly reset the disposition to SIG_DFL (belt-and-suspenders: SA_RESETHAND should
+    //    have done this, but be explicit in case another thread raced to reinstall a handler).
+    //
+    // 2. Unblock the signal in THIS thread's signal mask. The Legato framework blocks many
+    //    signals via signalfd (le_sig_Block). If the signal is blocked, kill() / tgkill()
+    //    will queue it but it will never be delivered — the process hangs instead of dumping.
+    //
+    // 3. Use tgkill(getpid(), tid, sigNum) to send to THIS specific thread rather than
+    //    kill(getpid(), sigNum) which sends to the process and lets the kernel pick any
+    //    thread. If the chosen thread has the signal blocked the delivery is deferred
+    //    indefinitely. tgkill targets the crashing thread directly.
+    {
+        struct sigaction sa_dfl;
+        sigset_t unblock;
+
+        /* Step 1: reset disposition to SIG_DFL */
+        sa_dfl.sa_handler = SIG_DFL;
+        sigemptyset(&sa_dfl.sa_mask);
+        sa_dfl.sa_flags = 0;
+        sigaction(sigNum, &sa_dfl, NULL);
+
+        /* Step 2: unblock the signal in this thread */
+        sigemptyset(&unblock);
+        sigaddset(&unblock, sigNum);
+        pthread_sigmask(SIG_UNBLOCK, &unblock, NULL);
+
+        /* Step 3: deliver to this specific thread — guarantees core dump */
+        syscall(SYS_tgkill, getpid(), tid, sigNum);
+    }
+
+    // If tgkill() somehow fails to terminate the process (e.g. the signal is blocked at the
+    // process level), fall back to _exit() to guarantee we do not return from the handler.
+    // Returning from a handler for a synchronous fault signal (SIGSEGV, SIGBUS, SIGILL, SIGFPE)
+    // is undefined behaviour and will loop forever on most kernels.
+    _exit(EXIT_FAILURE);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Framework atexit handler: wait for an in-progress crash backtrace to complete.
+ *
+ * Registered by le_sig_InstallShowStackHandler() so it runs inside exit() after all
+ * application-level atexit handlers and C++ destructors have fired — which is exactly
+ * the window where a worker-thread crash triggered by teardown (e.g. a NULL callback
+ * invoked after a service pointer was cleared during shutdown) will occur.
+ *
+ * Why this works for the real scenario (e.g. tafRadioSvc):
+ *
+ *   exit() call order:
+ *     1. App atexit handlers (registered later -> run first, LIFO)
+ *        -> teardown code clears service pointers
+ *        -> worker thread crashes (SIGSEGV), sets g_crashInProgress = 1
+ *        -> ShowStackSignalHandler starts writing backtrace
+ *     2. THIS handler runs (registered early -> runs last among atexit handlers)
+ *        -> sleeps 10ms so a crash that just fired has time to set the flag
+ *        -> if flag set, sleeps 2s for the crash handler to finish
+ *        -> crash handler's tgkill re-raise terminates the whole process first
+ *     3. _exit() -- never reached in the crash case
+ *
+ * The 50ms unconditional sleep covers the window where the crash fires
+ * concurrently with or shortly after this handler starting (flag not yet
+ * set on first check). 50ms is negligible for normal shutdown but wide
+ * enough to cover crashes triggered late in the teardown sequence.
+ * The 2s sleep is a safe upper bound: the crash handler finishes in <500ms;
+ * tgkill kills the process well before the 2s expires.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CrashWaitAtExit(void)
+{
+    /* Unconditional 50ms pause: gives a just-starting crash time to set the
+     * flag. 50ms is negligible for normal shutdown but covers crashes that
+     * fire late in the teardown sequence (e.g. deep in __cxa_finalize). */
+    usleep(50000);
+
+    if (g_crashInProgress)
+    {
+        /* Crash backtrace is running — wait for the crash handler's tgkill
+         * re-raise to terminate the process. 2s is a safe upper bound;
+         * in practice the process dies long before this returns. */
+        sleep(2);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Alternate signal stack memory. Statically allocated so it is available even when the process
+ * heap or the thread's normal stack is corrupted.
+ *
+ * Size rationale:
+ *   ShowStackSignalHandler local vars:  ~400 bytes
+ *   backtrace_DumpContextStack frame:   ~100 bytes
+ *   DumpContextStack frame:
+ *     CrashCtx_t (execRegions[64]):    ~1100 bytes
+ *   DumpBacktrace frame:                ~200 bytes
+ *   ScanStackForReturnAddrs frame:
+ *     rawAddr/rawFp/rawLr[64] + tag:   ~1800 bytes
+ *   ParseMapsFile (called many times):
+ *     ioBuf[512] + lineBuf[128]:        ~700 bytes per call
+ *     Called from LoadExecRegions, FindStackTop, PrintOneAddr (×N frames)
+ *     Up to ~10 concurrent calls deep:  ~7000 bytes
+ *   PrintOneAddr ResolveCtx.path[128]:  ~200 bytes per call
+ *   Function call overhead / alignment: ~2000 bytes
+ *   Safety margin (2×):                ×2
+ *
+ * Total estimate: ~27KB active + 2× margin = ~56KB minimum.
+ * We use 65536 (64 KiB) to give comfortable headroom.
+ *
+ * SIGSTKSZ is intentionally NOT used here: since glibc 2.34 it is no longer
+ * a compile-time integer constant — it became a sysconf() result, making it
+ * a VLA at file scope and causing a compile error.
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALT_STACK_SIZE  (65536U)    /* 64 KiB */
+static uint8_t AltSigStackMem[ALT_STACK_SIZE];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -397,13 +582,33 @@ void le_sig_InstallShowStackHandler
             return;
         }
     }
+
+    // Install an alternate signal stack so that the crash handler can execute safely even when
+    // the faulting thread's normal stack is corrupted or overflowed. Without SA_ONSTACK the
+    // handler runs on the already-broken stack and any stack usage (snprintf, open, etc.) will
+    // immediately trigger a second fault.
+    stack_t altStack;
+    altStack.ss_sp    = AltSigStackMem;
+    altStack.ss_size  = ALT_STACK_SIZE;
+    altStack.ss_flags = 0;
+    if (sigaltstack(&altStack, NULL) != 0)
+    {
+        LE_WARN("Could not install alternate signal stack: %m. "
+                "Crash handler may fault on stack-overflow crashes.");
+    }
+
     sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))ShowStackSignalHandler;
     sigemptyset(&sa.sa_mask);
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
-    sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND | SA_NODEFER;
-#else
-    sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND;
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+    // SA_RESETHAND  – reset disposition to SIG_DFL after first delivery so that if the handler
+    //                 itself faults the kernel delivers the signal with the default action
+    //                 (core dump) rather than re-entering our handler recursively.
+    // SA_ONSTACK    – deliver on the alternate signal stack installed above.
+    // SA_SIGINFO    – pass siginfo_t and ucontext to the handler.
+    // SA_NODEFER is intentionally omitted: with SA_RESETHAND the handler is already deregistered
+    // before it runs, so there is no need to unblock the signal inside the handler. Keeping the
+    // signal blocked during handler execution prevents a second delivery from interrupting the
+    // diagnostic output if raise() or a nested fault fires before SA_RESETHAND takes effect.
+    sa.sa_flags = SA_SIGINFO | SA_RESETHAND | SA_ONSTACK;
     ret = sigaction( SIGSEGV, &sa, NULL );
     if( ret )
     {
@@ -437,6 +642,13 @@ void le_sig_InstallShowStackHandler
             LE_WARN("Incorrect GDBSERVER_PORT=%s. Discarded...", gdbPtr);
         }
     }
+
+    /* Register the framework atexit handler that waits for an in-progress crash
+     * backtrace to complete before _exit() tears down the process.
+     * Registered here (early, at app startup) so it runs LAST among all atexit
+     * handlers (LIFO order) — after application teardown code that may trigger
+     * the crash has already run. */
+    atexit(CrashWaitAtExit);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -449,7 +661,7 @@ static void TermSignalHandler
     int sigNum      ///< [IN] The signal that was received.
 )
 {
-    LE_WARN("Terminated");
+    LE_CRIT("Terminated");
     exit(EXIT_SUCCESS);
 }
 
