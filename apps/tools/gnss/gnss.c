@@ -58,6 +58,8 @@
 #define CONSTELLATION_NAVIC         0x80
 // @}
 
+#define MERKLE_XML_PATH "/etc/OSNMA_MerkleTree.xml"
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Position handler reference.
@@ -173,6 +175,12 @@ void PrintGnssHelp
          "\t\t\t\t\t-  32 ---> BDS\n"
          "\t\t\t\t\t-  64 ---> QZSS\n"
          "\t\t\t\t\t-  128 ---> NAVIC\n"
+         "\t\t\tset integrityRisk <engine type> <risk value>\n"
+         "\t\t\t\t\t- 1 ---> SPE\n"
+         "\t\t\t\t\t- 2 ---> PPE\n"
+         "\t\t\t\t\t- 3 ---> DRE\n"
+         "\t\t\t\t\t- 4 ---> VPE\n\n"
+         "\t\t\t\t- risk value range [2.5e-10, 1 - 2.5e-10]. \n"
          "\t\t\t<delete DRCalibData>\n"
          "\t\t\t\t- Deletes DR Sensor calibration data\n\n"
          "\t\t\trestart <RestartType>\n"
@@ -258,6 +266,10 @@ void PrintGnssHelp
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\t\t\t- navigationMask       --> Get the navigation Solution Mask used for fix\n"
          "\t\t\t\t\t- dgnssMonitorStationIds --> Gets the dgnss station ID's\n"
+         "\t\t\t\t\t- protectionLevels -- Gets the protection levels after configuring the integrity risk.\n"
+         "\t\t\t\t\t- baselineLength --> Gets the baseline length. \n"
+         "\t\t\t\t\t- ageOfCorrections --> Gets the age Of corrections.\n"
+         "\t\t\t\t\t- integrityRiskUsed --> Gets the integrity risk used to calculate protection levels.\n"
          "\t\t\tset constellation <ConstellationType>\n"
          "\t\t\t\t- Used to set constellation. Allowed when device in 'ready/Active' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
@@ -314,6 +326,10 @@ void PrintGnssHelp
          "\t\t\t\t- Release the active DGNSS Source.\n\n"
          "\t\t\tInjectCorrectionData sourceRef <FilePath>\n"
          "\t\t\t\t- Inject correction data from the specified file path.\n\n"
+         "\t\t\tset configureOsnma <Enable/disable Galileo OSNMA>\n"
+         "\t\t\t\t- 1- Enable 0-Disable\n"
+         "\t\t\tInjectMerkleTree\n"
+         "\t\t\t\t- Inject Merkle tree information for OSNMA authentication\n\n"
          "\t\t\twatch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
@@ -1252,6 +1268,49 @@ static int ConfigureEngineState
             break;
         case LE_FAULT:
             printf("Failed to set engine state for the specified engine type\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in Ready/Active State\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+static int ConfigureIntegrityRisk
+(
+    const char* engineTypePtr,           ///< [IN] Engine type
+    const char* integrityRiskPtr         ///< [IN] Integrity risk value
+)
+{
+    char *end;
+    uint32_t engineType = strtoul(engineTypePtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad engine type : %s\n", engineTypePtr);
+        return EXIT_FAILURE;
+    }
+
+    uint32_t integrityRisk = strtoul(integrityRiskPtr, &end, BASE10);
+    if ('\0' != end[0])
+    {
+        printf("Bad integrity risk : %s\n", integrityRiskPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetEngineIntegrityRisk((taf_locGnss_EngineType_t)engineType,integrityRisk);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set integrityRisk for the specified engine type\n");
             break;
         case LE_NOT_PERMITTED:
             printf("GNSS device is not in Ready/Active State\n");
@@ -2820,6 +2879,151 @@ static int GetLeapSecondsUnc
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function gets integrity risk used value.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetIntegrityRiskUsed
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint32_t integrityRiskUsed;
+    le_result_t result;
+
+    result = le_gnss_GetIntegrityRiskUsed(positionSampleRef,&integrityRiskUsed);
+
+    if (LE_OK == result)
+    {
+        printf("IntegrityRisk used: %d \n", integrityRiskUsed);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets ProtectionLevels.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetProtectionLevels
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double protectionLevelAlongTrack;
+    double protectionLevelCrossTrack;
+    double protectionLevelVertical;
+    le_result_t result;
+
+    result = le_gnss_GetProtectionLevels(positionSampleRef,&protectionLevelAlongTrack,
+        &protectionLevelCrossTrack, &protectionLevelVertical);
+
+    if (LE_OK == result)
+    {
+        printf("protectionLevelAlongTrack: %lf \n", (float)protectionLevelAlongTrack);
+        printf("protectionLevelCrossTrack: %lf \n", (float)protectionLevelCrossTrack);
+        printf("protectionLevelVertical: %lf \n", (float)protectionLevelVertical);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the baseline length.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetBaselineLength
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    double baselineLength;
+    le_result_t result;
+
+    result = le_gnss_GetBaselineLength(positionSampleRef,&baselineLength);
+
+    if (LE_OK == result)
+    {
+        printf("baselineLength: %lf \n", (float)baselineLength);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the age of corrections.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetAgeOfCorrections
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint64_t ageOfCorrections;
+    le_result_t result;
+
+    result = le_gnss_GetAgeOfCorrections(positionSampleRef,&ageOfCorrections);
+
+    if (LE_OK == result)
+    {
+        printf("AgeOfCorrections: %"PRIu64" \n", ageOfCorrections);
+    }
+    else if(LE_OUT_OF_RANGE == result)
+    {
+        printf("Out of range\n");
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets navigation mask value.
  *
  * @return
@@ -3806,11 +4010,12 @@ static int GetSatelliteInfoEx
         {
             if((svInfo[i].satId != 0)&&(svInfo[i].satId != UINT8_MAX))
             {
-                printf("[%02d] SVid %03d - C%01d - U%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
+                printf("[%02d] SVid %03d - C%01d - U%d - DgnssU%d - T%d - SNR%02d - Azim%03d - Elev%02d\n"
                         , index++
                         , svInfo[i].satId
                         , svInfo[i].satConst
                         , svInfo[i].satUsed
+                        , svInfo[i].satUsedDgnss
                         , svInfo[i].satTracked
                         , svInfo[i].satSnr
                         , svInfo[i].satAzim
@@ -5240,6 +5445,77 @@ static int DoPosFix
     return EXIT_FAILURE;
 }
 
+static int InjectMerkleTree
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+
+    result = le_gnss_InjectMerkleTreeInformationByPath(MERKLE_XML_PATH);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to inject merkle tree information\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Bad parameter (invalid path or XML)\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+static int ConfigureOsnma
+(
+    const char* galOSNMAPtr           ///< [IN] Enable/disable Galileo OSNMA
+)
+{
+    char *end = NULL;
+    uint16_t galOsnma = strtoul(galOSNMAPtr, &end, BASE10);
+
+    if (end == galOSNMAPtr || *end != '\0')
+    {
+        printf("Bad Galielo OSNMA : %s\n", galOSNMAPtr);
+        return EXIT_FAILURE;
+    }
+
+    if (galOsnma != 0 && galOsnma != 1)
+    {
+        printf("Galileo OSNMA must be 0 or 1, got: %d\n", galOsnma);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_ConfigureOsnma(galOsnma);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to configure Galileo OSNMA\n");
+            break;
+        case LE_NOT_PERMITTED:
+            printf("GNSS device is not in \"Ready\" state\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5509,6 +5785,22 @@ static void PositionHandlerFunction
         else if (0 == strcmp(ParamsName, "dgnssMonitorStationIds"))
         {
             status = GetDgnssStationIds(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "integrityRiskUsed"))
+        {
+            status = GetIntegrityRiskUsed(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "protectionLevels"))
+        {
+            status = GetProtectionLevels(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "baselineLength"))
+        {
+            status = GetBaselineLength(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "ageOfCorrections"))
+        {
+            status = GetAgeOfCorrections(positionSampleRef);
         }
 
         le_gnss_ReleaseSampleRef(positionSampleRef);
@@ -5956,7 +6248,11 @@ static void GetGnssParams
              (0 == strcmp(params,"drSolutionStatus"))||
              (0 == strcmp(params,"LeapSecondsUnc")) ||
              (0 == strcmp(params, "dgnssMonitorStationIds")) ||
-             (0 == strcmp(params, "navigationMask")))
+             (0 == strcmp(params, "navigationMask")) ||
+             (0 == strcmp(params, "integrityRiskUsed")) ||
+             (0 == strcmp(params, "protectionLevels")) ||
+             (0 == strcmp(params, "baselineLength")) ||
+             (0 == strcmp(params, "ageOfCorrections")))
     {
         if (LE_GNSS_STATE_ACTIVE != state)
         {
@@ -6062,6 +6358,19 @@ static int SetGnssParams
     else if (0 == strcmp(argNamePtr, "secondBandConst"))
     {
         status = ConfigureSecondaryBandConstellations(argValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "configureOsnma"))
+    {
+        status = ConfigureOsnma(argValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "integrityRisk"))
+    {
+        if (NULL == arg2ValPtr)
+        {
+            printf("arg2ValPtr is NULL");
+            return EXIT_FAILURE;
+        }
+        status = ConfigureIntegrityRisk(argValPtr,arg2ValPtr);
     }
     else
     {
@@ -6734,6 +7043,10 @@ void GnssMainFunction
                 continue;
             }
             InjectCorrectionData(sourceRef, filePathPtr);
+        }
+        else if (strcmp(commandPtr, "InjectMerkleTree") == 0)
+        {
+            InjectMerkleTree();
         }
         else
         {

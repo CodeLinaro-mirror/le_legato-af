@@ -80,4 +80,22 @@ const char* log_SeverityLevelToStr
     le_log_Level_t level    ///< Severity level.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a pointer to the DLT context handle used by the log system.
+ *
+ * This is intended for use by PA (Platform Adaptor) libraries that need to share the same
+ * DLT context as the Legato log system.  The returned pointer should be treated as an opaque
+ * handle and cast to DltContext* by the caller if DLT logging is enabled.
+ *
+ * @return
+ *      Pointer to the DLT context handle (DltContext*) if DLT logging is enabled.
+ *      NULL if DLT logging is not enabled.
+ */
+//--------------------------------------------------------------------------------------------------
+void* log_GetDltContextHandlePtr
+(
+    void
+);
+
 #endif // LOG_INCLUDE_GUARD

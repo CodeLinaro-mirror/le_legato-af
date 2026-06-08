@@ -20,7 +20,9 @@ void backtrace_DumpContextStack
     const void  *infoPtr,   ///< [IN]       Context pointer.
     int          skip,      ///< [IN]       Number of initial stack frames to skip, if applicable.
     char        *buf,       ///< [IN,OUT]   Scratch buffer to use for composing output.
-    size_t       bufLen     ///< [IN]       Size of scratch buffer.
+    size_t       bufLen,    ///< [IN]       Size of scratch buffer.
+    pid_t        tid        ///< [IN]       TID of the crashing thread (from syscall(SYS_gettid)
+                            ///<            in the signal handler — always the faulting thread).
 );
 
 #endif  // LEGATO_FA_BACKTRACE_INCLUDE_GUARD

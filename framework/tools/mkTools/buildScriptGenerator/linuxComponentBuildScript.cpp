@@ -221,6 +221,37 @@ void LinuxComponentBuildScriptGenerator_t::GenerateComponentLinkStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Append extra cFlags to the _componentMain.c compilation for Linux.
+ *
+ * If this component depends on a PA library, add the PA include path so that
+ * the generated _componentMain.c can find tafCommonPa.h.
+ **/
+//--------------------------------------------------------------------------------------------------
+void LinuxComponentBuildScriptGenerator_t::GenerateComponentMainExtraFlags
+(
+    model::Component_t* componentPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string telafPaDefault = envVars::Get("TELAF_PA_DEFAULT");
+    if (telafPaDefault.empty())
+    {
+        return;
+    }
+
+    for (const auto& flag : componentPtr->ldFlags)
+    {
+        if (flag.find("Component_taf_pa_") != std::string::npos)
+        {
+            script << " -I" << path::Combine(telafPaDefault, "include");
+            break;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate a build script for building a single component.
  **/
 //--------------------------------------------------------------------------------------------------

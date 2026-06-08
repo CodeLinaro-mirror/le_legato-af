@@ -1006,4 +1006,59 @@ LE_FULL_API le_log_SessionRef_t le_log_RegComponent
     le_log_Level_t  **levelFilterPtrPtr ///< [OUT] Set to point to the component's level filter.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for a log level change callback.
+ *
+ * This is intended for use by PA (Platform Adaptor) libraries that are not standard Legato
+ * components and therefore cannot use the Legato log session mechanism directly.  A service
+ * component can register this callback on its own log session so that any external log level
+ * change (from the Log Control Daemon or DLT) is forwarded to the PA layer.
+ *
+ * @param level      [IN] The new log level.
+ * @param contextPtr [IN] Opaque context pointer provided at registration time.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*le_log_LevelChangeHandlerFunc_t)
+(
+    le_log_Level_t  level,      ///< New log level.
+    void           *contextPtr  ///< Opaque context pointer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal implementation of le_log_SetLevelChangeCallback().
+ * Do not call directly; use the le_log_SetLevelChangeCallback() macro instead.
+ **/
+//--------------------------------------------------------------------------------------------------
+LE_FULL_API void _le_log_SetLevelChangeCallback
+(
+    le_log_SessionRef_t              logSession, ///< [IN] Log session.
+    le_log_LevelChangeHandlerFunc_t  handlerPtr, ///< [IN] Callback function, or NULL.
+    void                            *contextPtr  ///< [IN] Opaque context pointer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers a log level change callback for the calling component.
+ *
+ * When the log level of the calling component's session is changed externally (via the Log
+ * Control Daemon or DLT), the registered callback will be invoked with the new log level and
+ * the provided context pointer.  This allows a service component to forward log level changes
+ * to an underlying PA library that manages its own log level independently.
+ *
+ * Only one callback can be registered per component.  Calling this macro again will replace
+ * the previously registered callback.
+ * Pass NULL as handlerPtr to deregister an existing callback.
+ *
+ * @note The callback is invoked outside the internal log mutex, so it is safe to perform
+ *       any non-Legato operations (e.g. calling a PA log level API) from within it.
+ *
+ * @param handlerPtr [IN] The callback function, or NULL to deregister.
+ * @param contextPtr [IN] Opaque context pointer passed to the callback.
+ */
+//--------------------------------------------------------------------------------------------------
+#define le_log_SetLevelChangeCallback(handlerPtr, contextPtr) \
+    _le_log_SetLevelChangeCallback(LE_LOG_SESSION, (handlerPtr), (contextPtr))
+
 #endif // LEGATO_LOG_INCLUDE_GUARD

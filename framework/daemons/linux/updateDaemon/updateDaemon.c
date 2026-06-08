@@ -2062,6 +2062,13 @@ le_result_t le_update_Start
     int clientFd                ///<[IN] Open file descriptor from which the update can be read.
 )
 {
+    if (IsReadOnly)
+    {
+        LE_ERROR("Legato is R/O");
+        fd_Close(clientFd);
+        return LE_UNSUPPORTED;
+    }
+
     LE_DEBUG("fd: %d", clientFd);
 
     if (!IsValidFileDesc(clientFd))
@@ -2286,6 +2293,7 @@ int32_t le_update_GetPreviousSystemIndex
  *     - LE_OK if successful
  *     - LE_BUSY if system busy.
  *     - LE_NOT_FOUND if given app is not installed.
+ *     - LE_UNSUPPORTED if Legato system is R/O.
  *     - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2294,6 +2302,12 @@ le_result_t le_appRemove_Remove
     const char* appName
 )
 {
+    if (IsReadOnly)
+    {
+        LE_ERROR("Legato is R/O");
+        return LE_UNSUPPORTED;
+    }
+
     // Check whether any update is active.
     if (State != STATE_IDLE)
     {

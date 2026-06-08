@@ -11,7 +11,12 @@
 #
 
 import interfaceIR
-from jinja2 import contextfilter
+import jinja2
+
+if hasattr(jinja2, "pass_context"):
+    from jinja2 import pass_context
+else:
+    from jinja2 import contextfilter as pass_context
 
 #---------------------------------------------------------------------------------------------------
 # Global objects used by the C API
@@ -62,7 +67,7 @@ _BasicTypeMapping = {
     interfaceIR.ONOFF_TYPE:  "OnOff",
 }
 
-@contextfilter
+@pass_context
 def FormatType(context, apiType, qualifiedTypes=None):
     """Produce a Java type from an API type"""
     if qualifiedTypes == None:
@@ -92,7 +97,7 @@ _BoxTypeMapping = {
     "char":    "Character"
 }
 
-@contextfilter
+@pass_context
 def FormatBoxedType(context, apiType, qualifiedTypes=None):
     """Produce a boxed Java type from an API type"""
     javaType = FormatType(context, apiType, qualifiedTypes)
@@ -116,7 +121,7 @@ def GetDefaultValue(apiType):
     except KeyError as e:
         return "null"
 
-@contextfilter
+@pass_context
 def FormatParameter(context, parameter, name=None, qualifiedTypes=None):
     if name == None:
         name = parameter.name
