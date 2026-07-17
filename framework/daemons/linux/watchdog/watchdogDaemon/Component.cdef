@@ -20,6 +20,10 @@ requires:
         // Manual start after notifying supervisor of start -- otherwise watchdog hangs on start.
         supervisor/wdog.api [manual-start]
         supervisorWdog   = watchdog/frameworkWdog.api [manual-start]
+#if ${LE_CONFIG_FLAVOR_LXC} = y
+#else
+        deviceManagerWdog = watchdog/frameworkWdog.api [manual-start]
+#endif
     }
 
     component:

@@ -1241,6 +1241,7 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "logDaemonWdog", uid, "logDaemonWdog");
     CreateBinding(uid, "updateDaemonWdog", uid, "updateDaemonWdog");
     CreateBinding(uid, "supervisorWdog", uid, "supervisorWdog");
+    CreateBinding(uid, "deviceManagerWdog", uid, "deviceManagerWdog");
 
     // Add the 'root' user hardcode bindings to current-uid user (tafcore) services
     CreateBinding(ROOT_USER_ID, "sdirTool", uid, "sdirTool");
@@ -1266,6 +1267,7 @@ static void CreateHardCodedBindings
     CreateBinding(ROOT_USER_ID, "logDaemonWdog", uid, "logDaemonWdog");
     CreateBinding(ROOT_USER_ID, "updateDaemonWdog", uid, "updateDaemonWdog");
     CreateBinding(ROOT_USER_ID, "supervisorWdog", uid, "supervisorWdog");
+    CreateBinding(ROOT_USER_ID, "deviceManagerWdog", uid, "deviceManagerWdog");
 }
 
 

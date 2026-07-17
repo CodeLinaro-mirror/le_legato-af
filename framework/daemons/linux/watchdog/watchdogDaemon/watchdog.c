@@ -198,6 +198,7 @@
 #define LOGDAEMON_KICK_INTERVAL 17000
 #define SUPERVISOR_KICK_INTERVAL 23000
 #define UPDATEDAEMON_KICK_INTERVAL 151000
+#define DEVICEMANAGER_KICK_INTERVAL 19000
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1352,6 +1353,13 @@ void InitFrameworkWdog
                                          ResetFrameworkWatchdog,
                                          CreateFrameworkWatchdog("updateDaemon",
                                                                  UPDATEDAEMON_TIMEOUT_DEFAULT));
+#if ! defined (LE_CONFIG_FLAVOR_LXC)
+    deviceManagerWdog_ConnectService();
+    deviceManagerWdog_AddKickEventHandler(DEVICEMANAGER_KICK_INTERVAL,
+                                         ResetFrameworkWatchdog,
+                                         CreateFrameworkWatchdog("deviceManager",
+                                                                 TIMEOUT_DEFAULT));
+#endif
 }
 
 
