@@ -318,6 +318,20 @@ void PrintGnssHelp
          "\t\t\tset minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tset minGpsWeek <minGpsWeek value>\n"
+         "\t\t\tset dataResolution <dataType> <resolution>\n"
+         "\t\t\t\t- Sets per-client output resolution for location fields.\n"
+         "\t\t\t\t  dataType:\n"
+         "\t\t\t\t\t- 0 ---> LATITUDE_LONGITUDE; valid resolutions: 6,7; default=6\n"
+         "\t\t\t\t\t- 1 ---> VACCURACY; valid resolutions: 1,2; default=1\n"
+         "\t\t\t\t\t- 2 ---> DIRECTION; valid resolutions: 1,2; default=1\n"
+         "\t\t\t\t\t- 3 ---> DIRECTION_ACCURACY; valid resolutions: 1,2; default=1\n"
+         "\t\t\t\t  resolution:\n"
+         "\t\t\t\t\t- 0 ---> ZERO_DECIMAL\n"
+         "\t\t\t\t\t- 1 ---> ONE_DECIMAL\n"
+         "\t\t\t\t\t- 2 ---> TWO_DECIMAL\n"
+         "\t\t\t\t\t- 3 ---> THREE_DECIMAL\n"
+         "\t\t\t\t\t- 6 ---> SIX_DECIMAL  (default for lat/lon)\n"
+         "\t\t\t\t\t- 7 ---> SEVEN_DECIMAL (max for lat/lon)\n\n"
          "\t\t\tCreateDgnssSource <Format>\n"
          "\t\t\t\t- Create DGNSS Source. Format:\n"
          "\t\t\t\t\t- 1 ---> RTCM_3\n"
@@ -343,7 +357,6 @@ void PrintGnssHelp
          "\tq / 0 - To exit\n"
          );
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2504,12 +2517,30 @@ static int Get2Dlocation
 
     if (result == LE_OK)
     {
-        printf("Latitude(positive->north) : %.6f\n"
-               "Longitude(positive->east) : %.6f\n"
-               "hAccuracy                 : %.2fm\n",
-                (double)latitude/1e6,
-                (double)longitude/1e6,
-                (float)hAccuracy/1e2);
+        taf_locGnss_Resolution_t latLonRes = TAF_LOCGNSS_RES_UNKNOWN;
+        int32_t latLonDplace = 6;
+
+        if (LE_OK == le_gnss_GetDataResolution(
+                        TAF_LOCGNSS_DATA_TYPE_LATITUDE_LONGITUDE, &latLonRes))
+        {
+            if (latLonRes == TAF_LOCGNSS_RES_SEVEN_DECIMAL)
+            {
+                latLonDplace = 7;
+            }
+            else
+            {
+                latLonDplace = 6;
+            }
+        }
+
+        double latLonDivisor = (latLonDplace == 7) ? 1e7 : 1e6;
+
+        printf("Latitude(positive->north)  : %.*lf\n"
+            "Longitude(positive->east)  : %.*lf\n"
+            "hAccuracy                 : %.2fm\n",
+            (int)latLonDplace, (double)latitude  / latLonDivisor,
+            (int)latLonDplace, (double)longitude / latLonDivisor,
+            (float)hAccuracy / 1e2);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -2548,12 +2579,26 @@ static int GetAltitude
                                               &altitude,
                                               &vAccuracy);
 
-    if(result == LE_OK)
+    if (result == LE_OK)
     {
+        taf_locGnss_Resolution_t vAccRes = TAF_LOCGNSS_RES_UNKNOWN;
+        double  vAccDivisor = 10.0;
+        int32_t vAccDplace  = 1;
+
+        if (LE_OK == le_gnss_GetDataResolution(
+                        TAF_LOCGNSS_DATA_TYPE_VACCURACY, &vAccRes))
+        {
+            if (vAccRes == TAF_LOCGNSS_RES_TWO_DECIMAL)
+            {
+                vAccDivisor = 100.0;
+                vAccDplace  = 2;
+            }
+        }
+
         printf("Altitude                  : %.3fm\n"
-               "vAccuracy                 : %.1fm\n",
-               (float)altitude/1e3,
-               (float)vAccuracy/10.0);
+            "vAccuracy                 : %.*fm\n",
+            (float)altitude  / 1e3,
+            vAccDplace, (float)vAccuracy / vAccDivisor);
     }
     else if (result == LE_OUT_OF_RANGE)
     {
@@ -3477,6 +3522,119 @@ static int GetCablibrationConfData
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function calls SetDataResolution() to configure per-client resolution for a
+ * specific location field (latitude/longitude, vAccuracy, direction, directionAccuracy).
+ *
+ * Usage:
+ *   set dataResolution <dataType> <resolution>
+ *
+ *   dataType:
+ *     0 -> DATA_TYPE_LATITUDE_LONGITUDE  (valid resolutions: 6, 7)
+ *     1 -> DATA_TYPE_VACCURACY           (valid resolutions: 1, 2)
+ *     2 -> DATA_TYPE_DIRECTION           (valid resolutions: 1, 2)
+ *     3 -> DATA_TYPE_DIRECTION_ACCURACY  (valid resolutions: 1, 2)
+ *
+ *   resolution:
+ *     0 -> RES_ZERO_DECIMAL
+ *     1 -> RES_ONE_DECIMAL
+ *     2 -> RES_TWO_DECIMAL
+ *     3 -> RES_THREE_DECIMAL
+ *     6 -> RES_SIX_DECIMAL
+ *     7 -> RES_SEVEN_DECIMAL
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetDataResolution
+(
+    const char *dataTypeStr,    ///< [IN] Data type as integer string (0-3)
+    const char *resolutionStr   ///< [IN] Resolution as integer string (0,1,2,3,6,7)
+)
+{
+    if (NULL == dataTypeStr || NULL == resolutionStr)
+    {
+        printf("dataType or resolution argument is NULL\n");
+        return EXIT_FAILURE;
+    }
+
+    char *endPtr;
+    errno = 0;
+
+    long dataTypeVal = strtol(dataTypeStr, &endPtr, BASE10);
+    if (endPtr[0] != '\0' || errno != 0)
+    {
+        printf("Invalid dataType value: %s\n", dataTypeStr);
+        return EXIT_FAILURE;
+    }
+
+    taf_locGnss_DataType_t dataType;
+    switch (dataTypeVal)
+    {
+        case 0:  dataType = TAF_LOCGNSS_DATA_TYPE_LATITUDE_LONGITUDE;  break;
+        case 1:  dataType = TAF_LOCGNSS_DATA_TYPE_VACCURACY;           break;
+        case 2:  dataType = TAF_LOCGNSS_DATA_TYPE_DIRECTION;           break;
+        case 3:  dataType = TAF_LOCGNSS_DATA_TYPE_DIRECTION_ACCURACY;  break;
+        default:
+            printf("Unknown dataType: %ld. Valid values: 0=LatLon, 1=vAccuracy, "
+                   "2=Direction, 3=DirectionAccuracy\n", dataTypeVal);
+            return EXIT_FAILURE;
+    }
+
+    errno = 0;
+    long resVal = strtol(resolutionStr, &endPtr, BASE10);
+    if (endPtr[0] != '\0' || errno != 0)
+    {
+        printf("Invalid resolution value: %s\n", resolutionStr);
+        return EXIT_FAILURE;
+    }
+
+    taf_locGnss_Resolution_t resolution;
+    switch (resVal)
+    {
+        case 0:  resolution = TAF_LOCGNSS_RES_ZERO_DECIMAL;   break;
+        case 1:  resolution = TAF_LOCGNSS_RES_ONE_DECIMAL;    break;
+        case 2:  resolution = TAF_LOCGNSS_RES_TWO_DECIMAL;    break;
+        case 3:  resolution = TAF_LOCGNSS_RES_THREE_DECIMAL;  break;
+        case 6:  resolution = TAF_LOCGNSS_RES_SIX_DECIMAL;    break;
+        case 7:  resolution = TAF_LOCGNSS_RES_SEVEN_DECIMAL;  break;
+        default:
+            printf("Unknown resolution: %ld. Valid values: 0,1,2,3,6,7\n", resVal);
+            return EXIT_FAILURE;
+    }
+
+    if (dataType == TAF_LOCGNSS_DATA_TYPE_LATITUDE_LONGITUDE &&
+        resolution != TAF_LOCGNSS_RES_SIX_DECIMAL &&
+        resolution != TAF_LOCGNSS_RES_SEVEN_DECIMAL)
+    {
+        printf("For LatLon, only resolution 6 or 7 is valid\n");
+        return EXIT_FAILURE;
+    }
+
+    if ((dataType == TAF_LOCGNSS_DATA_TYPE_VACCURACY          ||
+         dataType == TAF_LOCGNSS_DATA_TYPE_DIRECTION          ||
+         dataType == TAF_LOCGNSS_DATA_TYPE_DIRECTION_ACCURACY) &&
+        resolution != TAF_LOCGNSS_RES_ONE_DECIMAL &&
+        resolution != TAF_LOCGNSS_RES_TWO_DECIMAL)
+    {
+        printf("For vAccuracy/Direction/DirectionAccuracy, only resolution 1 or 2 is valid\n");
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetDataResolution(dataType, resolution);
+    if (LE_OK != result)
+    {
+        printf("SetDataResolution() failed! See log for details\n");
+        return EXIT_FAILURE;
+    }
+
+    printf("SetDataResolution OK: dataType=%ld resolution=%ld\n", dataTypeVal, resVal);
+    return EXIT_SUCCESS;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets the Dead Reckoning sensor solution status.
  *
  * @return
@@ -3705,7 +3863,6 @@ static int GetVerticalSpeed
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function gets direction of gnss device.
@@ -3729,10 +3886,36 @@ static int GetDirection
 
     if (result == LE_OK)
     {
-        printf("Direction(0 degree is True North) : %.1f degrees\n"
-               "Accuracy                          : %.1f degrees\n",
-                (float)direction/10.0,
-                (float)directionAccuracy/10.0);
+        taf_locGnss_Resolution_t dirRes    = TAF_LOCGNSS_RES_UNKNOWN;
+        taf_locGnss_Resolution_t dirAccRes = TAF_LOCGNSS_RES_UNKNOWN;
+
+        double  dirDivisor    = 10.0;   double  dirAccDivisor = 10.0;
+        int32_t dirDplace     = 1;      int32_t dirAccDplace  = 1;
+
+        if (LE_OK == le_gnss_GetDataResolution(
+                        TAF_LOCGNSS_DATA_TYPE_DIRECTION, &dirRes))
+        {
+            if (dirRes == TAF_LOCGNSS_RES_TWO_DECIMAL)
+            {
+                dirDivisor = 100.0;
+                dirDplace  = 2;
+            }
+        }
+
+        if (LE_OK == le_gnss_GetDataResolution(
+                        TAF_LOCGNSS_DATA_TYPE_DIRECTION_ACCURACY, &dirAccRes))
+        {
+            if (dirAccRes == TAF_LOCGNSS_RES_TWO_DECIMAL)
+            {
+                dirAccDivisor = 100.0;
+                dirAccDplace  = 2;
+            }
+        }
+
+        printf("Direction                  : %.*f\n"
+            "DirectionAccuracy          : %.*f\n",
+            dirDplace,    (float)direction         / dirDivisor,
+            dirAccDplace, (float)directionAccuracy / dirAccDivisor);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -6371,6 +6554,16 @@ static int SetGnssParams
             return EXIT_FAILURE;
         }
         status = ConfigureIntegrityRisk(argValPtr,arg2ValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "dataResolution"))
+    {
+        if (NULL == arg2ValPtr)
+        {
+            printf("Missing resolution argument. "
+                   "Usage: set dataResolution <dataType> <resolution>\n");
+            return EXIT_FAILURE;
+        }
+        status = SetDataResolution(argValPtr, arg2ValPtr);
     }
     else
     {
