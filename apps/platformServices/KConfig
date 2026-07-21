@@ -300,8 +300,7 @@ config ENABLE_MULTI_VM_SUPPORT
 
 config GET_IMEI_SUPPORT
   bool "Get IMEI support"
-  default y if TARGET_SA525M
-  default n
+  default y
   ---help---
   Get IMEI support
 
