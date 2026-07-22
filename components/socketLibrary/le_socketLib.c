@@ -36,8 +36,10 @@ typedef struct
     uint16_t           port;                   ///< Host port
     char               srcAddr[MAX_ADDR_LEN];  ///< Source IP address
     SocketType_t       type;                   ///< Socket type (TCP, UDP)
+    ProtoRoleType_t    role;                   ///< Protocol role type (Server, Client)
     uint32_t           timeout;                ///< Communication timeout in milliseconds
-    bool               isSecure;               ///< True if the socket uses a certificate
+    bool               isSecure;               ///< True if the socket is secure
+    bool               hasCert;                ///< True if the socket has a valid certificate
     bool               isMonitoring;           ///< True if the socket is being monitored
     le_fdMonitor_Ref_t monitorRef;             ///< Reference to the monitor object
     secSocket_Ctx_t*   secureCtxPtr;           ///< Secure socket context pointer
@@ -72,6 +74,7 @@ static le_mem_PoolRef_t SocketPoolRef = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t SocketRefMap;
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Retrigger socket event handler in case more data needs to be read from secure socket
@@ -82,6 +85,7 @@ static void ReadMoreAsyncData
     void*                   param1Ptr,  ///< [IN] Socket context pointer
     void*                   param2Ptr   ///< [IN] Unused parameter
 );
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Internal functions
@@ -114,6 +118,9 @@ static SocketCtx_t* NewSocketContext
 
     // Create a safe reference for this object
     contextPtr->reference = le_ref_CreateRef(SocketRefMap, contextPtr);
+
+    // Ensure socket context pointer is NULL
+    contextPtr->secureCtxPtr = NULL;
 
     return contextPtr;
 }
@@ -219,7 +226,7 @@ static void SocketEventsHandler
     if (contextPtr->eventHandler)
     {
         contextPtr->eventHandler(contextPtr->reference, events, contextPtr->userPtr);
-
+#ifndef MK_CONFIG_NO_SSL
         // In secure context, low-level layers may read more data from socket than the data size
         // requested by client application. In this case, we need to notify again until all
         // the data is consumed
@@ -238,9 +245,11 @@ static void SocketEventsHandler
                 }
             }
         }
+#endif
     }
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Re-trigger socket event handler in case more data needs to be read from secure socket
@@ -268,6 +277,7 @@ static void ReadMoreAsyncData
     le_fdMonitor_Enable(contextPtr->monitorRef, POLLIN);
     SocketEventsHandler(contextPtr->fd, contextPtr->events);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Public functions
@@ -329,10 +339,12 @@ le_socket_Ref_t le_socket_Create
     if (hostPtr)
     {
         le_utf8_Copy(contextPtr->host, hostPtr, sizeof(contextPtr->host)-1, NULL);
+        contextPtr->role = PROTO_ROLE_CLIENT;
     }
     else
     {
         contextPtr->host[0] = '\0';
+        contextPtr->role    = PROTO_ROLE_SERVER;
     }
 
     contextPtr->port      = port;
@@ -375,18 +387,34 @@ le_result_t le_socket_Delete
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         secSocket_Disconnect(contextPtr->secureCtxPtr);
+#endif
     }
     else
     {
         netSocket_Disconnect(contextPtr->fd);
     }
 
+#ifndef MK_CONFIG_NO_SSL
+    if (contextPtr->secureCtxPtr)
+    {
+        // Check if the secure context needs to be deleted.
+        // A secure context will be allocated prior to establishing a secure connection
+        // whenever a user configures the Cipher Suite, Certificate, Private Key,
+        // and/or Auth Type.  Must call secure socket delete to free the context
+        // even if a secure socket connection has not yet been established (indicated by
+        // contextPtr->secureCtxPtr is NULL or not).
+        secSocket_Delete(contextPtr->secureCtxPtr);
+    }
+#endif
+
     FreeSocketContext(contextPtr);
 
     return LE_OK;
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Add root CA certificates to the socket in order to make the connection secure.
@@ -419,27 +447,307 @@ le_result_t le_socket_AddCertificate
         LE_ERROR("Wrong parameter: %p, %"PRIuS, certificatePtr, certificateLen);
         return LE_BAD_PARAMETER;
     }
-    if (contextPtr->isSecure == 0)
+    if (contextPtr->secureCtxPtr == NULL)
     {
         // Need to initialize the secure socket before adding the certificate
-        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
         if (status != LE_OK)
         {
             LE_ERROR("Unable to initialize the secure socket");
             return status;
         }
-
-        contextPtr->isSecure = 1;
     }
 
     status = secSocket_AddCertificate(contextPtr->secureCtxPtr, certificatePtr, certificateLen);
-    if (status != LE_OK)
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate");
+        contextPtr->hasCert = true;
+    }
+    else
     {
         LE_ERROR("Unable to add certificate");
     }
 
     return status;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnCertificate
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!certificatePtr) || (certificateLen == 0))
+    {
+        LE_ERROR("Wrong parameter: %p, %zu", certificatePtr, certificateLen);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnCertificate(contextPtr->secureCtxPtr, certificatePtr, certificateLen);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add certificate");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnPrivateKey
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    pkeyPtr,         ///< [IN] Private key pointer
+    size_t            pkeyLen          ///< [IN] Private key length
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!pkeyPtr) || (pkeyLen == 0))
+    {
+        LE_ERROR("Wrong parameter: %p, %zu", pkeyPtr, pkeyLen);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnPrivateKey(contextPtr->secureCtxPtr, pkeyPtr, pkeyLen);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add certificate");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetCipherSuites
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           cipherIdx        ///< [IN] Cipher suites index
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetCipherSuites(contextPtr->secureCtxPtr, cipherIdx);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetTlsVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           tlsVersion       ///< [IN] Supported TLS version (Minor version number)
+)
+{
+#ifdef MK_CONFIG_THIN_MODEM
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetTlsVersion(contextPtr->secureCtxPtr, tlsVersion);
+    return LE_OK;
+#else
+    LE_ERROR("Setting TLS version isn't supported by this platform. Ignoring it.");
+    return LE_OK;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetAuthType
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           auth             ///< [IN] Authentication type
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetAuthType(contextPtr->secureCtxPtr, auth);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ALPN protocol list in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAlpnProtocolList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char**      alpnList         ///< [IN] ALPN protocol list pointer
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetAlpnProtocolList(contextPtr->secureCtxPtr, alpnList);
+    return LE_OK;
+}
+#endif //MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -476,10 +784,14 @@ le_result_t le_socket_Connect
         return LE_UNAVAILABLE;
     }
 
-    if (contextPtr->isSecure)
+    if (contextPtr->hasCert)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,
-                                   contextPtr->port, contextPtr->type, &(contextPtr->fd));
+                                   contextPtr->port, contextPtr->srcAddr,
+                                   contextPtr->type, &(contextPtr->fd));
+        contextPtr->isSecure = (status == LE_OK);
+#endif
     }
     else
     {
@@ -507,6 +819,66 @@ le_result_t le_socket_Connect
     return status;
 }
 
+#ifndef MK_CONFIG_NO_SSL
+//--------------------------------------------------------------------------------------------------
+/**
+ * Secures an existing connection by performing TLS negotiation.
+ *
+ * @note
+ *   - Certificate must be added beforehand via @c le_socket_AddCertificate() to succeed
+ *   - Only supported on RTOS based systems
+ *
+ * @return
+ *  - LE_OK                 Function success
+ *  - LE_BAD_PARAMETER      Invalid parameter
+ *  - LE_NOT_FOUND          Certificate not found
+ *  - LE_CLOSED             Socket is not connected
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SecureConnection
+(
+    le_socket_Ref_t   ref              ///< [IN] Socket context reference
+)
+{
+    le_result_t status = LE_FAULT;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!contextPtr->hasCert)
+    {
+        LE_ERROR("No certificate associated to socket");
+        return LE_NOT_FOUND;
+    }
+
+    if (contextPtr->fd == -1)
+    {
+        LE_ERROR("Socket not connected");
+        return LE_CLOSED;
+    }
+
+   status = secSocket_PerformHandshake(contextPtr->secureCtxPtr,
+                                       contextPtr->host,
+                                       contextPtr->fd);
+   if (status != LE_OK)
+   {
+        LE_ERROR("Socket not connected");
+        return status;
+   }
+
+    contextPtr->isSecure = true;
+    return LE_OK;
+}
+#endif // MK_CONFIG_NO_SSL
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Close the socket connection.
@@ -532,7 +904,9 @@ le_result_t le_socket_Disconnect
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Disconnect(contextPtr->secureCtxPtr);
+#endif
     }
     else
     {
@@ -640,7 +1014,9 @@ le_result_t le_socket_Send
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Write(contextPtr->secureCtxPtr, dataPtr, dataLen);
+#endif
     }
     else
     {
@@ -699,14 +1075,16 @@ le_result_t le_socket_Read
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Read(contextPtr->secureCtxPtr, dataPtr, dataLenPtr, contextPtr->timeout);
+#endif
     }
     else
     {
         status = netSocket_Read(contextPtr->fd, dataPtr, dataLenPtr, contextPtr->timeout);
     }
 
-    if ((status != LE_OK) && (status != LE_WOULD_BLOCK))
+    if ((status != LE_OK) && (status != LE_WOULD_BLOCK) && (status != LE_IN_PROGRESS))
     {
         LE_ERROR("Read failed. Status: %d", status);
     }
@@ -962,6 +1340,11 @@ le_result_t le_socket_Bind
  * Receive a connection from remote client.
  * It will generate a child socket reference for reception and sending on the connection.
  *
+ * If the server socket is secure (hasCert == true), the accepted TCP connection is
+ * immediately upgraded to TLS by performing the server-side handshake using the same
+ * SSL_CTX configuration (certificate, private key, auth type, cipher suites, ALPN)
+ * that was set up on the server socket reference.
+ *
  * @return
  *  - Reference to the client socket    Success
  *  - NULL                              Failure
@@ -1001,13 +1384,14 @@ le_socket_Ref_t le_socket_Accept
         return NULL;
     }
 
+    // Accept the incoming TCP connection
     ret = netSocket_Accept(serverContextPtr->fd,
-                          (struct sockaddr*)&clientSockAddr,
-                          &addrLen,
-                          &clientFd);
-    if(ret != LE_OK)
+                           (struct sockaddr*)&clientSockAddr,
+                           &addrLen,
+                           &clientFd);
+    if (ret != LE_OK)
     {
-        LE_ERROR("Failed to accept a client socket(%d)", ret);
+        LE_ERROR("Failed to accept a client socket (%d)", ret);
         return NULL;
     }
 
@@ -1025,9 +1409,8 @@ le_socket_Ref_t le_socket_Accept
 
         if (clientAddrBufLen < INET_ADDRSTRLEN)
         {
-            LE_ERROR("Ip address buffer(%"PRIuS") is not enough.", clientAddrBufLen);
-            close(clientFd);
-            return NULL;
+            LE_ERROR("IP address buffer (%"PRIuS") is too small.", clientAddrBufLen);
+            goto err;
         }
 
         inet_ntop(AF_INET, &(addrPtr->sin_addr), clientIpAddr, MAX_ADDR_LEN);
@@ -1039,9 +1422,8 @@ le_socket_Ref_t le_socket_Accept
 
         if (clientAddrBufLen < INET6_ADDRSTRLEN)
         {
-            LE_ERROR("Ip address buffer(%"PRIuS") is not enough.", clientAddrBufLen);
-            close(clientFd);
-            return NULL;
+            LE_ERROR("IP address buffer (%"PRIuS") is too small.", clientAddrBufLen);
+            goto err;
         }
 
         inet_ntop(AF_INET6, &(addrPtr->sin6_addr), clientIpAddr, MAX_ADDR_LEN);
@@ -1050,13 +1432,14 @@ le_socket_Ref_t le_socket_Accept
     else
     {
         LE_ERROR("Unknown client socket family: %d.", clientSockAddr.ss_family);
-        close(clientFd);
-        return NULL;
+        goto err;
     }
 
-    clientContextPtr->type    = serverContextPtr->type;
-    clientContextPtr->fd      = clientFd;
-    clientContextPtr->timeout = COMM_TIMEOUT_DEFAULT_MS;
+    // Populate the client context with connection metadata
+    clientContextPtr->type         = serverContextPtr->type;
+    clientContextPtr->fd           = clientFd;
+    clientContextPtr->role         = PROTO_ROLE_SERVER;
+    clientContextPtr->timeout      = COMM_TIMEOUT_DEFAULT_MS;
     clientContextPtr->isMonitoring = false;
     le_utf8_Copy(clientContextPtr->host, clientIpAddr, MAX_ADDR_LEN, NULL);
     le_utf8_Copy(clientAddrBufPtr, clientIpAddr, clientAddrBufLen, NULL);
@@ -1065,7 +1448,62 @@ le_socket_Ref_t le_socket_Accept
     LE_INFO("Server has accepted a connection on fd:%d from [%s:%d",
         clientFd, clientContextPtr->host, clientContextPtr->port);
 
+#ifndef MK_CONFIG_NO_SSL
+    if (serverContextPtr->hasCert)
+    {
+        // The server socket was configured with TLS credentials. Initialise a fresh
+        // secure context for this client connection using the server role, then
+        // perform the TLS handshake over the already-accepted TCP fd.
+        ret = secSocket_Init(PROTO_ROLE_SERVER, &clientContextPtr->secureCtxPtr);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("Failed to initialise secure context for accepted client (%d)", ret);
+            goto err;
+        }
+
+        // Copy the TLS configuration from the server socket's secure context into
+        // the new client secure context so it inherits the same certificate, private
+        // key, CA store, auth type, cipher suites and ALPN settings.
+        ret = secSocket_CopyConfig(serverContextPtr->secureCtxPtr,
+                                   clientContextPtr->secureCtxPtr);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("Failed to copy TLS config to accepted client context (%d)", ret);
+            goto err;
+        }
+
+        // Run the server-side TLS handshake (SSL_accept) on the accepted TCP fd.
+        // hostPtr is NULL because the server does not use SNI on the accept path.
+        ret = secSocket_PerformHandshake(clientContextPtr->secureCtxPtr, NULL, clientFd);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("TLS handshake failed for accepted client [%s]:%d (%d)",
+                     clientContextPtr->host, clientContextPtr->port, ret);
+            goto err;
+        }
+
+        clientContextPtr->hasCert  = true;
+        clientContextPtr->isSecure = true;
+
+        LE_INFO("TLS handshake completed for accepted client [%s]:%d",
+                clientContextPtr->host, clientContextPtr->port);
+    }
+#endif // MK_CONFIG_NO_SSL
+
     return clientContextPtr->reference;
+
+err:
+    // Clean up the secure context if it was initialised before the failure
+#ifndef MK_CONFIG_NO_SSL
+    if (clientContextPtr->secureCtxPtr)
+    {
+        secSocket_Delete(clientContextPtr->secureCtxPtr);
+        clientContextPtr->secureCtxPtr = NULL;
+    }
+#endif
+    close(clientFd);
+    FreeSocketContext(clientContextPtr);
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1273,6 +1711,74 @@ le_result_t le_socket_SendTo
     return status;
 }
 
+#ifndef MK_CONFIG_NO_SSL
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int le_socket_GetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
+)
+{
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, socketRef);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", socketRef);
+        return 0;
+    }
+
+    return secSocket_GetTlsErrorCode(contextPtr->secureCtxPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_socket_SetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
+    int                      err_code           ///< [IN] INT error code
+)
+{
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, socketRef);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", socketRef);
+        return;
+    }
+
+    secSocket_SetTlsErrorCode(contextPtr->secureCtxPtr, err_code);
+}
+#endif //MK_CONFIG_NO_SSL
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    // Initialize the socket pool and the socket reference map
+    SocketPoolRef = le_mem_InitStaticPool(SocketPool, MAX_SOCKET_NB, sizeof(SocketCtx_t));
+    SocketRefMap = le_ref_CreateMap("le_socketLibMap", MAX_SOCKET_NB);
+
+#ifndef MK_CONFIG_NO_SSL
+    // Initialize the secure socket memory pools
+    secSocket_InitializeOnce();
+#endif
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Component initialization function
@@ -1281,11 +1787,4 @@ le_result_t le_socket_SendTo
 COMPONENT_INIT
 {
     LE_DEBUG("socketLibrary initializing");
-
-    // Initialization socket resource.
-    if (SocketPoolRef == NULL)
-    {
-        SocketPoolRef = le_mem_InitStaticPool(SocketPool, MAX_SOCKET_NB, sizeof(SocketCtx_t));
-        SocketRefMap = le_ref_CreateMap("le_socketLibMap", MAX_SOCKET_NB);
-    }
 }
