@@ -64,6 +64,10 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr) = 0;
 
+        // Hook for subclasses to append extra cFlags to the _componentMain.c compilation.
+        // Default implementation does nothing.
+        virtual void GenerateComponentMainExtraFlags(model::Component_t* componentPtr) {}
+
         virtual void GenerateMemPoolDefinitions(const model::Component_t            *componentPtr,
                                                 model::MemPoolSize_t::PoolType_t     poolType);
 

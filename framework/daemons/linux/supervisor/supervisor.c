@@ -302,6 +302,7 @@ static enum
     STATE_RESTARTING,         ///< Controlled shutdown and restart of framework underway.
     STATE_RESTARTING_MANUAL,  ///< Manual shutdown and restart of framework underway.
     STATE_RESTARTING_START,   ///< Controlled shutdown of framework and run current start.
+    STATE_REBOOTING,          ///< Controlled rebooting of system.
 }
 State = STATE_STARTING;
 
@@ -704,6 +705,12 @@ static void StopSupervisor
         DeleteRebootCount();
         exit(EXIT_SUCCESS);
     }
+    else if (State == STATE_REBOOTING)
+    {
+        // Initiate by API le_framework_Reboot()
+        LE_INFO("Legato framework shut down. Rebooting system.");
+        exit(LE_START_EXIT_REBOOT);
+    }
     else
     {
         LE_FATAL("Unexpected state %d.", State);
@@ -737,6 +744,11 @@ static void PrepareFullShutdown
         {
             // Respond to the requesting process to tell it that the Legato framework has stopped.
             le_framework_RestartRespond(StopApiCmdRef, LE_OK);
+        }
+        else if (State == STATE_REBOOTING)
+        {
+            // Respond to the requesting process to tell it that the Legato framework has stopped.
+            le_framework_RebootRespond(StopApiCmdRef, LE_OK);
         }
         else
         {
@@ -801,6 +813,7 @@ static void BeginShutdown
     // down the apps shutdown handler will trigger the shutdown of the framework itself.
     apps_SetShutdownHandler(ShutdownFramework);
 
+    apps_SetShutdownSequence();
     apps_Shutdown();
 }
 
@@ -1055,6 +1068,37 @@ void le_framework_Stop
         StopApiCmdRef = cmdRef;
 
         State = STATE_STOPPING;
+
+        // Start the process of shutting down the framework.
+        BeginShutdown();
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reboots the system.
+ *
+ * Async API function.  Calls le_framework_StopRespond() to report results.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_framework_Reboot
+(
+    le_framework_ServerCmdRef_t cmdRef
+)
+{
+    LE_DEBUG("Received request to reboot system.");
+
+    if (State != STATE_NORMAL)
+    {
+        le_framework_RebootRespond(cmdRef, LE_DUPLICATE);
+    }
+    else
+    {
+        // Save the command reference to use in the response later.
+        StopApiCmdRef = cmdRef;
+
+        State = STATE_REBOOTING;
 
         // Start the process of shutting down the framework.
         BeginShutdown();

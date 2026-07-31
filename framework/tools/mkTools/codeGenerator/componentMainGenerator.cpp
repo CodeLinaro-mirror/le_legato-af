@@ -10,6 +10,38 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check if a component depends on a PA library by inspecting its ldFlags.
+ *
+ * A component is considered to use PA logging if its ldFlags contain a reference to a
+ * "Component_taf_pa_" shared library (stored as "-lComponent_taf_pa_xxx" after mkTool
+ * strips the "lib" prefix and ".so" suffix via path::GetLibShortName() during cdef parsing).
+ *
+ * @return true if the component depends on a PA library, false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool UsesPaLogging
+(
+    const model::Component_t* componentPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Check ldFlags for PA shared library references.
+    // Note: mkTool stores ldFlags as "-lComponent_taf_pa_xxx" (lib prefix and .so suffix
+    // are stripped by path::GetLibShortName() during cdef parsing).
+    for (const auto& flag : componentPtr->ldFlags)
+    {
+        if (flag.find("Component_taf_pa_") != std::string::npos)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Define the service name variables for an IPC interface.
  */
 //--------------------------------------------------------------------------------------------------
@@ -94,6 +126,9 @@ void GenerateCLangComponentMainFile
         );
     }
 
+    // Determine if this component depends on a PA library.
+    bool enablePaLogging = UsesPaLogging(componentPtr);
+
     // Generate file header and #include directives.
     fileStream << "/*\n"
                   " * AUTO-GENERATED _componentMain.c for the " << compName <<
@@ -102,8 +137,14 @@ void GenerateCLangComponentMainFile
                   " * Don't bother hand-editing this file.\n"
                   " */\n"
                   "\n"
-                  "#include \"legato.h\"\n"
-                  "\n"
+                  "#include \"legato.h\"\n";
+
+    if (enablePaLogging)
+    {
+        fileStream << "#include \"tafCommonPa.h\"\n";
+    }
+
+    fileStream << "\n"
                   "#ifdef __cplusplus\n"
                   "extern \"C\" {\n"
                   "#endif\n"
@@ -131,7 +172,39 @@ void GenerateCLangComponentMainFile
     fileStream << "// Component log session variables.\n"
                   "le_log_SessionRef_t " << compName << "_LogSession;\n"
                   "le_log_Level_t* " << compName << "_LogLevelFilterPtr;\n"
-                  "\n"
+                  "\n";
+
+    // If PA logging is enabled, generate the static level-mapping helper and the
+    // PA log level change callback function forward declaration.
+    if (enablePaLogging)
+    {
+        fileStream
+            << "// Forward declaration of log_GetDltContextHandlePtr() from liblegato.\n"
+            << "void* log_GetDltContextHandlePtr(void);\n"
+            << "\n"
+            << "// PA log level change callback (forward declaration).\n"
+            << "static void " << compName << "_PaLogLevelChangeHandler("
+            << "le_log_Level_t level, void *contextPtr);\n"
+            << "\n"
+            << "// Map Legato log level to PA log level.\n"
+            << "static taf_pa_common_LogLevel_t " << compName << "_MapLeToPaLevel("
+            << "le_log_Level_t level)\n"
+            << "{\n"
+            << "    switch (level)\n"
+            << "    {\n"
+            << "        case LE_LOG_DEBUG: return TAF_PA_COMMON_LOG_LEVEL_DEBUG;\n"
+            << "        case LE_LOG_INFO:  return TAF_PA_COMMON_LOG_LEVEL_INFO;\n"
+            << "        case LE_LOG_WARN:  return TAF_PA_COMMON_LOG_LEVEL_WARN;\n"
+            << "        case LE_LOG_ERR:   return TAF_PA_COMMON_LOG_LEVEL_ERROR;\n"
+            << "        case LE_LOG_CRIT:  return TAF_PA_COMMON_LOG_LEVEL_CRIT;\n"
+            << "        case LE_LOG_EMERG: return TAF_PA_COMMON_LOG_LEVEL_EMERG;\n"
+            << "        default:           return TAF_PA_COMMON_LOG_LEVEL_INFO;\n"
+            << "    }\n"
+            << "}\n"
+            << "\n";
+    }
+
+    fileStream << "\n"
 
     // Generate forward declaration of the COMPONENT_INIT function.
                   "// Declare component's COMPONENT_INIT_ONCE function,\n"
@@ -201,20 +274,62 @@ void GenerateCLangComponentMainFile
     // Register with the Log Daemon.
     fileStream << "    // Register the component with the Log Daemon.\n"
                   "    " << compName << "_LogSession = le_log_RegComponent(\"" <<
-                  compName << "\", &" << compName << "_LogLevelFilterPtr);\n"
+                  compName << "\", &" << compName << "_LogLevelFilterPtr);\n";
+
+    // If PA logging is enabled, generate PA log initialization code.
+    if (enablePaLogging)
+    {
+        fileStream
+            << "\n"
+            << "    // Initialize PA logging backend and register log level change callback.\n"
+            << "    {\n"
+            << "        taf_pa_common_LogLevel_t initPaLevel =\n"
+            << "            " << compName << "_MapLeToPaLevel(\n"
+            << "                (" << compName << "_LogLevelFilterPtr != NULL)\n"
+            << "                    ? *" << compName << "_LogLevelFilterPtr\n"
+            << "                    : LE_LOG_INFO);\n"
+            << "        taf_pa_common_LogInit(\n"
+            << "#ifdef LE_CONFIG_ENABLE_DLT_LOGGING\n"
+            << "                             TAF_PA_COMMON_LOG_BACKEND_DLT,\n"
+            << "#else\n"
+            << "                             TAF_PA_COMMON_LOG_BACKEND_SYSLOG,\n"
+            << "#endif\n"
+            << "                             initPaLevel,\n"
+            << "                             log_GetDltContextHandlePtr());\n"
+            << "        le_log_SetLevelChangeCallback(" << compName
+            << "_PaLogLevelChangeHandler, NULL);\n"
+            << "    }\n";
+    }
 
     // Queue the initialization function to the event loop.
-                  "\n"
+    fileStream << "\n"
                   "    // Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
                   "    le_event_QueueFunction(&COMPONENT_INIT_ONCE_NAME, NULL, NULL);\n"
                   "\n"
                   "    // Queue the COMPONENT_INIT function to be called by the event loop\n"
                   "    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, NULL);\n"
+                  "}\n"
+                  "\n";
+
+    // If PA logging is enabled, generate the PA log level change callback implementation.
+    if (enablePaLogging)
+    {
+        fileStream
+            << "\n"
+            << "// PA log level change callback.\n"
+            << "// Invoked by the Legato log system whenever the log level of this component\n"
+            << "// is changed externally (via log control tool or DLT).\n"
+            << "static void " << compName << "_PaLogLevelChangeHandler("
+            << "le_log_Level_t level, void *contextPtr)\n"
+            << "{\n"
+            << "    (void)contextPtr;\n"
+            << "    taf_pa_common_LogSetlevel(" << compName << "_MapLeToPaLevel(level));\n"
+            << "}\n"
+            << "\n";
+    }
 
     // Put the finishing touches on the file.
-                  "}\n"
-                  "\n"
-                  "\n"
+    fileStream << "\n"
                   "#ifdef __cplusplus\n"
                   "}\n"
                   "#endif\n";

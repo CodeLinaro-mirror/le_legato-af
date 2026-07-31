@@ -2540,3 +2540,37 @@ le_result_t le_msg_GetClientUserCreds
             LE_FATAL("Corrupted session type: %d", sessionRef->type);
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the session fd of the client at the far end of a given IPC session.
+ *
+ * @b WARNING: This function can only be called for the server-side of a session.
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+int le_msg_GetClientFd
+(
+    le_msg_SessionRef_t sessionRef   ///< [in] Reference to the session.
+)
+{
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+
+            if (unixSessionPtr->interfaceRef->interfaceType != LE_MSG_INTERFACE_SERVER)
+            {
+                LE_ERROR("Server-side function called by client.");
+                return -1;
+            }
+
+            return unixSessionPtr->socketFd;
+        }
+        default:
+            LE_ERROR("Corrupted session type: %d", sessionRef->type);
+            return -1;
+    }
+}

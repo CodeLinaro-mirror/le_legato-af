@@ -1982,6 +1982,25 @@ static int RunCurrentSystem
             LE_INFO("Supervisor exited with EXIT_MANUAL_RESTART(3).  Legato framework restarting.");
             break;
 
+        case LE_START_EXIT_REBOOT:
+
+            LE_INFO("Supervisor exited with EXIT_REBOOT(4). System rebooting.");
+
+            // Save telaf reboot reason.
+            WriteSubReason("telaf API reboot");
+
+            // call /sbin/reboot to perform graceful-reboot.
+            retCode = system("/sbin/reboot 'admin-trigger'");
+            if (WIFEXITED(retCode) && (0 == WEXITSTATUS(retCode)))
+            {
+                LE_FATAL("System will reboot now !");
+            }
+            else
+            {
+                LE_FATAL("Failed to reboot.");
+            }
+            break;
+
         default:
 
             LE_CRIT("Unexpected exit code (%d) from the Supervisor.", exitCode);

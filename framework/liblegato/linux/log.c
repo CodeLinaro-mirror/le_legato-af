@@ -10,6 +10,7 @@
 #include "legato.h"
 
 #include "limit.h"
+#include "sysPaths.h"
 #include "log.h"
 #include "logDaemon/logDaemon.h"
 #include "logPlatform.h"
@@ -61,6 +62,9 @@ typedef struct le_log_Session
                                         ///  Log messages with severity less than this are ignored.
     le_sls_List_t keywordList;          ///< The list of keywords for this component.
     le_sls_Link_t link;                 ///< The link used for linking with the SessionList.
+    le_log_LevelChangeHandlerFunc_t levelChangeHandler;     ///< Optional PA log level change
+                                                            ///<  callback.
+    void                           *levelChangeContextPtr;  ///< Context pointer for the callback.
 }
 LogSession_t;
 
@@ -382,6 +386,13 @@ static void SetLogLevelFilter
     {
         // Set this component's level.
         sessionPtr->level = levelFilter;
+
+        // Notify the PA callback if registered for this session.
+        if (sessionPtr->levelChangeHandler != NULL)
+        {
+            sessionPtr->levelChangeHandler((le_log_Level_t)levelFilter,
+                                           sessionPtr->levelChangeContextPtr);
+        }
     }
 
     Unlock();
@@ -409,6 +420,8 @@ static LogSession_t* CreateSession
     logSessionPtr->level = DefaultLogSession.level;
     logSessionPtr->keywordList = LE_SLS_LIST_INIT;
     logSessionPtr->link = LE_SLS_LINK_INIT;
+    logSessionPtr->levelChangeHandler = NULL;
+    logSessionPtr->levelChangeContextPtr = NULL;
 
     Lock();
 
@@ -891,6 +904,13 @@ static void UpdateLeLogLevel
             log_GetSeverityStr(sessionPtr->level), log_GetSeverityStr(logLevel));
 
         sessionPtr->level = logLevel;
+
+        // Notify the PA callback if registered for this session.
+        if (sessionPtr->levelChangeHandler != NULL)
+        {
+            sessionPtr->levelChangeHandler(logLevel, sessionPtr->levelChangeContextPtr);
+        }
+
         sessionLinkPtr = le_sls_PeekNext(&SessionList, sessionLinkPtr);
     }
 }
@@ -971,7 +991,7 @@ static DltLogLevelType ConverToDltLevel
             return DLT_LOG_INFO;
     }
 }
-#else
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1007,7 +1027,6 @@ static int ConvertToSyslogLevel
             return LOG_EMERG;
     }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1024,6 +1043,10 @@ static void LogMessage
     if (DltSession.initialized)
     {
         DLT_LOG(DltSession.ctxHandle, ConverToDltLevel(legatoLevel), DLT_STRING(logMessagePtr));
+    }
+    else
+    {
+        syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
     }
 #else
     syslog(ConvertToSyslogLevel(legatoLevel), "%s", logMessagePtr);
@@ -1067,16 +1090,28 @@ void log_DltInit
     char  procPath[LIMIT_MAX_PATH_BYTES] = { 0 };
     char  appPath[LIMIT_MAX_PATH_BYTES] = { 0 };
     char* appName = NULL;
+    ssize_t len;
 
     if ((snprintf(procPath, sizeof(procPath), "/proc/%d/exe", getpid()) < sizeof(procPath)) &&
-        (readlink(procPath, appPath, sizeof(appPath)) > 0))
+        ((len = readlink(procPath, appPath, sizeof(appPath) - 1)) > 0))
     {
+        // Ensure null termination.
+        appPath[len] = '\0';
+
         // Get the program name from the executable Path.
         appName = le_path_GetBasenamePtr(appPath, "/");
 
         // Set the APPID and APPDesc.
         le_utf8_Copy(DltSession.appDesc, appName, sizeof(DltSession.appDesc), NULL);
         le_utf8_Copy(DltSession.appId, BuildAppId(appName), sizeof(DltSession.appId), NULL);
+
+        // Do not log to DLT for some internal tools to improve bootup/shutdown KPI.
+        if ((strcmp(appPath, SYSTEM_BIN_PATH"/_appStopClient") == 0) ||
+            (strcmp(appPath, SYSTEM_BIN_PATH"/app") == 0) ||
+            (strcmp(appPath, SYSTEM_BIN_PATH"/sdir") == 0))
+        {
+            return;
+        }
     }
 
     const char* envAppIdPtr = getenv("TAF_DLT_APP_ID");
@@ -1097,6 +1132,10 @@ void log_DltInit
     dlt_register_context_ll_ts(&DltSession.ctxHandle, DltSession.ctxId, DltSession.ctxDesc,
                                DltSession.logLevel, DLT_TRACE_STATUS_OFF);
     DLT_REGISTER_LOG_LEVEL_CHANGED_CALLBACK(DltSession.ctxHandle, DltLogLevelChangeHandler);
+
+    // Set 100ms (10*10ms) timeout in dlt atexit handler to improve shutdown KPI if the DLT daemon
+    // is stopped before telaf.
+    dlt_set_resend_timeout_atexit(10);
 
     // DLT logging initialization is done.
     DltSession.initialized = true;
@@ -1140,10 +1179,10 @@ void fa_log_Init
     // Initialize DLT session.
     memset(&DltSession, 0, sizeof(DltSession));
     log_DltInit();
-#else
+#endif
     // Otherwise use syslogd as the default log system.
     openlog("TelAF", 0, LOG_USER);
-#endif
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1283,6 +1322,33 @@ __attribute__((deprecated)) le_log_SessionRef_t log_RegComponent
 )
 {
     return le_log_RegComponent(componentNamePtr, levelFilterPtrPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers a log level change callback on a log session.
+ *
+ * The callback is invoked whenever the session's log level is changed externally, either via
+ * the Log Control Daemon (log tool / IPC) or via DLT.  This allows a service component to
+ * forward log level changes to an underlying PA library.
+ *
+ * The callback is invoked outside the internal log mutex.
+ * Pass NULL as handlerPtr to deregister an existing callback.
+ */
+//--------------------------------------------------------------------------------------------------
+void _le_log_SetLevelChangeCallback
+(
+    le_log_SessionRef_t              logSession, ///< [IN] Log session.
+    le_log_LevelChangeHandlerFunc_t  handlerPtr, ///< [IN] Callback function, or NULL to deregister.
+    void                            *contextPtr  ///< [IN] Opaque context pointer.
+)
+{
+    LE_ASSERT(logSession != NULL);
+
+    Lock();
+    logSession->levelChangeHandler = handlerPtr;
+    logSession->levelChangeContextPtr = contextPtr;
+    Unlock();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1469,6 +1535,34 @@ void fa_log_SetFilterLevel
 {
     LE_ASSERT(logSession != NULL);
     logSession->level = level;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a pointer to the DLT context handle used by the log system.
+ *
+ * This is intended for use by PA (Platform Adaptor) libraries that need to share the same
+ * DLT context as the Legato log system.  The returned pointer should be treated as an opaque
+ * handle and cast to DltContext* by the caller if DLT logging is enabled.
+ *
+ * @return
+ *      Pointer to the DLT context handle (DltContext*) if DLT logging is enabled.
+ *      NULL if DLT logging is not enabled.
+ */
+//--------------------------------------------------------------------------------------------------
+void* log_GetDltContextHandlePtr
+(
+    void
+)
+{
+#ifdef LE_CONFIG_ENABLE_DLT_LOGGING
+    if (DltSession.initialized)
+    {
+        return (void*)&DltSession.ctxHandle;
+    }
+#endif
+    return NULL;
 }
 
 

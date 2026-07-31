@@ -218,6 +218,7 @@ static void PrintHelp
         "    app remove <appName>\n"
         "    app stopLegato\n"
         "    app restartLegato\n"
+        "    app rebootSystem\n"
         "    app startGroup [<number>]\n"
         "    app stopGroup  [<number>]\n"
         "    app list\n"
@@ -258,6 +259,9 @@ static void PrintHelp
         "\n"
         "    app restartLegato\n"
         "       Restarts the Legato framework.\n"
+        "\n"
+        "    app rebootSystem\n"
+        "       Reboot the system.\n"
         "\n"
         "    app startGroup [<number>]\n"
         "       Starts the application group.\n"
@@ -539,6 +543,35 @@ static void StopLegato
 
     // Stop the framework.
     le_result_t result = le_framework_Stop();
+    switch (result)
+    {
+        case LE_OK:
+            exit(EXIT_SUCCESS);
+
+        case LE_DUPLICATE:
+            printf("Legato is being stopped by someone else.\n");
+            exit(EXIT_SUCCESS);
+
+        default:
+            INTERNAL_ERR("Unexpected response, %d, from the Supervisor.", result);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requests the Supervisor to reboot system.
+ *
+ * @note This function does not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RebootSystem
+(
+    void
+)
+{
+    le_framework_ConnectService();
+    le_result_t result = le_framework_Reboot();
     switch (result)
     {
         case LE_OK:
@@ -2311,6 +2344,10 @@ static void CommandArgHandler
     else if (strcmp(command, "restartLegato") == 0)
     {
         CommandFunc = RestartLegato;
+    }
+    else if (strcmp(command, "rebootSystem") == 0)
+    {
+        CommandFunc=  RebootSystem;
     }
     else if (strcmp(command, "startGroup") == 0)
     {

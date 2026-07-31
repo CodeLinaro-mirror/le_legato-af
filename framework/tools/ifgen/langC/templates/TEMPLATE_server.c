@@ -655,7 +655,10 @@ void {{apiName}}_{{function.name}}Respond
     size_t* {{parameter.name}}SizePtr = &{{parameter.name}}Size;
     LE_ASSERT({{parameter|FormatParameterName}});
     {%- elif parameter is not StringParameter %}
-    {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
+       // skip struct type
+       {%- if parameter.apiType is not StructType %}
+        {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
+       {%- endif %}
     {%- else %}
     LE_ASSERT({{parameter|FormatParameterName}});
     {%- endif %}

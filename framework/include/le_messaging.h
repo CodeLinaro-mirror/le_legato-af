@@ -1377,7 +1377,18 @@ le_result_t le_msg_GetClientUserCreds
     pid_t*              processIdPtr  ///< [out] Ptr to where the pid is to be stored on success.
 );
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the session fd of the client at the far end of a given IPC session.
+ *
+ * @b WARNING: This function can only be called for the server-side of a session.
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+int le_msg_GetClientFd
+(
+    le_msg_SessionRef_t sessionRef   ///< [in] Reference to the session.
+);
 
 // =======================================
 //  MESSAGE FUNCTIONS

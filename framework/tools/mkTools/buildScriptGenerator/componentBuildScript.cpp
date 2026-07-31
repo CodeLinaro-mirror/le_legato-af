@@ -688,6 +688,7 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatements
 
         script << "  cFlags = $cFlags";
         GenerateCommonCAndCxxFlags(componentPtr);
+        GenerateComponentMainExtraFlags(componentPtr);
         script << "\n\n";
     }
     else if (componentPtr->HasJavaCode())

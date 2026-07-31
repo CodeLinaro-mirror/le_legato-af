@@ -9,8 +9,12 @@
 
 import interfaceIR
 import itertools
-from jinja2 import contextfunction
+import jinja2
 
+if hasattr(jinja2, "pass_context"):
+    from jinja2 import pass_context
+else:
+    from jinja2 import contextfunction as pass_context
 
 #---------------------------------------------------------------------------------------------------
 # Tests
@@ -78,7 +82,7 @@ def IsRemoveHandlerFunction(functionObj):
             and functionObj.name.startswith("Remove"))
 
 ### Other helper tests
-@contextfunction
+@pass_context
 def AnyFilter(context, iterable, filterName):
     filterFunc = context.environment.tests.get(filterName)
     return any([filterFunc(item) for item in iterable])
