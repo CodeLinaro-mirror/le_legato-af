@@ -609,6 +609,29 @@ CreateImg_sa525m() {
     CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
 }
 
+CreateImg_sa510m() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    local page_size=4096
+    local pid='sa510m'
+    local oob_size=224
+    local peb_size=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM='sa510m'
+    SUPPORT_COMPRESSION=false
+
+    # Not supported yet, fix me later
+    WITH_DM_VERITY=false
+
+    local img_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        img_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
+}
+
 # Just follow sa525m to be used to debug in simulation target
 CreateImg_simulation() {
     local img_type=${1:-ubi}
@@ -678,6 +701,10 @@ case $TARGET in
         ;;
     sa525m)
         CreateImg_sa525m ubi squashfs
+        DefaultImg "squashfs.ubi"
+        ;;
+    sa510m)
+        CreateImg_sa510m ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
     simulation)

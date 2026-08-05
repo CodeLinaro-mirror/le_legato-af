@@ -166,6 +166,14 @@ config TARGET_SA525M
   ---help---
   Run on QCT SA525M.
 
+# For SA510M
+config TARGET_SA510M
+  bool "QCT SA510M (SA510M)"
+  select SIMU
+  select SA510M
+  ---help---
+  Run on QCT SA510M.
+
 config TARGET_WP77XX
   bool "SWI WP77xx (wp77xx)"
   select QMI
@@ -301,7 +309,7 @@ config CCACHE
 
 config READ_ONLY
   bool "Read-only image"
-  default y if TARGET_AR758X || TARGET_AR759X || TARGET_SA415M || TARGET_SA515M || TARGET_SA525M || TARGET_SIMULATION
+  default y if TARGET_AR758X || TARGET_AR759X || TARGET_SA415M || TARGET_SA515M || TARGET_SA525M || TARGET_SA510M || TARGET_SIMULATION
   default n
   ---help---
   Generate a read-only image for the target, in addition to the default

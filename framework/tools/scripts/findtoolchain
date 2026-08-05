@@ -101,6 +101,13 @@ GetSysrootDefs() {
         SYSROOT_DEFS+=("armv7at2hf-neon-oe-linux-gnueabi")
         ;;
 
+    sa510m)
+        if [[ "$yocto_mode" == "true" ]]; then
+            SYSROOT_DEFS+=("sa510m")
+        fi
+        SYSROOT_DEFS+=("armv7at2hf-neon-oe-linux-gnueabi")
+        ;;
+
     sa525m)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("sa525m")
@@ -467,6 +474,15 @@ SelectToolchainDirs() {
         ;;
 
     sa515m)
+        AppendTelAfYoctoBuildToolchain "${target}"
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+
+        AppendTelAfToolchain "${target}"
+        ;;
+
+    sa510m)
         AppendTelAfYoctoBuildToolchain "${target}"
         if [ $? -eq 0 ]; then
             return 0
