@@ -234,6 +234,9 @@ AppendTelAfToolchain() {
     if [ "$target" = "sa525m" ]; then
         local gcc_prefix="${2:-"aarch64-oe-linux"}"
         local toolchain_prop="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${HOST_ARCH}-qtisdk-linux/usr/bin/${gcc_prefix}"
+    elif [ "$target" = "sa510m" ]; then
+        local gcc_prefix="${2:-"arm-oe-linux-gnueabi"}"
+        local toolchain_prop="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${HOST_ARCH}-qtisdk-linux/usr/bin/${gcc_prefix}"
     else
         local gcc_prefix="${2:-"arm-oe-linux-gnueabi"}"
         local toolchain_prop="${TELAF_GLOBAL_TARGET_TOOLCHAIN_PATH}/sysroots/${HOST_ARCH}-oesdk-linux/usr/bin/${gcc_prefix}"
