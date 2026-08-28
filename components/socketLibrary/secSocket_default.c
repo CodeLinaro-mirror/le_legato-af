@@ -57,6 +57,27 @@ le_result_t secSocket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add root CA certificates to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] CA certificate file path (PEM or DER)
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add client certificates to the secure socket context.
  *
  * @return
@@ -77,6 +98,27 @@ le_result_t secSocket_AddOwnCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the module's own certificate chain to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own certificate chain file path (PEM or DER)
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the client private key to the secure socket context.
  *
  * @return
@@ -91,6 +133,27 @@ le_result_t secSocket_AddOwnPrivateKey
     size_t            pkeyLen           ///< [IN] Private key length
 )
 {
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKeyFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own private key file path
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
     return LE_NOT_IMPLEMENTED;
 }
 
@@ -141,6 +204,95 @@ void secSocket_SetAlpnProtocolList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the minimum acceptable TLS protocol version in the secure socket context.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetTlsMinVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       versionPtr        ///< [IN] Minimum TLS version string
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(versionPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list in the secure socket context from a colon-separated string.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetCipherSuiteList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       cipherSuitesPtr   ///< [IN] Colon-separated cipher suite list
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(cipherSuitesPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms in the secure socket context from a colon-separated
+ * string.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetSignatureAlgorithms
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       sigAlgsPtr        ///< [IN] Colon-separated signature algorithm list
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(sigAlgsPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider of the secure socket context.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetProvider
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       typePtr,          ///< [IN] "type" value
+    const char*       namePtr,          ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr     ///< [IN] "provider_module_path" value, NULL if absent
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(typePtr);
+    LE_UNUSED(namePtr);
+    LE_UNUSED(modulePathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Performs TLS Handshake
  *
  * @return
@@ -155,7 +307,8 @@ void secSocket_SetAlpnProtocolList
 le_result_t secSocket_PerformHandshake
 (
     secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
-    char*               hostPtr    ///< [IN] Host to connect on
+    char*               hostPtr,   ///< [IN] Host to connect on
+    int                 fd         ///< [IN] Already-connected TCP file descriptor
 )
 {
     return LE_NOT_IMPLEMENTED;

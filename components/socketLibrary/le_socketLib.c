@@ -106,7 +106,7 @@ static SocketCtx_t* NewSocketContext
     SocketCtx_t* contextPtr = NULL;
 
     // Alloc memory from pool
-    contextPtr = le_mem_ForceAlloc(SocketPoolRef);
+    contextPtr = le_mem_TryAlloc(SocketPoolRef);
 
     if (NULL == contextPtr)
     {
@@ -474,6 +474,64 @@ le_result_t le_socket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add root CA certificates to the socket from a file, in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddCertificateFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] CA certificate file path (PEM or DER)
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!pathPtr) || (pathPtr[0] == '\0'))
+    {
+        LE_ERROR("Wrong parameter: null or empty certificate file path");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddCertificateFile(contextPtr->secureCtxPtr, pathPtr);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate from file");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add certificate from file");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own certificates to the socket context for mutual authentication.
  *
  * @return
@@ -532,6 +590,65 @@ le_result_t le_socket_AddOwnCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the module's own certificate chain to the socket context from a file, for mutual
+ * authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnCertificateFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] Own certificate chain file path (PEM or DER)
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!pathPtr) || (pathPtr[0] == '\0'))
+    {
+        LE_ERROR("Wrong parameter: null or empty certificate file path");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnCertificateFile(contextPtr->secureCtxPtr, pathPtr);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added own certificate from file");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add own certificate from file");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own private key to the socket context for mutual authentication.
  *
  * @return
@@ -582,6 +699,64 @@ le_result_t le_socket_AddOwnPrivateKey
     else
     {
         LE_ERROR("Unable to add certificate");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context from a file, for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Unable to decode the private key
+ *  - LE_FAULT         Internal error, including a key that does not match the certificate
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnPrivateKeyFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] Own private key file path
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!pathPtr) || (pathPtr[0] == '\0'))
+    {
+        LE_ERROR("Wrong parameter: null or empty private key file path");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the private key
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnPrivateKeyFile(contextPtr->secureCtxPtr, pathPtr);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added own private key from file");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add own private key from file");
     }
 
     return status;
@@ -747,6 +922,174 @@ LE_SHARED le_result_t le_socket_SetAlpnProtocolList
     secSocket_SetAlpnProtocolList(contextPtr->secureCtxPtr, alpnList);
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the minimum acceptable TLS protocol version on the socket.
+ *
+ * Backs the "tls_min_version" configuration entry, e.g. "TLSv1.3".
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter or unrecognized version string
+ *  - LE_UNSUPPORTED   Version understood but not supported by the underlying TLS library
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetTlsMinVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       versionPtr       ///< [IN] Minimum TLS version string
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before setting the TLS version
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    return secSocket_SetTlsMinVersion(contextPtr->secureCtxPtr, versionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list on the socket from a colon-separated string.
+ *
+ * Backs the "tls_cipher_suites" configuration entry, e.g.
+ * "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384".
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Internal error, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetCipherSuiteList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       cipherSuitesPtr  ///< [IN] Colon-separated cipher suite list
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before setting the cipher suites
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    return secSocket_SetCipherSuiteList(contextPtr->secureCtxPtr, cipherSuitesPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms on the socket from a colon-separated string.
+ *
+ * Backs the "signature_algorithms" configuration entry, e.g. "ecdsa_secp256r1_sha256".
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Internal error, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetSignatureAlgorithms
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       sigAlgsPtr       ///< [IN] Colon-separated signature algorithm list
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before setting the signature algorithms
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    return secSocket_SetSignatureAlgorithms(contextPtr->secureCtxPtr, sigAlgsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider used by the socket.
+ *
+ * Backs the provider block of the caller's configuration: "type", "provider_name" and
+ * "provider_module_path". A "default" type keeps the TLS library's built-in implementations, so the
+ * caller does not have to special-case a configuration without an external provider.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter, unrecognized type, or no module named
+ *  - LE_NOT_FOUND     Provider module file does not exist or is not readable
+ *  - LE_UNSUPPORTED   Provider type not supported by the underlying TLS library
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetProvider
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       typePtr,         ///< [IN] "type" value (required)
+    const char*       namePtr,         ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr    ///< [IN] "provider_module_path" value, NULL if absent
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before configuring the provider
+        status = secSocket_Init(contextPtr->role, &(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    return secSocket_SetProvider(contextPtr->secureCtxPtr, typePtr, namePtr, modulePathPtr);
+}
 #endif //MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
@@ -784,7 +1127,7 @@ le_result_t le_socket_Connect
         return LE_UNAVAILABLE;
     }
 
-    if (contextPtr->hasCert)
+    if (contextPtr->secureCtxPtr != NULL)
     {
 #ifndef MK_CONFIG_NO_SSL
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,

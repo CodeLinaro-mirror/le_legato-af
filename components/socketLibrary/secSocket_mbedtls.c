@@ -267,6 +267,265 @@ le_result_t secSocket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add root CA certificates to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] CA certificate file path (PEM or DER)
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add client certificates to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificate
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+)
+{
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificate chain to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own certificate chain file path (PEM or DER)
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the client private key to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKey
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
+    size_t            pkeyLen           ///< [IN] Private key length
+)
+{
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context from a file.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKeyFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own private key file path
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(pathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetCipherSuites
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           cipherIdx         ///< [IN] Cipher suites index
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAuthType
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           auth              ///< [IN] Authentication type
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ALPN protocol list in the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAlpnProtocolList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char**      alpnList          ///< [IN] ALPN protocol list pointer
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(alpnList);
+
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the minimum acceptable TLS protocol version in the secure socket context.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetTlsMinVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       versionPtr        ///< [IN] Minimum TLS version string
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(versionPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list in the secure socket context from a colon-separated string.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetCipherSuiteList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       cipherSuitesPtr   ///< [IN] Colon-separated cipher suite list
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(cipherSuitesPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms in the secure socket context from a colon-separated
+ * string.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetSignatureAlgorithms
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       sigAlgsPtr        ///< [IN] Colon-separated signature algorithm list
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(sigAlgsPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider of the secure socket context.
+ *
+ * @return
+ *  - LE_OK               The function succeeded
+ *  - LE_NOT_IMPLEMENTED  Not implemented for device
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetProvider
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       typePtr,          ///< [IN] "type" value
+    const char*       namePtr,          ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr     ///< [IN] "provider_module_path" value, NULL if absent
+)
+{
+    LE_UNUSED(ctxPtr);
+    LE_UNUSED(typePtr);
+    LE_UNUSED(namePtr);
+    LE_UNUSED(modulePathPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs TLS Handshake
+ *
+ * @return
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_PerformHandshake
+(
+    secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char*               hostPtr,   ///< [IN] Host to connect on
+    int                 fd         ///< [IN] Already-connected TCP file descriptor
+)
+{
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initiate a connection with host:port and the given protocol
  *
  * @return
@@ -537,4 +796,102 @@ bool secSocket_IsDataAvailable
 
     LE_ASSERT(contextPtr != NULL);
     return (mbedtls_ssl_get_bytes_avail(&(contextPtr->sslCtx)) != 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the tls version to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           tlsVersion        ///< [IN] Supported TLS version (Minor version number)
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int secSocket_GetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr     ///< [IN] Secure socket context pointer
+)
+{
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsErrorCode
+(
+    secSocket_Ctx_t        *ctxPtr,   ///< [IN] Secure socket context pointer
+    int                    err_code   ///< [IN] INT error code
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy the TLS configuration from a source secure socket context into a destination context.
+ *
+ * This is used by le_socket_Accept() to give each accepted client connection its own
+ * OpensslCtx_t that shares the same SSL_CTX as the server listener. Sharing the SSL_CTX
+ * is safe because SSL_CTX is reference-counted: SSL_CTX_up_ref() increments the count so
+ * that both the server context and the client context can call SSL_CTX_free() independently
+ * without a double-free.
+ *
+ * The destination context receives:
+ *  - A shared reference to the source SSL_CTX (via SSL_CTX_up_ref)
+ *  - The same role (always PROTO_ROLE_SERVER on the accept path)
+ *  - hasCert / isInit flags set to match the source
+ *
+ * The BIO pointer is intentionally NOT copied — the caller (secSocket_PerformHandshake)
+ * will create a fresh per-connection BIO wrapping the accepted fd.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_CopyConfig
+(
+    secSocket_Ctx_t*  srcCtxPtr,    ///< [IN]  Source secure socket context (server listener)
+    secSocket_Ctx_t*  dstCtxPtr     ///< [INOUT] Destination secure socket context (accepted client)
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * One-time init for Secure Socket component
+ *
+ * This pre-initializes the secSocket memory pools.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_InitializeOnce
+(
+    void
+)
+{
+    return;
 }
