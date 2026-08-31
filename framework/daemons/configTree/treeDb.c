@@ -3410,20 +3410,33 @@ void tdb_MergeTree
 
     FILE* filePtr = NULL;
 
-    filePtr = fopen(filePath, "w+");
-
-    if (!filePtr && (EROFS == errno))
+    int fd = open(filePath, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR|S_IRUSR);
+    if (fd < 0)
     {
-        // In case we are R/O for the config tree, we discard the update to flash
-        LE_DEBUG("Can not update tree data to R/O file system '%s'.", filePath);
+        if (EROFS == errno)
+        {
+            // In case we are R/O for the config tree, we discard the update to flash
+            LE_DEBUG("Can not update tree data to R/O file system '%s'.", filePath);
+            return;
+        }
+        LE_EMERG("Failed to open config file '%s' (%s).", filePath, LE_ERRNO_TXT(errno));
+        LE_EMERG("Changes have been merged in memory, however they could not be committed to the "
+                 "filesystem!!");
         return;
     }
+
+    filePtr = fdopen(fd, "w");
 
     if (!filePtr)
     {
         LE_EMERG("Failed to open config file '%s' (%m).", filePath);
         LE_EMERG("Changes have been merged in memory, however they could not be committed to the "
                  "filesystem!!");
+        close(fd);
+
+        // open() already created/truncated the new version; don't leave an empty file
+        // behide for UpdateRevision() to pick up in preference to the previous one.
+        DeleteTreeFile(filePath);
         return;
     }
 

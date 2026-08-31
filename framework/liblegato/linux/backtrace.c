@@ -1059,7 +1059,7 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
         }
 #elif defined(__x86_64__)
         {
-            const struct ucontext *uctxPtr = (const struct ucontext *)infoPtr;
+            const ucontext_t *uctxPtr = (const ucontext_t *)infoPtr;
             ctx.pcPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_RIP];
             ctx.spPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_RSP];
             ctx.fpPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_RBP];
@@ -1068,7 +1068,7 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
         }
 #elif defined(__i586__) || defined(__i686__)
         {
-            const struct ucontext *uctxPtr = (const struct ucontext *)infoPtr;
+            const ucontext_t *uctxPtr = (const ucontext_t *)infoPtr;
             ctx.pcPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_EIP];
             ctx.spPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_ESP];
             ctx.fpPtr     = (void *)uctxPtr->uc_mcontext.gregs[REG_EBP];
@@ -1077,7 +1077,7 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
         }
 #elif defined(__mips__)
         {
-            const struct ucontext *uctxPtr = (const struct ucontext *)infoPtr;
+            const ucontext_t *uctxPtr = (const ucontext_t *)infoPtr;
             ctx.pcPtr     = (void *)uctxPtr->uc_mcontext.pc;
             ctx.spPtr     = (void *)uctxPtr->uc_mcontext.gregs[29];
             ctx.fpPtr     = (void *)uctxPtr->uc_mcontext.gregs[30];
