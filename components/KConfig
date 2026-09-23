@@ -67,7 +67,7 @@ config SOCKET_LIB_SESSION_MAX
   int "Maximum number of simultaneous sockets"
   range 1 1024
   default 2 if RTOS
-  default 4
+  default 64
   ---help---
   Maximum number of simultaneous sockets. This value is used for sizing
   memory pools.
