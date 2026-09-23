@@ -20,6 +20,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <strings.h>
 #include "secSocket.h"
 #include "le_socketLib.h"
 
@@ -28,6 +29,12 @@
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/pem.h>
+
+// The provider API only exists from OpenSSL 3.0 onwards. Everything guarded by this symbol degrades
+// to LE_UNSUPPORTED on an older library, so a "default" provider configuration still works there.
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -56,6 +63,59 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of protocol names that can be stored in the ALPN list
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALPN_PROTO_LIST_MAX_COUNT   8
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum byte length of the encoded (length-prefixed) ALPN protocol list buffer
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALPN_PROTOS_BUF_MAX_LEN     (ALPN_PROTO_LIST_MAX_COUNT * (1 + ALPN_PROTO_NAME_MAX_LEN))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a credential (certificate or private key) file path, including the
+ * terminating null byte
+ */
+//--------------------------------------------------------------------------------------------------
+#define CRED_FILE_PATH_MAX_LEN      256
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of bytes read from the head of a credential file to tell PEM from DER.
+ *
+ * Matches the window inspected by HasPemHeader().
+ */
+//--------------------------------------------------------------------------------------------------
+#define CRED_FILE_SNIFF_LEN         2048
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length, including the terminating null byte, of a TLS configuration string such as
+ * "tls_cipher_suites" or "signature_algorithms".
+ *
+ * Sized to hold a full colon-separated list rather than a single name.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TLS_CFG_STR_MAX_LEN         512
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Upper bound, in milliseconds, on how long secSocket_Write() waits for a non-blocking descriptor
+ * to accept the data before giving up with LE_TIMEOUT.
+ *
+ * Unlike secSocket_Read(), the write path takes no timeout argument, so it cannot honour the
+ * per-socket value set through le_socket_SetTimeout(). The library default is used instead, which
+ * keeps a stalled peer from blocking the caller forever.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SEC_SOCKET_WRITE_TIMEOUT_MS COMM_TIMEOUT_DEFAULT_MS
+
+//--------------------------------------------------------------------------------------------------
+/**
  * OpenSSL global context
  */
 //--------------------------------------------------------------------------------------------------
@@ -67,8 +127,11 @@ typedef struct
     bool                     isInit;            ///< TRUE if the secure socket context is initialized
     int                      openssl_errcode;   ///< OpenSSL error codes.
     ProtoRoleType_t          role;              ///< Protocol role (server or client)
-    uint8_t*                 alpnProtosBuf;     ///< Encoded ALPN protocol list (length-prefixed)
-    size_t                   alpnProtosBufLen;  ///< Byte length of alpnProtosBuf
+    uint8_t                  alpnProtosBuf[ALPN_PROTOS_BUF_MAX_LEN]; ///< Encoded ALPN protocol list
+    size_t                   alpnProtosBufLen;  ///< Byte length of valid data in alpnProtosBuf
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    OSSL_PROVIDER*           providerPtr;       ///< External provider handle, NULL if none loaded
+#endif
 }
 OpensslCtx_t;
 
@@ -126,6 +189,157 @@ static OpensslCtx_t* GetContext
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Search for a PEM header in the first up-to-2KB bytes of a buffer, e.g.
+ * BEGIN CERTIFICATE / BEGIN PRIVATE KEY / BEGIN RSA PRIVATE KEY.
+ *
+ * @return
+ *  - true if a PEM header was found, false otherwise (implies DER format)
+ */
+//--------------------------------------------------------------------------------------------------
+static bool HasPemHeader
+(
+    const uint8_t*  ptr,
+    size_t          len
+)
+{
+    static const char hdr[] = "-----BEGIN";
+    size_t n = (len < 2048) ? len : 2048;
+
+    if (ptr == NULL || n < (sizeof(hdr) - 1))
+    {
+        return false;
+    }
+
+    for (size_t i = 0; (i + (sizeof(hdr) - 1)) <= n; i++)
+    {
+        if (memcmp(ptr + i, hdr, sizeof(hdr) - 1) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Validate a credential file path before handing it to OpenSSL.
+ *
+ * Checking readability up front keeps "file missing" distinguishable from "file malformed":
+ * the OpenSSL file APIs report both as a generic failure.
+ *
+ * @return
+ *  - LE_OK            The path is well-formed and the file is readable
+ *  - LE_BAD_PARAMETER Null, empty or over-long path
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ValidateCredFilePath
+(
+    const char*  pathPtr    ///< [IN] Credential file path
+)
+{
+    if ((!pathPtr) || (pathPtr[0] == '\0'))
+    {
+        LE_ERROR("Null or empty credential file path");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (strnlen(pathPtr, CRED_FILE_PATH_MAX_LEN) >= CRED_FILE_PATH_MAX_LEN)
+    {
+        LE_ERROR("Credential file path exceeds maximum length of %d", CRED_FILE_PATH_MAX_LEN);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (access(pathPtr, R_OK) != 0)
+    {
+        LE_ERROR("Credential file '%s' does not exist or is not readable (errno %d)",
+                 pathPtr, errno);
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine whether a credential file holds PEM or DER content.
+ *
+ * Reads the head of the file and reuses HasPemHeader(), so that the file-based entry points
+ * classify content exactly the same way as the buffer-based ones.
+ *
+ * @return
+ *  - LE_OK        Detection succeeded; *isPemPtr is set
+ *  - LE_NOT_FOUND Unable to open the file
+ *  - LE_FAULT     Unable to read the file
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t IsCredFilePem
+(
+    const char*  pathPtr,      ///< [IN] Credential file path
+    bool*        isPemPtr      ///< [OUT] True if the file looks like PEM, false if DER
+)
+{
+    uint8_t buf[CRED_FILE_SNIFF_LEN];
+    int     fd;
+    ssize_t rd;
+
+    fd = open(pathPtr, O_RDONLY);
+    if (fd < 0)
+    {
+        LE_ERROR("Unable to open credential file '%s' (errno %d)", pathPtr, errno);
+        return LE_NOT_FOUND;
+    }
+
+    do
+    {
+        rd = read(fd, buf, sizeof(buf));
+    }
+    while ((rd < 0) && (errno == EINTR));
+
+    close(fd);
+
+    if (rd < 0)
+    {
+        LE_ERROR("Unable to read credential file '%s' (errno %d)", pathPtr, errno);
+        return LE_FAULT;
+    }
+
+    *isPemPtr = HasPemHeader(buf, (size_t)rd);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check that a certificate is within its validity period.
+ *
+ * @return
+ *  - LE_OK            The certificate is currently valid
+ *  - LE_FORMAT_ERROR  The certificate is expired or not yet valid
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckCertValidity
+(
+    X509*          certPtr,       ///< [IN] Certificate to check
+    OpensslCtx_t*  contextPtr     ///< [INOUT] OpenSSL socket context pointer
+)
+{
+    le_clk_Time_t currentTime = le_clk_GetAbsoluteTime();
+
+    if ((X509_cmp_time(X509_get_notBefore(certPtr), &currentTime.sec) >= 0) ||
+        (X509_cmp_time(X509_get_notAfter(certPtr),  &currentTime.sec) <= 0))
+    {
+        contextPtr->openssl_errcode = X509_V_ERR_CERT_HAS_EXPIRED;
+        LE_ERROR("Certificate is expired or not yet valid, please provide a valid certificate");
+        return LE_FORMAT_ERROR;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
 // Public functions
 //--------------------------------------------------------------------------------------------------
 
@@ -161,7 +375,7 @@ le_result_t secSocket_Init
     }
 
     // Alloc memory from pool
-    contextPtr = le_mem_ForceAlloc(SocketCtxPoolRef);
+    contextPtr = le_mem_TryAlloc(SocketCtxPoolRef);
     if (NULL == contextPtr)
     {
         LE_ERROR("Unable to allocate a socket context from pool");
@@ -203,8 +417,10 @@ le_result_t secSocket_Init
     contextPtr->isInit          = true;
     contextPtr->openssl_errcode = 0;
     contextPtr->role            = role;
-    contextPtr->alpnProtosBuf   = NULL;
     contextPtr->alpnProtosBufLen = 0;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    contextPtr->providerPtr     = NULL;
+#endif
     *ctxPtr = (secSocket_Ctx_t*)contextPtr;
 
     return LE_OK;
@@ -230,7 +446,6 @@ le_result_t secSocket_AddCertificate
 {
     X509_STORE *store = NULL;
     X509 *cert = NULL;
-    BIO *bio = NULL;
     le_result_t status = LE_FAULT;
     le_clk_Time_t currentTime;
 
@@ -248,22 +463,44 @@ le_result_t secSocket_AddCertificate
 
     LE_INFO("Certificate: %p Len:%"PRIuS, certificatePtr, certificateLen);
 
-    // Get a BIO abstraction pointer
-    bio = BIO_new_mem_buf((void*)certificatePtr, certificateLen);
-    if (!bio)
-    {
-        LE_ERROR("Unable to allocate BIO pointer");
-        contextPtr->openssl_errcode = ERR_R_MALLOC_FAILURE;
-        goto end;
-    }
+    ERR_clear_error();
 
-    // Read the DER formatted certificate from memory into an X509 structure
-    cert = d2i_X509(NULL, &certificatePtr, certificateLen);
-    if (!cert)
+    // Detect whether the buffer holds a PEM ("-----BEGIN...") or a raw DER certificate
+    // and decode it into an X509 structure accordingly.
+    if (HasPemHeader(certificatePtr, certificateLen))
     {
-        contextPtr->openssl_errcode = ERR_R_X509_LIB;
-        LE_ERROR("Unable to read certificate");
-        goto end;
+        BIO* bio = BIO_new_mem_buf((void*)certificatePtr, (int)certificateLen);
+        if (!bio)
+        {
+            LE_ERROR("Unable to allocate BIO pointer");
+            contextPtr->openssl_errcode = ERR_R_MALLOC_FAILURE;
+            return LE_FAULT;
+        }
+
+        cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
+        BIO_free(bio);
+
+        if (!cert)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to decode PEM certificate (reason: %lu)",
+                     (unsigned long)ERR_GET_REASON(code));
+            return LE_FORMAT_ERROR;
+        }
+    }
+    else
+    {
+        const uint8_t* p = certificatePtr;
+
+        // Read the DER formatted certificate from memory into an X509 structure
+        cert = d2i_X509(NULL, &p, (long)certificateLen);
+        if (!cert)
+        {
+            contextPtr->openssl_errcode = ERR_R_X509_LIB;
+            LE_ERROR("Unable to read certificate");
+            return LE_FORMAT_ERROR;
+        }
     }
 
     // Check certificate validity
@@ -304,39 +541,174 @@ end:
         X509_free(cert);
     }
 
-    if (bio)
-    {
-        BIO_free(bio);
-    }
-
     return status;
 }
 
-// Search for PEM header in first up-to-2KB bytes
-// BEGIN CERTIFICATE / BEGIN PRIVATE KEY / BEGIN RSA PRIVATE KEY
-static bool HasPemHeader
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add root CA certificates to the secure socket context from a file.
+ *
+ * Both PEM and DER files are supported, and either may hold several concatenated certificates:
+ *
+ *   PEM - SSL_CTX_load_verify_locations() loads every certificate in the file.
+ *   DER - SSL_CTX_load_verify_locations() does not understand DER, so the certificates are
+ *         decoded one by one from a BIO and added to the verification store individually.
+ *
+ * The certificate content is read by OpenSSL itself, so it never transits through the caller's
+ * memory.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddCertificateFile
 (
-    const uint8_t*  ptr,
-    size_t          len
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] CA certificate file path (PEM or DER)
 )
 {
-    static const char hdr[] = "-----BEGIN";
-    size_t n = (len < 2048) ? len : 2048;
+    le_result_t status;
+    bool        isPem = false;
 
-    if (ptr == NULL || n < (sizeof(hdr) - 1))
+    if (!ctxPtr)
     {
-        return false;
+        LE_ERROR("Null context pointer");
+        return LE_BAD_PARAMETER;
     }
 
-    for (size_t i = 0; (i + (sizeof(hdr) - 1)) <= n; i++)
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
     {
-        if (memcmp(ptr + i, hdr, sizeof(hdr) - 1) == 0)
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    status = ValidateCredFilePath(pathPtr);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    status = IsCredFilePem(pathPtr, &isPem);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    LE_INFO("Adding CA certificate(s) from %s file '%s'", isPem ? "PEM" : "DER", pathPtr);
+
+    ERR_clear_error();
+
+    X509_STORE* store = SSL_CTX_get_cert_store(contextPtr->sslCtxPtr);
+    if (!store)
+    {
+        contextPtr->openssl_errcode = X509_V_ERR_UNABLE_TO_GET_CRL;
+        LE_ERROR("Unable to get a pointer to the X509 certificate store");
+        return LE_FAULT;
+    }
+
+    if (isPem)
+    {
+        if (SSL_CTX_load_verify_locations(contextPtr->sslCtxPtr, pathPtr, NULL) != 1)
         {
-            return true;
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to load PEM CA certificate(s) from '%s' (reason: %lu)",
+                     pathPtr, (unsigned long)ERR_GET_REASON(code));
+            return LE_FORMAT_ERROR;
         }
+
+        // OpenSSL does not check validity periods at load time, so walk the verification store
+        // and reject expired certificates, matching the behaviour of secSocket_AddCertificate().
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        STACK_OF(X509_OBJECT)* objsPtr = X509_STORE_get0_objects(store);
+        int                    objNb   = sk_X509_OBJECT_num(objsPtr);
+
+        for (int i = 0; i < objNb; i++)
+        {
+            // Returns NULL for entries that are not certificates, e.g. CRLs
+            X509* certPtr = X509_OBJECT_get0_X509(sk_X509_OBJECT_value(objsPtr, i));
+
+            if ((certPtr) && (CheckCertValidity(certPtr, contextPtr) != LE_OK))
+            {
+                return LE_FORMAT_ERROR;
+            }
+        }
+#else
+        LE_WARN("OpenSSL < 1.1.0: skipping CA certificate validity pre-check");
+#endif
+        return LE_OK;
     }
 
-    return false;
+    // DER: the file may hold one or more concatenated DER-encoded certificates. Decode them
+    // one by one until the file is exhausted.
+    BIO* bioPtr = BIO_new_file(pathPtr, "rb");
+    if (!bioPtr)
+    {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
+        LE_ERROR("Unable to open certificate file '%s' (reason: %lu)",
+                 pathPtr, (unsigned long)ERR_GET_REASON(code));
+        return LE_FAULT;
+    }
+
+    int certNb = 0;
+
+    while (1)
+    {
+        ERR_clear_error();
+
+        X509* certPtr = d2i_X509_bio(bioPtr, NULL);
+        if (!certPtr)
+        {
+            // Normal end of file once at least one certificate has been read
+            if (certNb > 0)
+            {
+                ERR_clear_error();
+                break;
+            }
+
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to decode DER certificate from '%s' (reason: %lu)",
+                     pathPtr, (unsigned long)ERR_GET_REASON(code));
+            BIO_free(bioPtr);
+            return LE_FORMAT_ERROR;
+        }
+
+        status = CheckCertValidity(certPtr, contextPtr);
+        if (status != LE_OK)
+        {
+            X509_free(certPtr);
+            BIO_free(bioPtr);
+            return status;
+        }
+
+        // X509_STORE_add_cert() takes its own reference, so release ours afterwards
+        if (!X509_STORE_add_cert(store, certPtr))
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to add certificate to pool (reason: %lu)",
+                     (unsigned long)ERR_GET_REASON(code));
+            X509_free(certPtr);
+            BIO_free(bioPtr);
+            return LE_FAULT;
+        }
+
+        X509_free(certPtr);
+        certNb++;
+    }
+
+    BIO_free(bioPtr);
+
+    LE_INFO("Added %d DER CA certificate(s) from '%s'", certNb, pathPtr);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -720,6 +1092,621 @@ end:
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the module's own certificate chain to the secure socket context from a file.
+ *
+ * Both PEM and DER files are supported, and either may hold a full chain - the leaf certificate
+ * first, followed by the intermediate CA certificates:
+ *
+ *   PEM - SSL_CTX_use_certificate_chain_file() loads the leaf plus the intermediates in one call.
+ *   DER - SSL_CTX_use_certificate_file() would only ever read the first certificate, so the
+ *         chain is decoded one certificate at a time, mirroring secSocket_AddOwnCertificate():
+ *         the first goes in via SSL_CTX_use_certificate() and the rest via
+ *         SSL_CTX_add_extra_chain_cert().
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own certificate chain file path (PEM or DER)
+)
+{
+    le_result_t status;
+    bool        isPem = false;
+
+    if (!ctxPtr)
+    {
+        LE_ERROR("Null context pointer");
+        return LE_BAD_PARAMETER;
+    }
+
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    status = ValidateCredFilePath(pathPtr);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    status = IsCredFilePem(pathPtr, &isPem);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    LE_INFO("Adding own certificate chain from %s file '%s'", isPem ? "PEM" : "DER", pathPtr);
+
+    // Clear any existing extra chain certificates to avoid accumulation across calls
+    SSL_CTX_clear_extra_chain_certs(contextPtr->sslCtxPtr);
+
+    ERR_clear_error();
+
+    if (isPem)
+    {
+        if (SSL_CTX_use_certificate_chain_file(contextPtr->sslCtxPtr, pathPtr) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to load PEM own certificate chain from '%s' (reason: %lu)",
+                     pathPtr, (unsigned long)ERR_GET_REASON(code));
+            return LE_FORMAT_ERROR;
+        }
+    }
+    else
+    {
+        BIO* bioPtr = BIO_new_file(pathPtr, "rb");
+        if (!bioPtr)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to open certificate file '%s' (reason: %lu)",
+                     pathPtr, (unsigned long)ERR_GET_REASON(code));
+            return LE_FAULT;
+        }
+
+        int certNb = 0;
+
+        while (1)
+        {
+            ERR_clear_error();
+
+            X509* certPtr = d2i_X509_bio(bioPtr, NULL);
+            if (!certPtr)
+            {
+                // Normal end of file once the leaf has been read
+                if (certNb > 0)
+                {
+                    ERR_clear_error();
+                    break;
+                }
+
+                unsigned long code = ERR_peek_last_error();
+                contextPtr->openssl_errcode = ERR_GET_REASON(code);
+                LE_ERROR("Unable to decode DER certificate from '%s' (reason: %lu)",
+                         pathPtr, (unsigned long)ERR_GET_REASON(code));
+                BIO_free(bioPtr);
+                return LE_FORMAT_ERROR;
+            }
+
+            status = CheckCertValidity(certPtr, contextPtr);
+            if (status != LE_OK)
+            {
+                X509_free(certPtr);
+                BIO_free(bioPtr);
+                return status;
+            }
+
+            if (certNb == 0)
+            {
+                // The first certificate is our own (leaf) certificate. SSL_CTX_use_certificate()
+                // does NOT take ownership, so free it afterwards.
+                if (SSL_CTX_use_certificate(contextPtr->sslCtxPtr, certPtr) != 1)
+                {
+                    unsigned long code = ERR_peek_last_error();
+                    contextPtr->openssl_errcode = ERR_GET_REASON(code);
+                    LE_ERROR("SSL_CTX_use_certificate failed (reason: %lu)",
+                             (unsigned long)ERR_GET_REASON(code));
+                    X509_free(certPtr);
+                    BIO_free(bioPtr);
+                    return LE_FORMAT_ERROR;
+                }
+
+                X509_free(certPtr);
+            }
+            else
+            {
+                // Subsequent certificates complete the chain sent to the peer.
+                // SSL_CTX_add_extra_chain_cert() TAKES ownership on success, so do not free it.
+                if (SSL_CTX_add_extra_chain_cert(contextPtr->sslCtxPtr, certPtr) != 1)
+                {
+                    unsigned long code = ERR_peek_last_error();
+                    contextPtr->openssl_errcode = ERR_GET_REASON(code);
+                    LE_ERROR("SSL_CTX_add_extra_chain_cert failed (reason: %lu)",
+                             (unsigned long)ERR_GET_REASON(code));
+                    X509_free(certPtr);
+                    BIO_free(bioPtr);
+                    return LE_FORMAT_ERROR;
+                }
+            }
+
+            certNb++;
+        }
+
+        BIO_free(bioPtr);
+
+        LE_INFO("Added DER own certificate chain from '%s' (%d certificate(s))", pathPtr, certNb);
+
+        // Validity of every certificate in the chain was checked in the loop above
+        return LE_OK;
+    }
+
+    // PEM path: check the validity period of the leaf certificate, matching the behaviour of
+    // secSocket_AddOwnCertificate(). SSL_CTX_get0_certificate() returns an internal pointer
+    // that must not be freed.
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    X509* leafPtr = SSL_CTX_get0_certificate(contextPtr->sslCtxPtr);
+
+    if (!leafPtr)
+    {
+        LE_ERROR("Unable to retrieve the loaded own certificate for validity check");
+        return LE_FAULT;
+    }
+
+    status = CheckCertValidity(leafPtr, contextPtr);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+#else
+    LE_WARN("OpenSSL < 1.0.2: skipping own certificate validity pre-check");
+#endif
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context from a file.
+ *
+ * The key is loaded by OpenSSL, so the key material never transits through the caller's memory.
+ * Because SSL_CTX_use_PrivateKey_file() goes through OpenSSL's decoder chain, a key held by a
+ * crypto provider - a file holding a key reference or wrapped key blob rather than the raw key
+ * material - is also supported, provided that provider is loaded and registers a matching
+ * decoder.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Unable to decode the private key
+ *  - LE_FAULT         Failure, including a key that does not match the loaded certificate
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKeyFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own private key file path
+)
+{
+    le_result_t status;
+    bool        isPem = false;
+
+    if (!ctxPtr)
+    {
+        LE_ERROR("Null context pointer");
+        return LE_BAD_PARAMETER;
+    }
+
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    status = ValidateCredFilePath(pathPtr);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    status = IsCredFilePem(pathPtr, &isPem);
+    if (status != LE_OK)
+    {
+        return status;
+    }
+
+    LE_INFO("Adding own private key from %s file '%s'", isPem ? "PEM" : "DER", pathPtr);
+
+    ERR_clear_error();
+
+    // The detected format is tried first. A provider-held key is normally PEM-wrapped, so the
+    // PEM path covers it; the other format is still attempted as a fallback, because a provider
+    // decoder may claim a blob whose framing does not match either classic encoding.
+    int firstType  = isPem ? SSL_FILETYPE_PEM  : SSL_FILETYPE_ASN1;
+    int secondType = isPem ? SSL_FILETYPE_ASN1 : SSL_FILETYPE_PEM;
+
+    if (SSL_CTX_use_PrivateKey_file(contextPtr->sslCtxPtr, pathPtr, firstType) != 1)
+    {
+        ERR_clear_error();
+
+        if (SSL_CTX_use_PrivateKey_file(contextPtr->sslCtxPtr, pathPtr, secondType) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to load private key from '%s' as PEM or DER (reason: %lu). "
+                     "If this is a provider-held key, check that the provider is loaded and "
+                     "registers a decoder for this format.",
+                     pathPtr, (unsigned long)ERR_GET_REASON(code));
+            return LE_FORMAT_ERROR;
+        }
+    }
+
+    // Verify that the private key is consistent with the certificate already loaded via
+    // secSocket_AddOwnCertificate() or secSocket_AddOwnCertificateFile(). This catches
+    // mismatched key/cert pairs early.
+    //
+    // Note: this check requires the public key to be available. A provider that does not
+    // expose the public key of a hardware-held private key will fail here; the reason code is
+    // logged so that case can be told apart from a genuine key/certificate mismatch.
+    if (SSL_CTX_check_private_key(contextPtr->sslCtxPtr) != 1)
+    {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
+        LE_ERROR("Private key does not match the certificate (reason: %lu)",
+                 (unsigned long)ERR_GET_REASON(code));
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length, including the terminating null byte, of an OpenSSL provider name
+ */
+//--------------------------------------------------------------------------------------------------
+#define PROVIDER_NAME_MAX_LEN       64
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Suffix of a provider module file on this platform.
+ *
+ * OpenSSL appends it itself when it turns a provider name into a file name, so it has to be taken
+ * off a configured module path before that path's file name is handed over as a provider name.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PROVIDER_MODULE_SUFFIX      ".so"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Split a configured provider module path into the directory OpenSSL should search and the provider
+ * name it should load.
+ *
+ * OpenSSL exposes no entry point that loads one exact file: OSSL_PROVIDER_load() takes a name, turns
+ * it into that name plus the platform DSO suffix, and looks the result up in the module search path.
+ * A configured path such as
+ *
+ *     /usr/lib/ossl-modules/libotp_telsdk_provider.so
+ *
+ * therefore has to be taken apart into the search directory "/usr/lib/ossl-modules" and the name
+ * "libotp_telsdk_provider", which OpenSSL then reassembles into the original file name.
+ *
+ * @return
+ *  - LE_OK            dirBuf and nameBuf are filled in
+ *  - LE_BAD_PARAMETER The path holds no file name, or a part of it does not fit
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SplitProviderModulePath
+(
+    const char*  modulePathPtr,   ///< [IN]  Configured "provider_module_path"
+    char*        dirBuf,          ///< [OUT] Search directory, empty if the path holds none
+    size_t       dirBufSize,      ///< [IN]  Size of dirBuf
+    char*        nameBuf,         ///< [OUT] Provider name to load
+    size_t       nameBufSize      ///< [IN]  Size of nameBuf
+)
+{
+    const char* slashPtr = strrchr(modulePathPtr, '/');
+    const char* basePtr;
+
+    if (slashPtr)
+    {
+        size_t dirLen = (size_t)(slashPtr - modulePathPtr);
+
+        if (dirLen == 0)
+        {
+            // "/libfoo.so": an empty directory part still means the root directory
+            le_utf8_Copy(dirBuf, "/", dirBufSize, NULL);
+        }
+        else if (dirLen >= dirBufSize)
+        {
+            LE_ERROR("Provider module directory exceeds %"PRIuS" bytes", dirBufSize - 1);
+            return LE_BAD_PARAMETER;
+        }
+        else
+        {
+            memcpy(dirBuf, modulePathPtr, dirLen);
+            dirBuf[dirLen] = '\0';
+        }
+
+        basePtr = slashPtr + 1;
+    }
+    else
+    {
+        // A bare file name leaves the search path alone, so OpenSSL keeps looking in its own module
+        // directory
+        dirBuf[0] = '\0';
+        basePtr   = modulePathPtr;
+    }
+
+    if (basePtr[0] == '\0')
+    {
+        LE_ERROR("Provider module path '%s' holds no file name", modulePathPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (le_utf8_Copy(nameBuf, basePtr, nameBufSize, NULL) != LE_OK)
+    {
+        LE_ERROR("Provider module name exceeds %"PRIuS" bytes", nameBufSize - 1);
+        return LE_BAD_PARAMETER;
+    }
+
+    // Take the DSO suffix off, since OpenSSL adds it back when it builds the file name. Only an
+    // exact trailing match is removed, so a name that merely contains dots survives intact.
+    size_t nameLen   = strlen(nameBuf);
+    size_t suffixLen = strlen(PROVIDER_MODULE_SUFFIX);
+
+    if ((nameLen > suffixLen) &&
+        (strcmp(nameBuf + (nameLen - suffixLen), PROVIDER_MODULE_SUFFIX) == 0))
+    {
+        nameBuf[nameLen - suffixLen] = '\0';
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Activate one provider by name, keeping OpenSSL's own providers usable.
+ *
+ * OSSL_PROVIDER_try_load() is used rather than OSSL_PROVIDER_load() for its retain_fallbacks
+ * argument. Activating any provider explicitly otherwise switches off the implicitly activated
+ * default provider, which would take the standard algorithms away from the rest of the handshake.
+ * Retaining the fallbacks keeps an external provider additive: it supplies the key operations, and
+ * OpenSSL goes on supplying everything else.
+ *
+ * @return The provider handle, or NULL on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+static OSSL_PROVIDER* TryLoadProvider
+(
+    const char*  namePtr   ///< [IN] Provider name to load
+)
+{
+    OSSL_PROVIDER* provPtr = OSSL_PROVIDER_try_load(NULL, namePtr, 1);
+
+    if (!provPtr)
+    {
+        LE_WARN("Unable to load provider '%s' (reason: %lu)",
+                namePtr, (unsigned long)ERR_GET_REASON(ERR_peek_last_error()));
+    }
+
+    return provPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load and activate the external OpenSSL provider named by the configuration.
+ *
+ * Two names can identify the module, and they need not agree: the file name inside
+ * "provider_module_path" and the "provider_name" entry. The path names the exact file the caller
+ * pointed at, so the name derived from it is tried first; "provider_name" is the fallback, which
+ * covers a module whose file name differs from the name its provider is registered under. Either
+ * entry on its own is enough.
+ *
+ * @return
+ *  - LE_OK            The provider is activated
+ *  - LE_BAD_PARAMETER Neither entry names a module, or a path does not fit
+ *  - LE_NOT_FOUND     The module file does not exist or is not readable
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t LoadOpensslProvider
+(
+    OpensslCtx_t*  contextPtr,      ///< [INOUT] OpenSSL socket context pointer
+    const char*    namePtr,         ///< [IN] "provider_name" value, NULL if absent
+    const char*    modulePathPtr    ///< [IN] "provider_module_path" value, NULL if absent
+)
+{
+    char           moduleDir[CRED_FILE_PATH_MAX_LEN] = {0};
+    char           moduleName[PROVIDER_NAME_MAX_LEN] = {0};
+    const char*    candidates[2]   = { NULL, NULL };
+    int            candidateCount  = 0;
+    OSSL_PROVIDER* provPtr         = NULL;
+    const char*    loadedNamePtr   = NULL;
+
+    // -------------------------------------------------------------------------
+    // Step 1: turn a configured module path into a search directory and a name.
+    //
+    // Readability is checked up front so that a missing module reports
+    // LE_NOT_FOUND, instead of surfacing as a generic load failure later.
+    // -------------------------------------------------------------------------
+    if (modulePathPtr && (modulePathPtr[0] != '\0'))
+    {
+        if (strnlen(modulePathPtr, CRED_FILE_PATH_MAX_LEN) >= CRED_FILE_PATH_MAX_LEN)
+        {
+            LE_ERROR("Provider module path exceeds maximum length of %d", CRED_FILE_PATH_MAX_LEN);
+            return LE_BAD_PARAMETER;
+        }
+
+        if (access(modulePathPtr, R_OK) != 0)
+        {
+            LE_ERROR("Provider module '%s' does not exist or is not readable (errno %d)",
+                     modulePathPtr, errno);
+            return LE_NOT_FOUND;
+        }
+
+        le_result_t status = SplitProviderModulePath(modulePathPtr,
+                                                    moduleDir,  sizeof(moduleDir),
+                                                    moduleName, sizeof(moduleName));
+        if (status != LE_OK)
+        {
+            return status;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 2: collect the names worth trying, most specific first.
+    // -------------------------------------------------------------------------
+    if (moduleName[0] != '\0')
+    {
+        candidates[candidateCount++] = moduleName;
+    }
+
+    if (namePtr && (namePtr[0] != '\0')
+        && ((moduleName[0] == '\0') || (strcmp(namePtr, moduleName) != 0)))
+    {
+        candidates[candidateCount++] = namePtr;
+    }
+
+    if (candidateCount == 0)
+    {
+        LE_ERROR("Provider type '%s' needs 'provider_name' or 'provider_module_path'",
+                 SOCKET_PROVIDER_TYPE_OPENSSL);
+        return LE_BAD_PARAMETER;
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 3: point OpenSSL at the configured directory.
+    //
+    // This is library-wide state, so it is only touched when the configuration
+    // actually named a directory; otherwise OpenSSL keeps using its own.
+    // -------------------------------------------------------------------------
+    if (moduleDir[0] != '\0')
+    {
+        if (OSSL_PROVIDER_set_default_search_path(NULL, moduleDir) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("Unable to set the provider search path to '%s' (reason: %lu)",
+                     moduleDir, (unsigned long)ERR_GET_REASON(code));
+            return LE_FAULT;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 4: activate the module.
+    // -------------------------------------------------------------------------
+    for (int i = 0; (i < candidateCount) && (provPtr == NULL); i++)
+    {
+        provPtr = TryLoadProvider(candidates[i]);
+        if (provPtr)
+        {
+            loadedNamePtr = candidates[i];
+        }
+    }
+
+    if (!provPtr)
+    {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
+        LE_ERROR("Unable to activate a provider from name '%s' / module '%s'",
+                 (namePtr && namePtr[0]) ? namePtr : "(unset)",
+                 (modulePathPtr && modulePathPtr[0]) ? modulePathPtr : "(unset)");
+        return LE_FAULT;
+    }
+
+    // Release the provider this context activated earlier, so that calling this twice does not
+    // leak a reference.
+    if (contextPtr->providerPtr)
+    {
+        OSSL_PROVIDER_unload(contextPtr->providerPtr);
+    }
+    contextPtr->providerPtr = provPtr;
+
+    LE_INFO("Provider '%s' activated from %s", loadedNamePtr,
+            moduleDir[0] ? moduleDir : "the OpenSSL module directory");
+
+    return LE_OK;
+}
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider of the secure socket context.
+ *
+ * Backs the provider block of the caller's configuration. A "default" type keeps OpenSSL's own
+ * implementations and ignores the other two arguments, so a caller can hand over a whole
+ * configuration block unchanged whether or not it asks for an external provider.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter, unrecognized type, or no module named
+ *  - LE_NOT_FOUND     Provider module file does not exist or is not readable
+ *  - LE_UNSUPPORTED   Provider type not supported by this OpenSSL build
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetProvider
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       typePtr,          ///< [IN] "type" value (required)
+    const char*       namePtr,          ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr     ///< [IN] "provider_module_path" value, NULL if absent
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!typePtr) || (typePtr[0] == '\0'))
+    {
+        LE_ERROR("Provider type is NULL or empty");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (strcasecmp(typePtr, SOCKET_PROVIDER_TYPE_DEFAULT) == 0)
+    {
+        LE_INFO("Provider type '%s': keeping the OpenSSL built-in implementations",
+                SOCKET_PROVIDER_TYPE_DEFAULT);
+        return LE_OK;
+    }
+
+    if (strcasecmp(typePtr, SOCKET_PROVIDER_TYPE_OPENSSL) == 0)
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        return LoadOpensslProvider(contextPtr, namePtr, modulePathPtr);
+#else
+        LE_UNUSED(namePtr);
+        LE_UNUSED(modulePathPtr);
+        LE_ERROR("Provider type '%s' requires OpenSSL 3.0 or later", typePtr);
+        return LE_UNSUPPORTED;
+#endif
+    }
+
+    LE_ERROR("Unrecognized provider type '%s'", typePtr);
+    return LE_BAD_PARAMETER;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Cipher suite table indexed by cipherIdx.
  *
  * Each entry holds:
@@ -1068,21 +2055,29 @@ void secSocket_SetAlpnProtocolList
     }
 
     // -------------------------------------------------------------------------
-    // Step 1: calculate the total byte length of the length-prefixed wire buffer.
+    // Step 1: validate the list and calculate the total byte length of the
+    // length-prefixed wire buffer.
     //
     // Wire format per RFC 7301:
     //   for each protocol name:  1 byte (length) + N bytes (name)
     // -------------------------------------------------------------------------
     size_t bufLen = 0;
+    int    count  = 0;
 
-    for (int i = 0; alpnList[i] != NULL; i++)
+    for (; alpnList[count] != NULL; count++)
     {
-        size_t nameLen = strlen(alpnList[i]);
+        size_t nameLen = strlen(alpnList[count]);
 
         if (nameLen == 0 || nameLen > ALPN_PROTO_NAME_MAX_LEN)
         {
             LE_ERROR("ALPN protocol name '%s' has invalid length %"PRIuS", skipping",
-                     alpnList[i], nameLen);
+                     alpnList[count], nameLen);
+            return;
+        }
+
+        if (count >= ALPN_PROTO_LIST_MAX_COUNT)
+        {
+            LE_ERROR("ALPN protocol list exceeds maximum count of %d", ALPN_PROTO_LIST_MAX_COUNT);
             return;
         }
 
@@ -1090,24 +2085,9 @@ void secSocket_SetAlpnProtocolList
     }
 
     // -------------------------------------------------------------------------
-    // Step 2: allocate and fill the wire-format buffer.
-    // Free any previously stored buffer first.
+    // Step 2: fill the fixed-size wire-format buffer, replacing any previously
+    // stored list.
     // -------------------------------------------------------------------------
-    if (contextPtr->alpnProtosBuf)
-    {
-        free(contextPtr->alpnProtosBuf);
-        contextPtr->alpnProtosBuf    = NULL;
-        contextPtr->alpnProtosBufLen = 0;
-    }
-
-    contextPtr->alpnProtosBuf = (uint8_t*)malloc(bufLen);
-    if (!contextPtr->alpnProtosBuf)
-    {
-        LE_ERROR("ALPN: failed to allocate %"PRIuS" bytes for protocol buffer", bufLen);
-        contextPtr->openssl_errcode = ERR_R_MALLOC_FAILURE;
-        return;
-    }
-
     uint8_t* p = contextPtr->alpnProtosBuf;
 
     for (int i = 0; alpnList[i] != NULL; i++)
@@ -1156,6 +2136,331 @@ void secSocket_SetAlpnProtocolList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Mapping between a "tls_min_version" configuration string and the matching OpenSSL protocol
+ * version constant.
+ *
+ * The version constants come from <openssl/tls1.h>, reached transitively through
+ * <openssl/ssl.h>. TLS1_3_VERSION only exists from OpenSSL 1.1.1 onwards, and even there it is
+ * defined unconditionally - so a library configured with no-tls1_3 still compiles it. Both
+ * conditions are therefore tested: too old a library, or TLS 1.3 compiled out, leaves a zero
+ * version.
+ *
+ * A zero version marks a name this OpenSSL build understands but cannot honour, which is reported
+ * as LE_UNSUPPORTED so that it stays distinguishable from a typo in the configuration.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    const char* namePtr;   ///< Version string accepted in the configuration
+    int         version;   ///< OpenSSL protocol version constant (0 = not supported by this build)
+}
+TlsVersionEntry_t;
+
+static const TlsVersionEntry_t TlsVersionTable[] =
+{
+    { "TLSv1",   TLS1_VERSION   },
+    { "TLSv1.0", TLS1_VERSION   },
+    { "TLSv1.1", TLS1_1_VERSION },
+    { "TLSv1.2", TLS1_2_VERSION },
+#if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(OPENSSL_NO_TLS1_3)
+    { "TLSv1.3", TLS1_3_VERSION },
+#else
+    { "TLSv1.3", 0 },
+#endif
+};
+
+#define TLS_VERSION_TABLE_SIZE  (sizeof(TlsVersionTable) / sizeof(TlsVersionTable[0]))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the minimum acceptable TLS protocol version in the secure socket context.
+ *
+ * Backs the "tls_min_version" configuration entry. The value replaces the TLS 1.2 floor installed
+ * by secSocket_Init(), so it can both raise and lower the minimum version.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter or unrecognized version string
+ *  - LE_UNSUPPORTED   Version understood but not supported by this OpenSSL build
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetTlsMinVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       versionPtr        ///< [IN] Minimum TLS version string
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!versionPtr) || (versionPtr[0] == '\0'))
+    {
+        LE_ERROR("TLS minimum version string is NULL or empty");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!contextPtr->sslCtxPtr)
+    {
+        LE_ERROR("SSL_CTX is NULL");
+        return LE_FAULT;
+    }
+
+    const TlsVersionEntry_t* entryPtr = NULL;
+
+    for (size_t i = 0; i < TLS_VERSION_TABLE_SIZE; i++)
+    {
+        if (strcasecmp(versionPtr, TlsVersionTable[i].namePtr) == 0)
+        {
+            entryPtr = &TlsVersionTable[i];
+            break;
+        }
+    }
+
+    if (!entryPtr)
+    {
+        LE_ERROR("Unrecognized TLS minimum version '%s'", versionPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (entryPtr->version == 0)
+    {
+        LE_ERROR("TLS minimum version '%s' is not supported by this OpenSSL build", versionPtr);
+        return LE_UNSUPPORTED;
+    }
+
+    if (SSL_CTX_set_min_proto_version(contextPtr->sslCtxPtr, entryPtr->version) != 1)
+    {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
+        LE_ERROR("SSL_CTX_set_min_proto_version failed for '%s' (reason: %lu)",
+                 versionPtr, (unsigned long)ERR_GET_REASON(code));
+        return LE_FAULT;
+    }
+
+    LE_INFO("TLS minimum version set to '%s'", versionPtr);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list in the secure socket context from a colon-separated string.
+ *
+ * Backs the "tls_cipher_suites" configuration entry, e.g.
+ * "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384".
+ *
+ * OpenSSL keeps the TLS 1.3 suites and the TLS 1.0-1.2 ciphers in two independent lists, set
+ * through two different calls, so the incoming names are split by prefix: "TLS_" marks a TLS 1.3
+ * suite name, anything else is a TLS 1.0-1.2 cipher name. A list that ends up empty is left
+ * untouched, so restricting the TLS 1.3 suites does not implicitly narrow TLS 1.2.
+ *
+ * @note When names for both versions are given and only the second call fails, the first list
+ *       stays applied. The failure is reported, but the context is not rolled back.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_UNSUPPORTED   TLS 1.3 suites requested but unsupported by this OpenSSL build
+ *  - LE_FAULT         Failure, including a name OpenSSL does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetCipherSuiteList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       cipherSuitesPtr   ///< [IN] Colon-separated cipher suite list
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!cipherSuitesPtr) || (cipherSuitesPtr[0] == '\0'))
+    {
+        LE_ERROR("Cipher suite list is NULL or empty");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!contextPtr->sslCtxPtr)
+    {
+        LE_ERROR("SSL_CTX is NULL");
+        return LE_FAULT;
+    }
+
+    char workBuf[TLS_CFG_STR_MAX_LEN];
+    char tls12Buf[TLS_CFG_STR_MAX_LEN] = {0};
+    char tls13Buf[TLS_CFG_STR_MAX_LEN] = {0};
+
+    // strtok_r() writes into its input, so work on a private copy of the caller's string
+    if (le_utf8_Copy(workBuf, cipherSuitesPtr, sizeof(workBuf), NULL) != LE_OK)
+    {
+        LE_ERROR("Cipher suite list exceeds %d bytes", TLS_CFG_STR_MAX_LEN - 1);
+        return LE_BAD_PARAMETER;
+    }
+
+    // -------------------------------------------------------------------------
+    // Step 1: split the list into a TLS 1.3 part and a TLS 1.0-1.2 part.
+    //
+    // Consecutive, leading and trailing ':' separators yield no token, so a
+    // value such as "A::B" is accepted and read as two names.
+    // -------------------------------------------------------------------------
+    char* savePtr = NULL;
+
+    for (char* tokenPtr = strtok_r(workBuf, ":", &savePtr);
+         tokenPtr != NULL;
+         tokenPtr = strtok_r(NULL, ":", &savePtr))
+    {
+        // TLS 1.3 suite names are the IANA ones, all prefixed with "TLS_"
+        char* dstPtr = (strncmp(tokenPtr, "TLS_", 4) == 0) ? tls13Buf : tls12Buf;
+
+        if (dstPtr[0] != '\0')
+        {
+            le_utf8_Append(dstPtr, ":", TLS_CFG_STR_MAX_LEN, NULL);
+        }
+        le_utf8_Append(dstPtr, tokenPtr, TLS_CFG_STR_MAX_LEN, NULL);
+    }
+
+    if ((tls12Buf[0] == '\0') && (tls13Buf[0] == '\0'))
+    {
+        LE_ERROR("Cipher suite list '%s' holds no name", cipherSuitesPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_INFO("Setting cipher suites: TLS1.2='%s' TLS1.3='%s'",
+            tls12Buf[0] ? tls12Buf : "(default)",
+            tls13Buf[0] ? tls13Buf : "(default)");
+
+    // -------------------------------------------------------------------------
+    // Step 2: hand each list to the matching OpenSSL setter.
+    // -------------------------------------------------------------------------
+    if (tls12Buf[0])
+    {
+        if (SSL_CTX_set_cipher_list(contextPtr->sslCtxPtr, tls12Buf) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("SSL_CTX_set_cipher_list failed for '%s' (reason: %lu)",
+                     tls12Buf, (unsigned long)ERR_GET_REASON(code));
+            return LE_FAULT;
+        }
+    }
+
+    if (tls13Buf[0])
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        if (SSL_CTX_set_ciphersuites(contextPtr->sslCtxPtr, tls13Buf) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("SSL_CTX_set_ciphersuites failed for '%s' (reason: %lu)",
+                     tls13Buf, (unsigned long)ERR_GET_REASON(code));
+            return LE_FAULT;
+        }
+#else
+        LE_ERROR("TLS 1.3 cipher suites '%s' require OpenSSL 1.1.1 or later", tls13Buf);
+        return LE_UNSUPPORTED;
+#endif
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms in the secure socket context from a colon-separated
+ * string.
+ *
+ * Backs the "signature_algorithms" configuration entry, e.g. "ecdsa_secp256r1_sha256". OpenSSL
+ * accepts both the RFC 8446 scheme names and the legacy "algorithm+hash" form, so the string is
+ * passed through as-is.
+ *
+ * Role behaviour:
+ *   CLIENT - SSL_CTX_set1_sigalgs_list(): the list is advertised in the ClientHello
+ *            signature_algorithms extension and bounds the algorithms the client will sign with.
+ *
+ *   SERVER - the same call bounds what the server signs with and accepts, plus
+ *            SSL_CTX_set1_client_sigalgs_list() so the list also applies to the
+ *            signature_algorithms carried in the CertificateRequest. Without the second call the
+ *            client certificate would stay unconstrained under mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_UNSUPPORTED   Not supported by this OpenSSL build
+ *  - LE_FAULT         Failure, including a name OpenSSL does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetSignatureAlgorithms
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       sigAlgsPtr        ///< [IN] Colon-separated signature algorithm list
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+    if (!contextPtr)
+    {
+        LE_ERROR("Invalid SSL context");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!sigAlgsPtr) || (sigAlgsPtr[0] == '\0'))
+    {
+        LE_ERROR("Signature algorithm list is NULL or empty");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (strlen(sigAlgsPtr) >= TLS_CFG_STR_MAX_LEN)
+    {
+        LE_ERROR("Signature algorithm list exceeds %d bytes", TLS_CFG_STR_MAX_LEN - 1);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!contextPtr->sslCtxPtr)
+    {
+        LE_ERROR("SSL_CTX is NULL");
+        return LE_FAULT;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (SSL_CTX_set1_sigalgs_list(contextPtr->sslCtxPtr, sigAlgsPtr) != 1)
+    {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
+        LE_ERROR("SSL_CTX_set1_sigalgs_list failed for '%s' (reason: %lu)",
+                 sigAlgsPtr, (unsigned long)ERR_GET_REASON(code));
+        return LE_FAULT;
+    }
+
+    if (contextPtr->role == PROTO_ROLE_SERVER)
+    {
+        // Also constrain the CertificateRequest, so the list covers client certificates
+        // when mutual authentication is in use.
+        if (SSL_CTX_set1_client_sigalgs_list(contextPtr->sslCtxPtr, sigAlgsPtr) != 1)
+        {
+            unsigned long code = ERR_peek_last_error();
+            contextPtr->openssl_errcode = ERR_GET_REASON(code);
+            LE_ERROR("SSL_CTX_set1_client_sigalgs_list failed for '%s' (reason: %lu)",
+                     sigAlgsPtr, (unsigned long)ERR_GET_REASON(code));
+            return LE_FAULT;
+        }
+    }
+
+    LE_INFO("Signature algorithms set to '%s'", sigAlgsPtr);
+    return LE_OK;
+#else
+    LE_ERROR("Setting signature algorithms requires OpenSSL 1.0.2 or later");
+    return LE_UNSUPPORTED;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Map an SSL_get_error() return code to a le_result_t.
  *
  * @return  Mapped le_result_t value
@@ -1194,6 +2499,138 @@ static le_result_t MapSslError
         default:
             return LE_FAULT;
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map a failed BIO_read()/BIO_write() on the SSL BIO chain to a le_result_t, and record the
+ * OpenSSL reason code so that le_socket_GetTlsErrorCode() reports something usable.
+ *
+ * @return  Mapped le_result_t value
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MapBioError
+(
+    OpensslCtx_t*  contextPtr,  ///< [IN] OpenSSL context (for storing openssl_errcode)
+    int            ret         ///< [IN] Return value of the failed BIO operation
+)
+{
+    SSL* sslPtr = NULL;
+
+    BIO_get_ssl(contextPtr->bioPtr, &sslPtr);
+    if (!sslPtr)
+    {
+        // No SSL object in the chain, so SSL_get_error() cannot be consulted. Record the last
+        // queued reason rather than the BIO return value, which carries no diagnostic value.
+        contextPtr->openssl_errcode = (int)ERR_GET_REASON(ERR_peek_last_error());
+        return LE_FAULT;
+    }
+
+    return MapSslError(contextPtr, sslPtr, SSL_get_error(sslPtr, ret));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time left until 'deadline', clamped to zero once the deadline has passed.
+ *
+ * @return  Remaining time, suitable for passing to select()
+ */
+//--------------------------------------------------------------------------------------------------
+static struct timeval RemainingTime
+(
+    le_clk_Time_t  deadline    ///< [IN] Relative-clock instant to count down to
+)
+{
+    struct timeval tv  = { .tv_sec = 0, .tv_usec = 0 };
+    le_clk_Time_t  now = le_clk_GetRelativeTime();
+
+    if (le_clk_GreaterThan(deadline, now))
+    {
+        le_clk_Time_t left = le_clk_Sub(deadline, now);
+
+        // le_clk_Time_t is wider than struct timeval on 32-bit targets, so narrow explicitly.
+        tv.tv_sec  = (time_t)left.sec;
+        tv.tv_usec = (suseconds_t)left.usec;
+    }
+
+    return tv;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Relative-clock instant 'timeout' milliseconds from now.
+ *
+ * @return  The computed deadline
+ */
+//--------------------------------------------------------------------------------------------------
+static le_clk_Time_t DeadlineFromNow
+(
+    uint32_t  timeout    ///< [IN] Timeout in milliseconds
+)
+{
+    le_clk_Time_t span = {
+        .sec  = timeout / 1000,
+        .usec = (timeout % 1000) * 1000
+    };
+
+    return le_clk_Add(le_clk_GetRelativeTime(), span);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wait until the BIO's underlying file descriptor is ready for I/O, or 'deadline' passes.
+ *
+ * A zero remaining budget performs a single non-blocking poll, which preserves the documented
+ * "return immediately when the timeout is zero" behaviour of secSocket_Read().
+ *
+ * @return
+ *  - LE_OK        The descriptor became ready
+ *  - LE_TIMEOUT   The budget was exhausted first
+ *  - LE_FAULT     The descriptor could not be retrieved, or select() failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WaitForBioReady
+(
+    BIO*           bioPtr,     ///< [IN] BIO whose underlying descriptor is polled
+    bool           forRead,    ///< [IN] Poll for readability, otherwise for writability
+    le_clk_Time_t  deadline    ///< [IN] Relative-clock instant at which to give up
+)
+{
+    fd_set set;
+    int    fd, rv;
+
+    // Get file descriptor of the current BIO. An unchecked failure here would leave 'fd'
+    // uninitialised and hand a garbage descriptor to select().
+    if (BIO_get_fd(bioPtr, &fd) < 0)
+    {
+        LE_ERROR("Unable to retrieve the file descriptor of the BIO");
+        return LE_FAULT;
+    }
+
+    do
+    {
+        // Recomputed on every pass so that an interrupted select() resumes with the time that is
+        // actually left instead of restarting the whole budget.
+        struct timeval time = RemainingTime(deadline);
+
+        FD_ZERO(&set);
+        FD_SET(fd, &set);
+        rv = select(fd + 1, forRead ? &set : NULL, forRead ? NULL : &set, NULL, &time);
+    }
+    while ((rv == -1) && (errno == EINTR));
+
+    if (rv < 0)
+    {
+        LE_ERROR("select() failed: %s", strerror(errno));
+        return LE_FAULT;
+    }
+
+    if ((rv == 0) || (!FD_ISSET(fd, &set)))
+    {
+        return LE_TIMEOUT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1563,6 +3000,20 @@ le_result_t secSocket_Delete
     SSL_CTX_free(contextPtr->sslCtxPtr);
     contextPtr->sslCtxPtr = NULL;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    // Drop this context's reference on the external provider, if one was activated. The provider is
+    // reference counted inside OpenSSL, so a module shared with another socket stays loaded.
+    if (contextPtr->providerPtr)
+    {
+        if (OSSL_PROVIDER_unload(contextPtr->providerPtr) != 1)
+        {
+            LE_WARN("OSSL_PROVIDER_unload failed (reason: %lu)",
+                    (unsigned long)ERR_GET_REASON(ERR_peek_last_error()));
+        }
+        contextPtr->providerPtr = NULL;
+    }
+#endif
+
 #if OPENSSL_API_COMPAT < 0x10100000L
 #if OPENSSL_API_COMPAT > 0x10002000L
     // In versions of OpenSSL prior to 1.1.0 SSL_COMP_free_compression_methods() freed the
@@ -1590,9 +3041,14 @@ le_result_t secSocket_Delete
 /**
  * Write an amount of data to the secure socket.
  *
+ * Retries internally while OpenSSL reports a retryable condition, for at most
+ * SEC_SOCKET_WRITE_TIMEOUT_MS milliseconds.
+ *
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_TIMEOUT       The descriptor did not accept the data before the timeout elapsed
+ *  - LE_CLOSED        The peer closed the TLS session
  *  - LE_FAULT         Internal error
  */
 //--------------------------------------------------------------------------------------------------
@@ -1614,15 +3070,48 @@ le_result_t secSocket_Write
         return LE_BAD_PARAMETER;
     }
 
-    int r = BIO_write(contextPtr->bioPtr, dataPtr, dataLen);
-    if (0 >= r)
+    if (!contextPtr->bioPtr)
     {
-        LE_ERROR("Write failed. Error code: %d", r);
-        contextPtr->openssl_errcode = r;
+        LE_ERROR("Socket not connected");
         return LE_FAULT;
     }
 
-    return LE_OK;
+    le_clk_Time_t deadline = DeadlineFromNow(SEC_SOCKET_WRITE_TIMEOUT_MS);
+
+    for (;;)
+    {
+        int r = BIO_write(contextPtr->bioPtr, dataPtr, dataLen);
+
+        if (r > 0)
+        {
+            return LE_OK;
+        }
+
+        if (!BIO_should_retry(contextPtr->bioPtr))
+        {
+            le_result_t status = MapBioError(contextPtr, r);
+
+            LE_ERROR("Write failed: %s (OpenSSL reason: %d)",
+                     LE_RESULT_TXT(status), contextPtr->openssl_errcode);
+            return status;
+        }
+
+        // Retryable failure on a non-blocking descriptor: either the send buffer is full, or the
+        // SSL layer needs to read before it can write (renegotiation, TLS 1.3 key update). Wait
+        // for the direction OpenSSL asked for and present the very same buffer again, which is
+        // what SSL_write() requires when partial writes are not enabled.
+        bool forRead = BIO_should_read(contextPtr->bioPtr);
+
+        le_result_t waitStatus = WaitForBioReady(contextPtr->bioPtr, forRead, deadline);
+        if (waitStatus != LE_OK)
+        {
+            if (waitStatus == LE_TIMEOUT)
+            {
+                LE_ERROR("Write timed out after %d ms", SEC_SOCKET_WRITE_TIMEOUT_MS);
+            }
+            return waitStatus;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1630,11 +3119,16 @@ le_result_t secSocket_Write
  * Read data from the socket file descriptor in a blocking way. If the timeout is zero, then the
  * API returns immediatly.
  *
+ * Records that carry no application data (TLS 1.3 NewSessionTicket, key update, partial records)
+ * are consumed transparently and do not end the call: the wait resumes with the time left in the
+ * timeout budget.
+ *
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_CLOSED        The peer closed the TLS session
  *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
  */
 //--------------------------------------------------------------------------------------------------
@@ -1646,8 +3140,7 @@ le_result_t secSocket_Read
     uint32_t         timeout       ///< [IN] Read timeout in milliseconds.
 )
 {
-    fd_set set;
-    int rv, fd;
+    int rv;
 
     if ((!ctxPtr) || (!dataPtr) || (!dataLenPtr))
     {
@@ -1666,57 +3159,62 @@ le_result_t secSocket_Read
         return LE_FAULT;
     }
 
-    if (!BIO_pending(contextPtr->bioPtr))
+    // Absolute budget for the whole call. A wake-up that yields no application data must not
+    // consume it in one shot, so every retry below counts down against this deadline instead of
+    // restarting the timeout.
+    le_clk_Time_t deadline = DeadlineFromNow(timeout);
+
+    for (;;)
     {
-        struct timeval time = {.tv_sec = timeout / 1000, .tv_usec = (timeout % 1000) * 1000};
-
-        // Get file descriptor of the current BIO
-        BIO_get_fd(contextPtr->bioPtr, &fd);
-
-        do
+        if (!BIO_pending(contextPtr->bioPtr))
         {
-           FD_ZERO(&set);
-           FD_SET(fd, &set);
-           rv = select(fd + 1, &set, NULL, NULL, &time);
-        }
-        while (rv == -1 && errno == EINTR);
+            le_result_t waitStatus = WaitForBioReady(contextPtr->bioPtr, true, deadline);
 
-        if (rv > 0)
-        {
-            if (!FD_ISSET(fd, &set))
+            if (waitStatus != LE_OK)
             {
-                LE_ERROR("Nothing to read");
-                return LE_FAULT;
+                return waitStatus;
             }
         }
-        else if (rv == 0)
+
+        // At this point, there is something available for reading from BIO
+        rv = BIO_read(contextPtr->bioPtr, dataPtr, *dataLenPtr);
+        if (rv > 0)
         {
-            return LE_TIMEOUT;
+            *dataLenPtr = rv;
+            return LE_OK;
         }
-        else
+
+        if (!BIO_should_retry(contextPtr->bioPtr))
         {
-            return LE_FAULT;
+            le_result_t status = MapBioError(contextPtr, rv);
+
+            if (status == LE_CLOSED)
+            {
+                LE_INFO("Read: peer closed the TLS session");
+            }
+            else
+            {
+                LE_ERROR("Read failed: %s (OpenSSL reason: %d)",
+                         LE_RESULT_TXT(status), contextPtr->openssl_errcode);
+            }
+
+            return status;
+        }
+
+        // The readable bytes carried no application data. On TLS 1.3 this is most often a
+        // NewSessionTicket, which an OpenSSL server emits from inside SSL_accept() and therefore
+        // reaches the peer ahead of any payload, but a key update or the first half of a split
+        // record land here too. Reporting LE_WOULD_BLOCK on the first such record would abandon
+        // the caller's timeout with the whole budget unspent, so wait for more instead.
+        struct timeval left = RemainingTime(deadline);
+
+        if ((left.tv_sec == 0) && (left.tv_usec == 0))
+        {
+            // A zero timeout was a request to poll once and report back, so distinguish it from
+            // a budget that was genuinely waited out.
+            return (timeout == 0) ? LE_WOULD_BLOCK : LE_TIMEOUT;
         }
     }
-
-    // At this point, there is something available for reading from BIO
-    rv = BIO_read(contextPtr->bioPtr, dataPtr, *dataLenPtr);
-    if (rv <= 0)
-    {
-        if (BIO_should_retry(contextPtr->bioPtr))
-        {
-             return LE_WOULD_BLOCK;
-        }
-        else
-        {
-            LE_ERROR("Read failed. Error code: %d", rv);
-            contextPtr->openssl_errcode = rv;
-            return LE_FAULT;
-        }
-    }
-
-    *dataLenPtr = rv;
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

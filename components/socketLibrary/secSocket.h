@@ -67,6 +67,28 @@ le_result_t secSocket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add root CA certificates to the secure socket context from a file.
+ *
+ * The file may be PEM or DER encoded, and either form may hold several concatenated
+ * certificates. The certificate content is read by the underlying TLS library and never copied
+ * into the caller's memory.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty path, or path too long)
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] CA certificate file path (PEM or DER)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own certificates to the secure socket context for mutual authentication.
  *
  * @return
@@ -84,6 +106,28 @@ le_result_t secSocket_AddOwnCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the module's own certificate chain to the secure socket context from a file, for mutual
+ * authentication.
+ *
+ * The file may be PEM or DER encoded, and may hold a full chain: the leaf certificate first,
+ * optionally followed by the intermediate CA certificates completing the chain.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty path, or path too long)
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificateFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own certificate chain file path (PEM or DER)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own private key to the secure socket context for mutual authentication.
  *
  * @return
@@ -96,6 +140,65 @@ le_result_t secSocket_AddOwnPrivateKey
     secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
     const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
     size_t            pkeyLen           ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context from a file, for mutual
+ * authentication.
+ *
+ * The file may be PEM or DER encoded. The key is loaded by the underlying TLS library, so the
+ * key material never transits through the caller's memory. Because the load goes through the
+ * library's decoder chain, a key held by a crypto provider - i.e. a file holding a key reference
+ * or wrapped key blob rather than the raw key material - is also supported, provided that
+ * provider is loaded and registers a matching decoder.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty path, or path too long)
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Unable to decode the private key
+ *  - LE_FAULT         Failure, including a key that does not match the loaded certificate
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKeyFile
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       pathPtr           ///< [IN] Own private key file path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider of the secure socket context.
+ *
+ * Backs the provider block of the caller's configuration:
+ *   "type", "provider_name" and "provider_module_path".
+ *
+ * With SOCKET_PROVIDER_TYPE_DEFAULT nothing is loaded and the TLS library keeps its own built-in
+ * implementations, so a configuration that asks for no external provider goes through the same
+ * call. With SOCKET_PROVIDER_TYPE_OPENSSL the named module is loaded and activated.
+ *
+ * The strings belong to the caller and are only read for the duration of the call.
+ *
+ * @note A key held by the provider is loaded separately, with
+ *       secSocket_AddOwnPrivateKeyFile(), which already routes a key reference file through the
+ *       TLS library's decoder chain. Call this function first, so the provider is active by the
+ *       time the key reference has to be decoded.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter, unrecognized type, or no module named
+ *  - LE_NOT_FOUND     Provider module file does not exist or is not readable
+ *  - LE_UNSUPPORTED   Provider type not supported by the underlying TLS library
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetProvider
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       typePtr,          ///< [IN] "type" value (required)
+    const char*       namePtr,          ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr     ///< [IN] "provider_module_path" value, NULL if absent
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -129,6 +232,68 @@ void secSocket_SetAlpnProtocolList
 (
     secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
     const char**      alpnList          ///< [IN] ALPN protocol list pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the minimum acceptable TLS protocol version in the secure socket context.
+ *
+ * Backs the "tls_min_version" configuration entry. Accepted values are "TLSv1", "TLSv1.0",
+ * "TLSv1.1", "TLSv1.2" and "TLSv1.3", matched case-insensitively.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter or unrecognized version string
+ *  - LE_UNSUPPORTED   Version understood but not supported by the underlying TLS library
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetTlsMinVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       versionPtr        ///< [IN] Minimum TLS version string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list in the secure socket context from a colon-separated string.
+ *
+ * Backs the "tls_cipher_suites" configuration entry, e.g.
+ * "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384".
+ *
+ * Names are dispatched by TLS version: entries prefixed with "TLS_" are TLS 1.3 suite names,
+ * every other entry is a TLS 1.0-1.2 cipher name. A version whose list ends up empty keeps the
+ * TLS library defaults, so restricting the TLS 1.3 suites does not implicitly disable TLS 1.2.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Failure, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetCipherSuiteList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       cipherSuitesPtr   ///< [IN] Colon-separated cipher suite list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms in the secure socket context from a colon-separated
+ * string.
+ *
+ * Backs the "signature_algorithms" configuration entry, e.g. "ecdsa_secp256r1_sha256".
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Failure, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_SetSignatureAlgorithms
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char*       sigAlgsPtr        ///< [IN] Colon-separated signature algorithm list
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -210,9 +375,14 @@ le_result_t secSocket_Delete
 /**
  * Write an amount of data to the secure socket.
  *
+ * Backends may retry internally while the underlying transport reports a retryable condition, so
+ * this call can block for a bounded time even on a non-blocking descriptor.
+ *
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_TIMEOUT       The transport did not accept the data before the timeout elapsed
+ *  - LE_CLOSED        In case of end of file error
  *  - LE_FAULT         Internal error
  */
 //--------------------------------------------------------------------------------------------------
@@ -228,12 +398,17 @@ le_result_t secSocket_Write
  * Read data from the socket file descriptor in a blocking way. If the timeout is zero, then the
  * API returns immediatly.
  *
+ * Transport records that carry no application data are consumed transparently and do not end the
+ * call: the wait resumes with the time left in the timeout budget.
+ *
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_IN_PROGRESS   Secure HandShake still in progress
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_CLOSED        In case of end of file error
+ *  - LE_WOULD_BLOCK   Zero timeout requested and no application data was available
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Read

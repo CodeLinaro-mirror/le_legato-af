@@ -69,4 +69,17 @@ ProtoRoleType_t;
 //--------------------------------------------------------------------------------------------------
 #define ALPN_LIST_SIZE       1
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accepted values of the provider configuration "type" entry, passed to le_socket_SetProvider().
+ *
+ * SOCKET_PROVIDER_TYPE_DEFAULT keeps the TLS library's own built-in implementations, which is also
+ * what happens when no provider is configured at all. SOCKET_PROVIDER_TYPE_OPENSSL activates an
+ * external OpenSSL provider module, so that key operations can be carried out by a separate
+ * cryptographic backend.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SOCKET_PROVIDER_TYPE_DEFAULT  "default"
+#define SOCKET_PROVIDER_TYPE_OPENSSL  "openssl_provider"
+
 #endif /* LE_SOCKET_COMMON_H */

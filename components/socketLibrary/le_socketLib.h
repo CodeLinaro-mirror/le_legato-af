@@ -224,6 +224,28 @@ LE_SHARED le_result_t le_socket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add root CA certificates to the socket from a file, in order to make the connection secure.
+ *
+ * The file may be PEM or DER encoded, and either form may hold several concatenated
+ * certificates. The certificate content is read by the underlying TLS library and never copied
+ * into the caller's memory.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddCertificateFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] CA certificate file path (PEM or DER)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own certificates to the socket context for mutual authentication.
  *
  * @return
@@ -242,6 +264,28 @@ LE_SHARED le_result_t le_socket_AddOwnCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the module's own certificate chain to the socket context from a file, for mutual
+ * authentication.
+ *
+ * The file may be PEM or DER encoded, and may hold a full chain: the leaf certificate first,
+ * optionally followed by the intermediate CA certificates completing the chain.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Invalid or expired certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnCertificateFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] Own certificate chain file path (PEM or DER)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add the module's own private key to the socket context for mutual authentication.
  *
  * @return
@@ -255,6 +299,77 @@ LE_SHARED le_result_t le_socket_AddOwnPrivateKey
     le_socket_Ref_t   ref,             ///< [IN] Socket context reference
     const uint8_t*    pkeyPtr,         ///< [IN] Private key pointer
     size_t            pkeyLen          ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context from a file, for mutual authentication.
+ *
+ * The file may be PEM or DER encoded. The key is loaded by the underlying TLS library, so the
+ * key material never transits through the caller's memory. Because the load goes through the
+ * library's decoder chain, a key held by a crypto provider - i.e. a file holding a key reference
+ * or wrapped key blob rather than the raw key material - is also supported, provided that
+ * provider is loaded and registers a matching decoder.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_NOT_FOUND     File does not exist or is not readable
+ *  - LE_FORMAT_ERROR  Unable to decode the private key
+ *  - LE_FAULT         Internal error, including a key that does not match the certificate
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnPrivateKeyFile
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       pathPtr          ///< [IN] Own private key file path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the cryptographic provider used by the socket.
+ *
+ * The three arguments are the provider block of the caller's configuration, passed through as the
+ * strings they were read as:
+ * @code
+ *   "type":                 "openssl_provider",
+ *   "provider_name":        "aumovio_qsee",
+ *   "provider_module_path": "/usr/lib/ossl-modules/libotp_telsdk_provider.so"
+ * @endcode
+ *
+ * @c typePtr is the only required argument:
+ *   - @ref SOCKET_PROVIDER_TYPE_DEFAULT ("default") keeps the TLS library's own built-in
+ *     implementations. @c namePtr and @c modulePathPtr are ignored, so a configuration that asks
+ *     for no external provider needs no special case in the caller.
+ *   - @ref SOCKET_PROVIDER_TYPE_OPENSSL ("openssl_provider") loads and activates an external
+ *     OpenSSL provider module. At least one of @c namePtr and @c modulePathPtr must be given.
+ *
+ * The type is matched case-insensitively. The strings are only read for the duration of the call,
+ * so a buffer that goes out of scope right afterwards is fine.
+ *
+ * @note Provider activation is process-wide, not per socket: the module is registered with the
+ *       library rather than with this reference. The reference owns the activation, and releasing
+ *       it with @ref le_socket_Delete drops the module again.
+ *
+ * @note A key held by the provider is loaded separately, with
+ *       @ref le_socket_AddOwnPrivateKeyFile, which already accepts a key reference file rather
+ *       than raw key material. Call this function first, so the provider is active by the time the
+ *       key reference has to be decoded.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter, unrecognized type, or no module named
+ *  - LE_NOT_FOUND     Provider module file does not exist or is not readable
+ *  - LE_UNSUPPORTED   Provider type not supported by the underlying TLS library
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetProvider
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       typePtr,         ///< [IN] "type" value (required)
+    const char*       namePtr,         ///< [IN] "provider_name" value, NULL if absent
+    const char*       modulePathPtr    ///< [IN] "provider_module_path" value, NULL if absent
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -638,6 +753,79 @@ LE_SHARED le_result_t le_socket_SetTlsVersion
 (
     le_socket_Ref_t   ref,             ///< [IN] Socket context reference
     uint8_t           tlsVersion       ///< [IN] Supported TLS version (Minor version number)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the minimum acceptable TLS protocol version on the socket.
+ *
+ * Intended to be fed directly with the "tls_min_version" configuration entry, e.g.
+ * @c "TLSv1.3". Accepted values are "TLSv1", "TLSv1.0", "TLSv1.1", "TLSv1.2" and "TLSv1.3",
+ * matched case-insensitively.
+ *
+ * @note Versions below the library default are accepted only if the underlying TLS library still
+ *       enables them.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter or unrecognized version string
+ *  - LE_UNSUPPORTED   Version understood but not supported by the underlying TLS library
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetTlsMinVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       versionPtr       ///< [IN] Minimum TLS version string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suite list on the socket from a colon-separated string.
+ *
+ * Intended to be fed directly with the "tls_cipher_suites" configuration entry, e.g.
+ * @c "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384".
+ *
+ * Names are dispatched by TLS version: entries prefixed with "TLS_" are TLS 1.3 suite names,
+ * every other entry is a TLS 1.0-1.2 cipher name. A version whose list ends up empty keeps the
+ * TLS library defaults, so restricting the TLS 1.3 suites does not implicitly disable TLS 1.2.
+ *
+ * @note This is the string-based alternative to @ref le_socket_SetCipherSuites, which selects a
+ *       suite from a fixed built-in table by index. Whichever is called last wins.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Internal error, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetCipherSuiteList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       cipherSuitesPtr  ///< [IN] Colon-separated cipher suite list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the accepted signature algorithms on the socket from a colon-separated string.
+ *
+ * Intended to be fed directly with the "signature_algorithms" configuration entry, e.g.
+ * @c "ecdsa_secp256r1_sha256". Both the RFC 8446 scheme names ("ecdsa_secp256r1_sha256",
+ * "rsa_pss_rsae_sha256", ...) and the legacy "algorithm+hash" form ("ECDSA+SHA256") are accepted.
+ *
+ * @note On a server socket the list also constrains the signature algorithms advertised in the
+ *       CertificateRequest, so it applies to client certificates under mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter (null/empty string, or string too long)
+ *  - LE_FAULT         Internal error, including a name the TLS library does not recognize
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetSignatureAlgorithms
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char*       sigAlgsPtr       ///< [IN] Colon-separated signature algorithm list
 );
 
 //--------------------------------------------------------------------------------------------------
