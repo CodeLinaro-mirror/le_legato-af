@@ -2435,12 +2435,6 @@ COMPONENT_INIT
         // If an app update needs finishing, finish it now.
         app_FinishUpdates();
 
-        // Test if /etc/passwd and /etc/group are writable.
-        if ((0 == access("/etc/passwd", W_OK)) && (0 == access("/etc/group", W_OK)))
-        {
-            UpdateUsersAndGroups();
-        }
-
         State = STATE_IDLE;
 
         if (sysStatus_Status() == SYS_GOOD)

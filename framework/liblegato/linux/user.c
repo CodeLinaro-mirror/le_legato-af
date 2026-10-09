@@ -454,8 +454,7 @@ void user_Init
     // Get the min and max values for local user IDs and group IDs.
     FILE *filePtr;
 
-    // Check if /etc is writable and register the result for further checks
-    IsEtcWritable = (0 == access( PASSWORD_FILE, W_OK ) ? true : false);
+    // Currently we assume /etc/ is always RO so that we won't modify any files under it.
     LE_DEBUG("/etc is %swritable", IsEtcWritable ? "" : "NOT ");
 
     filePtr = fopen(LOGIN_DEF_FILE, "r"); // Read mode
