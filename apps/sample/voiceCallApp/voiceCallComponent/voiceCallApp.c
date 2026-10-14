@@ -49,7 +49,9 @@ static char Path[PATH_MAX] = "/";
 * Audio safe references
 */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_TARGET_SA525M
 static le_audio_RouteRef_t              routeRef = NULL;
+#endif
 static le_audio_StreamRef_t             MdmRxAudioRef;
 static le_audio_StreamRef_t             MdmTxAudioRef;
 static le_audio_StreamRef_t             FeInRef;
