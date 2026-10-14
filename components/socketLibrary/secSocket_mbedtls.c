@@ -192,6 +192,7 @@ static int ReadFromStream
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Init
 (
+    ProtoRoleType_t    role, ///< [IN] Protocol role type
     secSocket_Ctx_t **ctxPtr ///< [OUT] Secure socket context pointer
 )
 {

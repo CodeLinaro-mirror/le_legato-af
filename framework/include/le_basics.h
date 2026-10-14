@@ -69,6 +69,10 @@ typedef enum
     LE_TERMINATED = -22,        ///< The process, operation, data stream, session, etc. has stopped.
     LE_IN_PROGRESS = -23,       ///< The operation is in progress.
     LE_SUSPENDED = -24,         ///< The operation is suspended.
+
+    LE_CAP_NOT_IMPLEMENTED= -25,///< The underlying chipset support has not been implemented.
+    LE_CAP_UNSUPPORTED = -26,   ///< Unsupported due to chipset capabilities or chipset SW
+                                ///  limitations.
 }
 le_result_t;
 

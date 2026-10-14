@@ -43,12 +43,13 @@ typedef void secSocket_Ctx_t;
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Init
 (
+    ProtoRoleType_t    role,        ///< [IN] Protocol role type
     secSocket_Ctx_t**  ctxPtr       ///< [INOUT] Secure socket context pointer
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add one or more certificates to the secure socket context.
+ * Add root CA certificates to the secure socket context.
  *
  * @return
  *  - LE_OK            The function succeeded
@@ -62,6 +63,94 @@ le_result_t secSocket_AddCertificate
     secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
     const uint8_t*    certificatePtr,   ///< [IN] Certificate Pointer
     size_t            certificateLen    ///< [IN] Certificate Length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificate
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKey
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
+    size_t            pkeyLen           ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetCipherSuites
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           cipherIdx         ///< [IN] Cipher suites index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAuthType
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           auth              ///< [IN] Authentication type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ALPN protocol list in the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAlpnProtocolList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char**      alpnList          ///< [IN] ALPN protocol list pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs TLS Handshake
+ *
+ * Warning: Deprecated function. Use secSocket_Connect() to connect remote host and doing handshake.
+ *
+ * @return
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_PerformHandshake
+(
+    secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char*               hostPtr,   ///< [IN] Host to connect on
+    int                 fd         ///< [IN] File descriptor
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -84,6 +173,7 @@ le_result_t secSocket_Connect
     secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
     char*            hostPtr,    ///< [IN] Host to connect on
     uint16_t         port,       ///< [IN] Port to connect on
+    char*            srcAddrPtr, ///< [IN] Source address pointer
     SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
     int*             fdPtr       ///< [OUT] Socket file descriptor
 );
@@ -140,6 +230,7 @@ le_result_t secSocket_Write
  *
  * @return
  *  - LE_OK            The function succeeded
+ *  - LE_IN_PROGRESS   Secure HandShake still in progress
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
@@ -164,6 +255,75 @@ le_result_t secSocket_Read
 bool secSocket_IsDataAvailable
 (
     secSocket_Ctx_t* ctxPtr       ///< [INOUT] Secure socket context pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the tls version to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           tlsVersion        ///< [IN] Supported TLS version (Minor version number)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int secSocket_GetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr     ///< [IN] Secure socket context pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr,     ///< [IN] Secure socket context pointer
+    int             err_code     ///< [IN] INT error code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy the TLS configuration from a source secure socket context into a destination context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_CopyConfig
+(
+    secSocket_Ctx_t*  srcCtxPtr,    ///< [IN]  Source secure socket context (server listener)
+    secSocket_Ctx_t*  dstCtxPtr     ///< [INOUT] Destination secure socket context (accepted client)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * One-time init for Secure Socket component
+ *
+ * This pre-initializes the secSocket memory pools.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_InitializeOnce
+(
+    void
 );
 
 #endif /* LE_SEC_SOCKET_LIB_H */
