@@ -12,6 +12,8 @@ sources:
     wait.c
     ../common/frameworkWdog.c
     ../common/ima.c
+    $TELAF_ROOT/framework/common/selinux/ctx.c
+    $TELAF_ROOT/framework/common/selinux/ctxMigrate.c
 }
 
 provides:
@@ -42,6 +44,7 @@ requires:
     {
     #if ${LE_CONFIG_ENABLE_SELINUX} =y
         lib/libsemanage.so.1
+        lib/libselinux.so.1
     #endif
     }
 }
@@ -80,4 +83,5 @@ cflags:
 cflags:
 {
     -DFRAMEWORK_WDOG_NAME=supervisorWdog
+    -I$TELAF_ROOT/framework/common
 }

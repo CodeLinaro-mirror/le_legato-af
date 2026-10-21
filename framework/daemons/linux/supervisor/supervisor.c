@@ -223,6 +223,10 @@
 #include "log.h"
 #include "resourceLimits.h"
 
+// SELinux context migration of the Legato file-system data, shared with TelAF's tafUpdateSvc
+// ($TELAF_ROOT/framework/common/selinux).
+#include "selinux/ctx.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -238,6 +242,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define BOOT_CFG_PATH "/"
+
+// tafUpdateSvc creates activate_context in its default config tree. For TelAF apps, the default
+// tree name is the application/cgroup name, which is "tafUpdateSvc" (not the Linux user "telaf").
+// These values are defined by TelAF's tafUpdateSvc. Keep the state value in sync with
+// TAF_UPDATE_INSTALL_SUCCESS in TelAF's taf_update.api.
+#define TAF_UPDATE_ACTIVATE_CONTEXT       "tafUpdateSvc:activate_context"
+#define TAF_UPDATE_INSTALL_SUCCESS        7
 
 
 //--------------------------------------------------------------------------------------------------
@@ -554,8 +565,41 @@ static void StartFramework
     le_instStat_ConnectService();
     LE_INFO("---- Connected to services ----");
 
-    // Cancel the start-up watchdog timer.
+    // Read the TelAF activation state while the start-up watchdog is still armed.
+    selinuxCtx_SetLogTag("supervisor");
+    int state = 0;
+    le_cfg_IteratorRef_t activateContext = le_cfg_CreateReadTxn(TAF_UPDATE_ACTIVATE_CONTEXT);
+    if (activateContext == NULL)
+    {
+        SELINUXCTX_WARN("Unable to read TelAF activation context.");
+    }
+    else
+    {
+        state = le_cfg_GetInt(activateContext, "state", 0);
+        le_cfg_CancelTxn(activateContext);
+    }
+
+    // Cancel the start-up watchdog timer. This is done before the SELinux context migration
+    // below, whose full-tree check and relabel can take longer than the watchdog period.
     alarm(0);
+
+    // After a successful TelAF installation, save the current SELinux contexts of the Legato
+    // file-system data and then relabel it (same rules as restorecon -R) so it carries the labels
+    // of the new file_contexts. See selinuxCtx_Migrate(). It must run after configTree is
+    // available and before user applications are started.
+    if (state == TAF_UPDATE_INSTALL_SUCCESS)
+    {
+#ifdef LE_CONFIG_ENABLE_SELINUX
+        selinuxCtx_Migrate();
+#else
+        SELINUXCTX_WARN("SELinux support is not built in, skip relabel check.");
+#endif
+    }
+    else
+    {
+        LE_INFO("TelAF activation state is %d (not %d), skip relabel check.", state,
+                TAF_UPDATE_INSTALL_SUCCESS);
+    }
 
     // Insert kernel modules
     kernelModules_Insert();
