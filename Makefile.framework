@@ -232,14 +232,16 @@ else # not LE_CONFIG_QMI
   PA_START_SRCS       := $(LINUX_SRC_DIR)/start/default/pa_start.c
 endif # end not LE_CONFIG_QMI
 
-PA_START_LDFLAGS    += $($(TARGET_CAPS)_LDFLAGS)
-
 # Source files for startSystem executable
 START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
               $(LINUX_SRC_DIR)/common/ima.c
 START_OBJ_DIR := $(BUILD_DIR)/startSystem
 START_OBJS := $(patsubst %.c,$(START_OBJ_DIR)/%.o,$(notdir $(START_SRCS)))
 START_LDFLAGS := -ldl -lpthread
+
+PA_START_LDFLAGS += $($(TARGET_CAPS)_LDFLAGS)
+START_LDFLAGS += $($(TARGET_CAPS)_LDFLAGS)
+
 ifeq ($(LE_CONFIG_ENABLE_DLT_LOGGING),y)
 START_LDFLAGS += -ldlt
 endif
@@ -367,7 +369,8 @@ $(LEGATO_JAVA): $(LIB_DIR) $(BUILD_DIR)/legatoJni.o
 		-L$(LIB_DIR) \
 		-llegato \
 		-lpthread \
-		-lrt
+		-lrt \
+		$($(TARGET_CAPS)_LDFLAGS)
 endif # end LE_CONFIG_JAVA
 
 # Python recipes
@@ -392,7 +395,8 @@ $(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
 		-IC                                                                 \
 		$(CFLAGS)                                                           \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib:/legato/systems/current/lib"                    \
-		-L$(LIB_DIR) -llegato -l$(PYVERSION)
+		-L$(LIB_DIR) -llegato -l$(PYVERSION)                                \
+		$($(TARGET_CAPS)_LDFLAGS)
 
 $(LEGATO_PY): $(LEGATO_ROOT)/framework/python/liblegato.py $(LEGATO_PY_SO)
 	$(Q)cp $< $@
