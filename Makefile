@@ -158,9 +158,12 @@ endif
 
 export GCC_PREFIX := $(GCC_PREFIX)
 
+# Global hardening defaults for all C and C++ sources built by the Legato mk tools.
+# DEFAULT_CFLAGS holds compile options only, linker-only options belong in DEFAULT_LDCFLAGS.
+# DEFAULT_LDCFLAGS is also used by "cmake/toolchain.yocto.cmake" ($ENV{DEFAULT_LDCFLAGS}).
 # Note, some of the default CFLAGS for MKTOOLS was added in both functions "GenerateBuildRules"
 # and "GenerateRunPathLdFlags".
-export DEFAULT_CFLAGS := -Wl,-z,noexecstack -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O
+export DEFAULT_CFLAGS := -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O
 export DEFAULT_LDCFLAGS := -Wl,-z,relro,-z,now,-z,noexecstack
 
 # Separate the C and C++ flags
@@ -174,8 +177,10 @@ export $(TARGET_CAPS)_CFLAGS += $(C_FLAGS)
 export $(TARGET_CAPS)_CXXFLAGS += $(X_FLAGS)
 export $(TARGET_CAPS)_LDFLAGS += $(DEFAULT_LDCFLAGS)
 
+# Pass the same flags to the mk tools (mksys, mkapp, mkexe), for apps, components and daemons.
 MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
 MKTOOLS_FLAGS +=$(addprefix --cxxflags=,$($(TARGET_CAPS)_CXXFLAGS))
+MKTOOLS_FLAGS +=$(addprefix --ldflags=,$($(TARGET_CAPS)_LDFLAGS))
 
 ifeq ($(TARGET),sa525m)
   ifneq ($(findstring oemllib32, $(GCC_PREFIX)),)# sa525m-32bit

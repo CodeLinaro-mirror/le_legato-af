@@ -203,7 +203,7 @@ void BuildScriptGenerator_t::GenerateCFlags
             " -MMD -MF $out.d"
             " -Wall" // Enable all warnings.
             " -Werror" // Treat all warnings as errors.
-            " -Wl,-z,noexecstack -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O" //For security.
+            " -fstack-protector-strong -D_FORTIFY_SOURCE=2 -O" // Global compile hardening.
             " -fvisibility=hidden"; // Prevent exporting of symbols by default.
     }
 
