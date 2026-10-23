@@ -22,6 +22,31 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Capabilities not needed by each framework daemon, kept one macro per daemon so that
+ * FrameworkDaemons[] stays readable as more capabilities are confirmed unneeded and added here.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SERVICE_DIRECTORY_UNNEEDED_CAPS        { CAP_WAKE_ALARM }
+#define SERVICE_DIRECTORY_UNNEEDED_CAP_NUM     1
+
+#define LOG_CTRL_DAEMON_UNNEEDED_CAPS          { CAP_BLOCK_SUSPEND, CAP_WAKE_ALARM }
+#define LOG_CTRL_DAEMON_UNNEEDED_CAP_NUM       2
+
+#define CONFIG_TREE_UNNEEDED_CAPS              { CAP_WAKE_ALARM }
+#define CONFIG_TREE_UNNEEDED_CAP_NUM           1
+
+#define UPDATE_DAEMON_UNNEEDED_CAPS            { CAP_WAKE_ALARM }
+#define UPDATE_DAEMON_UNNEEDED_CAP_NUM         1
+
+#define DEVICE_MANAGER_UNNEEDED_CAPS           { CAP_WAKE_ALARM }
+#define DEVICE_MANAGER_UNNEEDED_CAP_NUM        1
+
+#define WATCHDOG_UNNEEDED_CAPS                 { CAP_BLOCK_SUSPEND, CAP_WAKE_ALARM }
+#define WATCHDOG_UNNEEDED_CAP_NUM              2
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The framework daemon object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -66,14 +91,20 @@ DaemonObj_t;
 //--------------------------------------------------------------------------------------------------
 
 static DaemonObj_t FrameworkDaemons[] = {
-    {SYSTEM_BIN_PATH "/serviceDirectory", {-1}, 0, -1},
-    {SYSTEM_BIN_PATH "/logCtrlDaemon", {CAP_BLOCK_SUSPEND}, 1, -1},
-    {SYSTEM_BIN_PATH "/configTree", {-1}, 0, -1},
-    {SYSTEM_BIN_PATH "/updateDaemon", {-1}, 0, -1},
+    {SYSTEM_BIN_PATH "/serviceDirectory",
+        SERVICE_DIRECTORY_UNNEEDED_CAPS, SERVICE_DIRECTORY_UNNEEDED_CAP_NUM, -1},
+    {SYSTEM_BIN_PATH "/logCtrlDaemon",
+        LOG_CTRL_DAEMON_UNNEEDED_CAPS, LOG_CTRL_DAEMON_UNNEEDED_CAP_NUM, -1},
+    {SYSTEM_BIN_PATH "/configTree",
+        CONFIG_TREE_UNNEEDED_CAPS, CONFIG_TREE_UNNEEDED_CAP_NUM, -1},
+    {SYSTEM_BIN_PATH "/updateDaemon",
+        UPDATE_DAEMON_UNNEEDED_CAPS, UPDATE_DAEMON_UNNEEDED_CAP_NUM, -1},
 #if ! defined (LE_CONFIG_FLAVOR_LXC)
-    {SYSTEM_BIN_PATH "/deviceManager", {-1}, 0, -1},
+    {SYSTEM_BIN_PATH "/deviceManager",
+        DEVICE_MANAGER_UNNEEDED_CAPS, DEVICE_MANAGER_UNNEEDED_CAP_NUM, -1},
 #endif
-    {SYSTEM_BIN_PATH "/watchdog", {CAP_BLOCK_SUSPEND}, 1, -1}};
+    {SYSTEM_BIN_PATH "/watchdog",
+        WATCHDOG_UNNEEDED_CAPS, WATCHDOG_UNNEEDED_CAP_NUM, -1}};
 
 
 //--------------------------------------------------------------------------------------------------
