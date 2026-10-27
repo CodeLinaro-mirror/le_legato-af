@@ -9,8 +9,8 @@
  * Any other access permissions (read access for any other tree, or write access to any tree at all)
  * must be explicitly granted in the app's @ref defFilesAdef_requiresConfigTree ".adef file".
  *
- * Trees are created automatically the first time that they are accessed by an app or a component.
- * The apps tree will be named the same as the name of the app. It is possible for apps to be given
+ * Trees are created automatically the first time that they're accessed by an app or a component.
+ * The apps tree will be named the same as the name of the app. It's possible for apps to be given
  * access to other apps tree's or for multiple apps to share one tree.
  *
  * @b NOTE: If your app is running as root then the configuration will get added to the
@@ -101,7 +101,7 @@
  * - call the Get functions,
  * - cancel the transaction when finished.
  *
- * You could also:
+ * You can also:
  * - create a write transaction,
  * - perform only Get operations,
  * - cancel the transaction
@@ -116,7 +116,7 @@
  * | Function                  | Action                                                            |
  * | --------------------------| ------------------------------------------------------------------|
  * | @c le_cfg_CreateReadTxn() | Opens the transaction                                             |
- * | @c le_cfg_CancelTxn()     | Closes a read/write transaction and does not write it to the tree |
+ * | @c le_cfg_CancelTxn()     | Closes a read/write transaction and doesn't write it to the tree |
  * | @c le_cfg_CommitTxn()     | Closes a write transaction and queues it for commit               |
  *
  * @subsection cfg_transNavigate Navigating the Tree
@@ -141,7 +141,7 @@
  * | ------------------------| ------------------------------------------------------------------------------- |
  * | @c le_cfg_GetPath()     | Gets the location of where you are in the Tree                                  |
  * | @c le_cfg_GetNodeType() | Gets the data type of the node where you are currently located                  |
- * | @c le_cfg_GetNodeName() | Gets the name of the node where you are in the Tree (does not include the path) |
+ * | @c le_cfg_GetNodeName() | Gets the name of the node where you are in the Tree (doesn't include the path) |
  *
  * @subsection cfg_read Read Transactions
  *
@@ -310,7 +310,7 @@
  *
  * The quick reads and writes work almost identically to the transactional version except quick
  * reads don't explicitly take an iterator object. The quick functions internally use an
- * implicit transaction. This implicit transaction wraps one get or set, and does not protect
+ * implicit transaction. This implicit transaction wraps one get or set, and doesn't protect
  * your code from other activity in the system.
  *
  * Because quick read/write functions don't get created within a transaction, there is no option to
@@ -371,7 +371,7 @@
  *
  * @b WARNING: Because each quick function is independent, there's no guarantee of consistency between
  * them.  If another process changes one of the values while you read/write the other,
- * the two values could be read out of sync.
+ * the two values can be read out of sync.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -453,7 +453,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
 /**
  * Create a read transaction and open a new iterator for traversing the config tree.
  *
- * This action creates a read lock on the given tree, which will start a read-timeout.
+ * This action creates a read lock on the specified tree, which will start a read-timeout.
  * Once the read timeout expires, all active read iterators on that tree will be
  * expired and their clients will be killed.
  *
@@ -506,7 +506,7 @@ FUNCTION CommitTxn
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Closes and frees the given iterator object. If the iterator is a write iterator, the transaction
+ * Closes and frees the specified iterator object. If the iterator is a write iterator, the transaction
  * will be canceled. If the iterator is a read iterator, the transaction will be closed. No data is
  * written to the tree
  *
@@ -524,7 +524,7 @@ FUNCTION CancelTxn
  * Changes the location of iterator. The path passed can be an absolute or a
  * relative path from the iterators current location.
  *
- * The target node does not need to exist. Writing a value to a non-existent node will
+ * The target node doesn't need to exist. Writing a value to a non-existent node will
  * automatically create that node and any ancestor nodes (parent, parent's parent, etc.) that
  * also don't exist.
  */
@@ -558,13 +558,13 @@ FUNCTION le_result_t GoToParent
  *
  * For read iterators without children, this function will fail. If the iterator is a write
  * iterator, then a new node is automatically created. If this node or newly created
- * children of this node are not written to, then this node will not persist even if the iterator is
+ * children of this node aren't written to, then this node won't persist even if the iterator is
  * committed.
  *
  * @return Return code will be one of the following values:
  *
  *         - LE_OK        - Move was completed successfully.
- *         - LE_NOT_FOUND - The given node has no children.
+ *         - LE_NOT_FOUND - The specified node has no children.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GoToFirstChild
@@ -628,14 +628,14 @@ FUNCTION le_result_t GoToNextSibling
  *
  * Optionally, a path to another node can be supplied to this function. So, if the iterator is
  * again on valueA and the relative path ".." is supplied then this function will return the
- * the path relative to the node given:
+ * the path relative to the node specified:
  *
  * @code
  * /baseNode/childA/
  * @endcode
  *
  * @return - LE_OK            - The write was completed successfully.
- *         - LE_OVERFLOW      - The supplied string buffer was not large enough to hold the value.
+ *         - LE_OVERFLOW      - The supplied string buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPath
@@ -667,7 +667,7 @@ FUNCTION nodeType GetNodeType
  * Get the name of the node where the iterator is currently pointing.
  *
  * @return - LE_OK       Read was completed successfully.
- *         - LE_OVERFLOW Supplied string buffer was not large enough to hold the value.
+ *         - LE_OVERFLOW Supplied string buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNodeName
@@ -701,8 +701,8 @@ HANDLER ChangeHandler
 
 // -------------------------------------------------------------------------------------------------
 /**
- * This event provides information on changes to the given node object, or any of it's children,
- * where a change could be either a read, write, create or delete operation.
+ * This event provides information on changes to the specified node object, or any of it's children,
+ * where a change can be either a read, write, create or delete operation.
  */
 // -------------------------------------------------------------------------------------------------
 EVENT Change
@@ -741,7 +741,7 @@ FUNCTION DeleteNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Check if the given node is empty. A node is also considered empty if it doesn't yet exist. A
+ * Check if the specified node is empty. A node is also considered empty if it doesn't yet exist. A
  * node is also considered empty if it has no value or is a stem with no children.
  *
  * If the path is empty, the iterator's current node is queried for emptiness.
@@ -779,7 +779,7 @@ FUNCTION SetEmpty
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Checks to see if a given node in the config tree exists.
+ * Checks to see if a specified node in the config tree exists.
  *
  * @return True if the specified node exists in the tree. False if not.
  */
@@ -802,7 +802,7 @@ FUNCTION bool NodeExists
  * If the path is empty, the iterator's current node will be read.
  *
  * @return - LE_OK       - Read was completed successfully.
- *         - LE_OVERFLOW - Supplied string buffer was not large enough to hold the value.
+ *         - LE_OVERFLOW - Supplied string buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetString
@@ -849,7 +849,7 @@ FUNCTION SetString
  *
  *          - LE_OK             - Read was completed successfully.
  *          - LE_FORMAT_ERROR   - if data can't be decoded.
- *          - LE_OVERFLOW       - Supplied buffer was not large enough to hold the value.
+ *          - LE_OVERFLOW       - Supplied buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBinary
@@ -871,7 +871,7 @@ FUNCTION le_result_t GetBinary
  *
  *  If the path is empty, the iterator's current node will be set.
  *
- *  @b NOTE: Binary data cannot be written to the 'system' tree.
+ *  @b NOTE: Binary data can't be written to the 'system' tree.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetBinary
@@ -888,7 +888,7 @@ FUNCTION SetBinary
  * Reads a signed integer value from the config tree.
  *
  * If the underlying value is not an integer, the default value will be returned instead. The
- * default value is also returned if the node does not exist or if it's empty.
+ * default value is also returned if the node doesn't exist or if it's empty.
  *
  * If the value is a floating point value, then it will be rounded and returned as an integer.
  *
@@ -1026,7 +1026,7 @@ FUNCTION QuickDeleteNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Clears the current value of a node. If the node doesn't currently exist then it is created as a
+ * Clears the current value of a node. If the node doesn't currently exist then it's created as a
  * new empty node.
  */
 // -------------------------------------------------------------------------------------------------
@@ -1042,7 +1042,7 @@ FUNCTION QuickSetEmpty
  * empty or doesn't exist, the default value will be returned.
  *
  * @return - LE_OK       - Commit was completed successfully.
- *         - LE_OVERFLOW - Supplied string buffer was not large enough to hold the value.
+ *         - LE_OVERFLOW - Supplied string buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t QuickGetString
@@ -1071,7 +1071,7 @@ FUNCTION QuickSetString
  *
  * @return - LE_OK              - Commit was completed successfully.
  *         - LE_FORMAT_ERROR    - if data can't be decoded.
- *         - LE_OVERFLOW        - Supplied buffer was not large enough to hold the value.
+ *         - LE_OVERFLOW        - Supplied buffer wasn't large enough to hold the value.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t QuickGetBinary
@@ -1124,7 +1124,7 @@ FUNCTION QuickSetInt
 // -------------------------------------------------------------------------------------------------
 /**
  * Reads a 64-bit floating point value from the config tree. If the value is an integer,
- * then it is promoted to a float. Otherwise, if the underlying value is not a float, or an
+ * then it's promoted to a float. Otherwise, if the underlying value is not a float, or an
  * integer the default value will be returned.
  *
  * If the value is empty or the node doesn't exist, the default value is returned.

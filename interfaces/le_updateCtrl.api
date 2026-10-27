@@ -24,7 +24,7 @@
  * - le_updateCtrl_Defer() - prevent all updates until further notice.
  * - le_updateCtrl_Allow() - allow updates to go ahead.
  *
- * Updates will not be allowed to go ahead until no clients are deferring updates. So, if client A
+ * Updates won't be allowed to go ahead until no clients are deferring updates. So, if client A
  * and client B both call le_updateCtrl_Defer(), updates will be deferred until both client A and
  * client B have called le_updateCtrl_Allow().
  *
@@ -54,10 +54,10 @@
  * their own choosing, le_updateCtrl_FailProbation() is provided.
  *
  * Calls to any of the functions that affect the probation period are ignored if the probation
- * period is already over (if the system is already marked "good"). Once it is "good", it stays
+ * period is already over (if the system is already marked "good"). Once it's "good", it stays
  * "good".
  *
- * If someone tries to update the system while it is still in its probation period, the update
+ * If someone tries to update the system while it's still in its probation period, the update
  * will be refused.  To override this, call le_updateCtrl_FailProbation() or
  * le_updateCtrl_MarkGood() to end the probation period before trying to apply the new
  * system update.
@@ -165,7 +165,7 @@ FUNCTION FailProbation() = 5;
  * Get the current system state.
  *
  * @b NOTE: Can only be called if updates have been deferred or if a probation lock is held.
- * Otherwise the system state could change between the time this function is called and when
+ * Otherwise the system state can change between the time this function is called and when
  * the return value is checked.
  */
 //--------------------------------------------------------------------------------------------------

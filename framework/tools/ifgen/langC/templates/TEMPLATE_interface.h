@@ -61,7 +61,7 @@ void {{apiName}}_ConnectService
  *  - LE_UNAVAILABLE if the server is not currently offering the service to which the client is
  *    bound.
  *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
- *  - LE_COMM_ERROR if the Service Directory cannot be reached.
+ *  - LE_COMM_ERROR if the Service Directory can't be reached.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t {{apiName}}_TryConnectService
@@ -93,7 +93,7 @@ LE_FULL_API void {{apiName}}_SetServerDisconnectHandler
  *
  * @warning When using the API, it needs the application developer to handle some cases like
  * re-connecting and recycling the resources.
- * For most of cases, it is safe to use SetServerDisconnectHandler.
+ * For most of cases, it's safe to use SetServerDisconnectHandler.
  */
 //--------------------------------------------------------------------------------------------------
 LE_FULL_API void {{apiName}}_SetNonExitServerDisconnectHandler

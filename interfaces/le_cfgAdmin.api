@@ -11,7 +11,7 @@
  *
  * The API includes the following functions:
  * - an iterator function to walk the current list of trees.
- * - an import function to bulk load the data (full or partial) into a tree from a given file in
+ * - an import function to bulk load the data (full or partial) into a tree from a specified file in
  *   .cfg format or .json format.
  * - an export function to save the contents of a tree.
  * - a delete function to remove a tree and all its objects.
@@ -63,8 +63,8 @@
  *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn("/myData");
  *
  *     // Our iterator is currently on /myData, so everything under that node is replaced.  If we
- *     // want to replace the whole tree we could supply a "/" here instead of using the iterator's
- *     // current location.  Alternativly, we could have opened or moved the iterator to "/" in the
+ *     // want to replace the whole tree we can supply a "/" here instead of using the iterator's
+ *     // current location.  Alternativly, we can have opened or moved the iterator to "/" in the
  *     // first place.
  *     LE_FATAL_IF(le_cfgAdmin_ImportTree(iteratorRef, resolvedPath, "") != LE_OK,
  *                 "Error occured while writing config data.");
@@ -235,8 +235,8 @@
  *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("/myData");
  *
  *     // Our iterator is currently on /myData, so everything under that node is exported.  If we
- *     // want to export the whole tree we could supply a "/" here instead of using the iterator's
- *     // current location.  Alternativly, we could have opened or moved the iterator to "/" in the
+ *     // want to export the whole tree we can supply a "/" here instead of using the iterator's
+ *     // current location.  Alternativly, we can have opened or moved the iterator to "/" in the
  *     // first place.
  *     LE_FATAL_IF(le_cfgAdmin_ExportTree(iteratorRef, resolvedPath, "") != LE_OK,
  *                 "Error occured while writing config data.");
@@ -295,11 +295,11 @@ REFERENCE Iterator;
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Read a subset of the configuration tree from the given filePath.  The tree then overwrites the
- * node at the given nodePath.
+ * Read a subset of the configuration tree from the specified filePath.  The tree then overwrites the
+ * node at the specified nodePath.
  *
  * This function will import a sub-tree as part of the iterator's current transaction.  This allows
- * you to create an iterator on a given node.  Import a sub-tree, and then examine the contents of
+ * you to create an iterator on a specified node.  Import a sub-tree, and then examine the contents of
  * the import before deciding to commit the new data.
  *
  * @return This function will return one of the following values:
@@ -311,7 +311,7 @@ REFERENCE Iterator;
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ImportTree
 (
-    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that is being used for the import.
+    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that's being used for the import.
     string filePath[512]        IN,  ///< Import the tree data from the this file.
     string nodePath[512]        IN   ///< Where in the tree should this import happen?  Leave
                                      ///<   as an empty string to use the iterator's current
@@ -320,7 +320,7 @@ FUNCTION le_result_t ImportTree
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Take a node given from nodePath and stream it and it's children to the file given by filePath.
+ * Take a node specified from nodePath and stream it and it's children to the file specified by filePath.
  *
  * This funciton uses the iterator's read transaction, and takes a snapshot of the current state of
  * the tree.  The data write happens immediately.
@@ -333,7 +333,7 @@ FUNCTION le_result_t ImportTree
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportTree
 (
-    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that is being used for the export.
+    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that's being used for the export.
     string filePath[512]        IN,  ///< Import the tree data from the this file.
     string nodePath[512]        IN   ///< Where in the tree should this export happen?  Leave
                                      ///<   as an empty string to use the iterator's current
@@ -352,7 +352,7 @@ FUNCTION le_result_t ExportTree
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Delete a tree from the system, both from the filesystem and from memory.
+ * Delete a tree from the system, both from the file system and from memory.
  */
 //-------------------------------------------------------------------------------------------------
 FUNCTION DeleteTree

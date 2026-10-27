@@ -63,12 +63,12 @@
  * - le_appCtrl_GetRef() can be used to get a reference to an app.  This reference can then be used
  *   to apply overrides to the way that app will be started when le_appCtrl_Start() is called.
  *
- * - le_appCtrl_SetRun() can be used to set or clear the "run" flag for a given process in the app.
+ * - le_appCtrl_SetRun() can be used to set or clear the "run" flag for a specified process in the app.
  *   Clearing the "run" flag will result in that process not being started when the app starts.
  *   This can be used to start an app without one or more processes that are to be started later
  *   using strace or gdbserver, for example.
  *
- * - le_appCtrl_SetDebug() can be used to set or clear the "debug" flag for a given process in the
+ * - le_appCtrl_SetDebug() can be used to set or clear the "debug" flag for a specified process in the
  *   app.  Setting the "debug" flag will result in the process being started in the stopped state.
  *   A debugger can then be attached to the process.
  *
@@ -91,7 +91,7 @@
  *
  * @subsection le_appCtrlApi_debug_syncProcStart Synchronizing Process Start
  *
- * Some tools need to "attach" to a process (e.g., using the Unix ptrace() API) when the process
+ * Some tools need to "attach" to a process (for example using the Unix ptrace() API) when the process
  * starts. If the process is started by the Supervisor when the app starts, then synchoronization
  * can be achieved by calling le_appCtrl_AddTraceAttachHandler() to register a
  * "Trace Attach Handler" call-back for the app before starting it. When the Supervisor starts an
@@ -99,7 +99,7 @@
  * container, as usual, and for each app process it starts, it will <c>fork()</c> a child process,
  * put it into its runtime container, call the Trace Attach Handler function and block the child
  * process before <c>exec()</c>ing the app's program.  When the Trace Attach Handler function
- * is called, it is passed the PID of the child process, which the debug tool can use to attach
+ * is called, it's passed the PID of the child process, which the debug tool can use to attach
  * to the process before calling le_appCtrl_TraceUnblock() to ask the Supervisor to unblock the
  * app's process.
  *
@@ -282,12 +282,12 @@ FUNCTION SetDebug
  * @return
  *      LE_OK if successfully imported the file.
  *      LE_DUPLICATE if the path conflicts with items already in the app's working directory.
- *      LE_NOT_FOUND if the path does not point to a valid file.
+ *      LE_NOT_FOUND if the path doesn't point to a valid file.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
  *
- * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
- *       the function will not return.
+ * @b NOTE: If the caller is passing an invalid reference to the app, it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Import
@@ -303,12 +303,12 @@ FUNCTION le_result_t Import
  *
  * @return
  *      LE_OK if successfully set the device's permissions.
- *      LE_NOT_FOUND if the path does not point to a valid device.
+ *      LE_NOT_FOUND if the path doesn't point to a valid device.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
  *
- * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
- *       the function will not return.
+ * @b NOTE: If the caller is passing an invalid reference to the app, it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDevicePerm
@@ -321,7 +321,7 @@ FUNCTION le_result_t SetDevicePerm
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler for attaching to a process that is to be traced.  The process is blocked allowing the
+ * Handler for attaching to a process that's to be traced.  The process is blocked allowing the
  * tracer to attach to it.  The tracer must call TraceUnblock() to unblock the traced process.
  */
 //--------------------------------------------------------------------------------------------------
@@ -347,11 +347,11 @@ EVENT TraceAttach
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unblocks the traced process.  This should normally be done once the tracer has successfully
+ * Unblocks the traced process.  This should usually be done once the tracer has successfully
  * attached to the process.
  *
- * @b NOTE: If the caller is passing an invalid reference to the app, it is a fatal error,
- *       the function will not return.
+ * @b NOTE: If the caller is passing an invalid reference to the app, it's a fatal error,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION TraceUnblock
@@ -369,7 +369,7 @@ FUNCTION TraceUnblock
  *      LE_OK if the app is successfully started.
  *      LE_DUPLICATE if the app is already running.
  *      LE_NOT_FOUND if the app isn't installed.
- *      LE_FAULT if there was an error and the app could not be launched.
+ *      LE_FAULT if there was an error and the app couldn't be launched.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
@@ -384,7 +384,7 @@ FUNCTION le_result_t Start
  *
  * @return
  *      LE_OK if successful.
- *      LE_NOT_FOUND if the app could not be found.
+ *      LE_NOT_FOUND if the app couldn't be found.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop

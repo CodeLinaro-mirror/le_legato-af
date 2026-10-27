@@ -99,7 +99,7 @@
  *
  * @section Update_API_System_Info Installed System Information
  *
- * It is possible to get the index and hash for all of the currently installed systems.  The
+ * It's possible to get the index and hash for all of the currently installed systems.  The
  * following is an example of how one would list all installed systems and their hashes.
  *
  * @code
@@ -162,7 +162,7 @@ ENUM State
 {
     STATE_UNPACKING,            ///< Unpacking update data.
     STATE_DOWNLOAD_SUCCESS,     ///< Update data downloaded successfully.
-    STATE_APPLYING,             ///< Applying update(i.e. installation/removal operation going on).
+    STATE_APPLYING,             ///< Applying update(for example installation/removal operation going on).
     STATE_SUCCESS,              ///< Successfully completed all update task.
     STATE_FAILED                ///< Update failed due to some error or deletion request.
 };
@@ -202,7 +202,7 @@ HANDLER ProgressHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Register for notification of the progress of a given update.
+ * Register for notification of the progress of a specified update.
  */
 //--------------------------------------------------------------------------------------------------
 EVENT Progress
@@ -274,11 +274,11 @@ FUNCTION int32 GetCurrentSysIndex() = 6;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the hash ID for a given system.
+ * Gets the hash ID for a specified system.
  *
  * @return
  *      - LE_OK if no problems are encountered.
- *      - LE_NOT_FOUND if the given index does not correspond to an available system.
+ *      - LE_NOT_FOUND if the specified index doesn't correspond to an available system.
  *      - LE_OVERFLOW if the supplied buffer is too small.
  *      - LE_FORMAT_ERROR if there are problems reading the hash for the system.
  */
@@ -294,8 +294,8 @@ FUNCTION le_result_t GetSystemHash
 /**
  * Get the index for the previous system in the chain, using the current system as a starting point.
  *
- * @return The index to the system that's previous to the given system.  -1 is returned if the
- *         previous system was not found.
+ * @return The index to the system that's previous to the specified system. -1 is returned if the
+ *         previous system wasn't found.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetPreviousSystemIndex

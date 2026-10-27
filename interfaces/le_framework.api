@@ -69,7 +69,7 @@ FUNCTION le_result_t Stop
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Restart
 (
-    bool manualRestart IN           ///< Was the restart manually triggered e.g. "legato restart"
+    bool manualRestart IN           ///< Was the restart manually triggered for example "legato restart"
 ) = 1;
 
 //--------------------------------------------------------------------------------------------------
@@ -85,10 +85,10 @@ FUNCTION bool IsStopping() = 2;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks whether legato framework is Read-Only or not.
+ * Checks whether legato framework is read only or not.
  *
  * @return
- *     true if the framework is Read-Only
+ *     true if the framework is read only
  *     false otherwise
  */
 //--------------------------------------------------------------------------------------------------

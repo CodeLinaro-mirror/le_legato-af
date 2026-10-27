@@ -9,7 +9,7 @@
  * Provides an API for monitoring critical applications and services for deadlocks and other
  * similar faults.  The watchdog for a process is started by calling @c le_wdog_Kick or
  * @c le_wdog_Timeout.  Once started, the watchdog must be kicked periodically by calling
- * @c le_wdog_Kick.  If the watchdog is not kicked (because it is deadlocked, for example),
+ * @c le_wdog_Kick.  If the watchdog is not kicked (because it's deadlocked, for example),
  * the watchdog service will attempt to recover the service by killing the process and
  * executing the action specified in the process' watchdogAction (if specified)
  * otherwise its faultAction.
@@ -18,13 +18,13 @@
  * default timeout, and @c watchdogAction to give a recovery action.
  *
  * Critical services should also set @c maxWatchdogTimeout.  In this case the watchdog
- * will be started on system boot, and cannot be stopped or set
- * longer than the timeout given in @c maxWatchdogTimeout.  This ensures the service is
+ * will be started on system boot, and can't be stopped or set
+ * longer than the timeout specified in @c maxWatchdogTimeout.  This ensures the service is
  * always running as long as the system is running.
  *
  * @b NOTE: If maxWatchdogTimeout is not set, no more action is taken if performing the process'
  * @c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the
- * system will be rebooted if the process does not recover.
+ * system will be rebooted if the process doesn't recover.
  *
  * Copyright (C) Sierra Wireless Inc.
  */

@@ -78,8 +78,8 @@ DEFINE MD5_STR_LEN = 32;
  * @return
  *      The state of the specified application.
  *
- * @b NOTE: If the application name pointer is null or if its string is empty or of bad format it is a
- *       fatal error, the function will not return.
+ * @b NOTE: If the application name pointer is null or if its string is empty or of bad format it's a
+ *       fatal error, the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION State GetState
@@ -97,7 +97,7 @@ FUNCTION State GetState
  *      The state of the specified process.
  *
  * @b NOTE: If the application or process names pointers are null or if their strings are empty or of
- *       bad format it is a fatal error, the function will not return.
+ *       bad format it's a fatal error, the function won't return.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION ProcState GetProcState
@@ -113,7 +113,7 @@ FUNCTION ProcState GetProcState
  *
  * @return
  *      LE_OK if the application name was successfully found.
- *      LE_OVERFLOW if the application name could not fit in the provided buffer.
+ *      LE_OVERFLOW if the application name couldn't fit in the provided buffer.
  *      LE_NOT_FOUND if the process is not part of an application.
  *      LE_FAULT if there was an error.
  */
@@ -132,12 +132,12 @@ FUNCTION le_result_t GetName
  *
  * @return
  *      LE_OK if the application has was successfully retrieved.
- *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
+ *      LE_OVERFLOW if the application hash couldn't fit in the provided buffer.
  *      LE_NOT_FOUND if the application is not installed.
  *      LE_FAULT if there was an error.
  *
- * @b NOTE: If the application name pointer is null or if its string is empty or of bad format it is a
- *       fatal error, the function will not return.
+ * @b NOTE: If the application name pointer is null or if its string is empty or of bad format it's a
+ *       fatal error, the function won't return.
  */
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetHash

@@ -11,7 +11,7 @@
  * ====================== WARNING ======================
  *
  * THE CONTENTS OF THIS FILE HAVE BEEN AUTO-GENERATED.
- * DO NOT MODIFY IN ANY WAY.
+ * DON'T MODIFY IN ANY WAY.
  *
  * ====================== WARNING ======================
  */

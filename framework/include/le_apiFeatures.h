@@ -42,7 +42,7 @@
 #  define LE_FULL_API LE_FUNC_DISABLED("LINUX")
 #endif
 
-/// API requires filesystem support.
+/// API requires file system support.
 #if LE_CONFIG_FILESYSTEM
 #  define LE_API_FILESYSTEM
 #else
