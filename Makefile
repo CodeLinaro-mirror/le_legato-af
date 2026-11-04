@@ -284,17 +284,17 @@ ifneq ($(TARGET),nothing)
     export TOOLCHAIN_PREFIX     :=
   else ifeq ($(TARGET),simulation)
     export LEGATO_KERNELROOT    :=
-    export LEGATO_SYSROOT       :=
+    export LEGATO_SYSROOT       ?=
     export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))
     export TOOLCHAIN_PREFIX     :=
-  else # not localhost
+  else # not localhost and simulation
     ifeq ($(TOOLCHAIN_DIR),)
       export LEGATO_KERNELROOT    := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
       export LEGATO_SYSROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
       export TOOLCHAIN_DIR        := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
       export TOOLCHAIN_PREFIX     := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
     endif
-  endif # end not localhost
+  endif # not localhost and simulation
 
   # Target compiler variables
   export $(TARGET_CAPS)_CC               ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
