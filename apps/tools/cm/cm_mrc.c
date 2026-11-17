@@ -33,7 +33,9 @@ void cm_mrc_PrintRadioHelp
             "To enable/disable radio:\n"
             "\tcm radio <on/off>\n\n"
             "To set radio access technologies prefererences\n"
-            "\tcm radio rat <[CDMA] [GSM] [NR5G] [LTE] [TDSCDMA] [UMTS]>\n\n"
+            "\tcm radio rat <[CDMA] [GSM] [NR5G] [NR5G_NSA] [NR5G_SA] [LTE] [TDSCDMA] [UMTS]>\n\n"
+            "\tNR5G selects combined NR (NSA or SA). NR5G_NSA / NR5G_SA select NSA-only / SA-only\n"
+            "\tand cannot be combined with NR5G.\n\n"
             "To get radio access technologies prefererences\n"
             "\tcm radio getRAT \n\n"
             "To resume automatic RAT selection.\n"
@@ -522,6 +524,12 @@ int cm_mrc_GetRat
     }
 
     printf("Prefered RATs : ");
+    if (rat & LE_MRC_RAT_BIT_MASK_ALL)
+    {
+        printf("AUTO \n");
+        return LE_OK;
+    }
+
     if (rat & LE_MRC_RAT_BIT_MASK_GSM)
     {
         printf("GSM ");
@@ -530,6 +538,16 @@ int cm_mrc_GetRat
     if (rat & LE_MRC_RAT_BIT_MASK_NR5G)
     {
         printf("NR5G ");
+    }
+
+    if (rat & LE_MRC_RAT_BIT_MASK_NR5G_NSA)
+    {
+        printf("NR5G_NSA ");
+    }
+
+    if (rat & LE_MRC_RAT_BIT_MASK_NR5G_SA)
+    {
+        printf("NR5G_SA ");
     }
 
     if (rat & LE_MRC_RAT_BIT_MASK_TDSCDMA)
@@ -552,10 +570,6 @@ int cm_mrc_GetRat
         printf("UMTS ");
     }
 
-    if (LE_MRC_RAT_BIT_MASK_ALL == rat)
-    {
-        printf("AUTO ");
-    }
     printf("\n");
     return LE_OK;
 
@@ -651,7 +665,8 @@ void cm_mrc_ProcessRadioCommand
     else if (0 == strcmp(command, "rat"))
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "RAT value missing. e.g. cm radio"
-                        " rat <[CDMA] [GSM] [NR5G] [LTE] [TDSCDMA] [UMTS]> or <AUTO>"))
+                        " rat <[CDMA] [GSM] [NR5G] [NR5G_NSA] [NR5G_SA] [LTE] [TDSCDMA] [UMTS]>"
+                        " or <AUTO>"))
         {
             le_mrc_RatBitMask_t rat = 0;
             const char* ratStrPtr;
@@ -695,6 +710,14 @@ void cm_mrc_ProcessRadioCommand
                 else if (0 == strcmp(ratStrPtr, "NR5G"))
                 {
                     rat |= LE_MRC_RAT_BIT_MASK_NR5G;
+                }
+                else if (0 == strcmp(ratStrPtr, "NR5G_NSA"))
+                {
+                    rat |= LE_MRC_RAT_BIT_MASK_NR5G_NSA;
+                }
+                else if (0 == strcmp(ratStrPtr, "NR5G_SA"))
+                {
+                    rat |= LE_MRC_RAT_BIT_MASK_NR5G_SA;
                 }
                 else if (0 == strcmp(ratStrPtr, "TDSCDMA"))
                 {
